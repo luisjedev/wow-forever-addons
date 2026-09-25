@@ -1,4 +1,4 @@
-TDL - Lista de tareas para WoW
+TDL - Task list for WoW
 
 Installation: extract the TDL folder into the matching WoW installation's
 Interface/AddOns directory. Restart WoW and enable TDL in the AddOns menu.

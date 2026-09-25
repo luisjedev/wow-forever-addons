@@ -1,43 +1,47 @@
 # WoW Forever Addons
 
-Pequeños addons para disfrutar de Azeroth a tu manera: organizar lo que quieres hacer y recordar a quién te has encontrado por el camino.
+Small addons to enjoy Azeroth your way: organize your plans and remember the players you meet along the way.
 
-Esta colección reúne los addons de [luisjedev](https://github.com/luisjedev) para **World of Warcraft: Forever**. Puedes instalar cada uno por separado.
+This collection brings together [luisjedev](https://github.com/luisjedev)'s addons for **World of Warcraft: Forever**. You can install each one independently.
 
-## Los addons
+## The addons
 
-| Addon | ¿Para qué sirve? | Cómo abrirlo |
+| Addon | What it does | How to open it |
 | --- | --- | --- |
-| **[TDL](TDL)** | Tu lista de tareas dentro del juego. Añade planes, edítalos y marca lo que ya has completado. | Botón del minimapa, `/tdl` o `/todo` |
-| **[Revenge](Revenge)** | Guarda una lista de jugadores enemigos y reconoce sus placas con una marca y un estilo especial cuando el juego permite identificarlos. | Botón del minimapa o `/rvg` |
+| **[TDL](TDL)** | Your in-game task list. Add plans, edit them, and mark what you have completed. | Minimap button, `/tdl`, or `/todo` |
+| **[Revenge](Revenge)** | Keep a list of enemy players and recognize their nameplates with a marker and a distinctive style when the game allows identification. | Minimap button or `/rvg` |
 
-### TDL · Que no se te olvide nada
+### TDL · Remember your plans
 
-Misiones pendientes, materiales que reunir o ese plan para tu próxima sesión. Crea, edita, completa y elimina tareas desde una ventana que puedes mover. La lista muestra ocho tareas por página y adapta el idioma al de tu juego.
+Unfinished quests, materials to gather, or plans for your next session. Create, edit, complete, and delete tasks in a movable window. The list shows eight tasks per page and follows your game's language.
 
-### Revenge · Algunas caras se recuerdan
+### Revenge · Some faces are worth remembering
 
-Añade al objetivo actual con un clic o escribe su nombre y apellido. Consulta tu lista, elimina entradas y distingue a los jugadores guardados cuando aparecen en las placas de nombre. La interfaz está en español.
+Add your current target with one click or enter their first name and surname. Browse your list, delete entries, and spot saved players on their nameplates. The interface follows your game's language, with English as the fallback.
 
-## Instalación
+## Installation
 
-1. Descarga el repositorio desde **Code → Download ZIP** y descomprímelo.
-2. Copia la carpeta `TDL`, `Revenge` o ambas dentro de `World of Warcraft/_classic_beta_/Interface/AddOns/`.
-3. Comprueba que queden así: `AddOns/TDL/TDL.toc` y `AddOns/Revenge/Revenge.toc`.
-4. Reinicia el juego y activa los addons en la pantalla de selección de personaje.
+The addons will also be available from [my public CurseForge page (Artidev)](https://www.curseforge.com/members/artidev/projects) as they are published there.
 
-No copies la carpeta completa del repositorio dentro de `AddOns`. No necesitas instalar herramientas de desarrollo para jugar.
+To install them from this repository:
 
-## Estado actual
+1. Download the repository using **Code → Download ZIP** and extract it.
+2. Copy the `TDL` folder, the `Revenge` folder, or both into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+3. Check that the paths are `AddOns/TDL/TDL.toc` and `AddOns/Revenge/Revenge.toc`.
+4. Restart the game and enable the addons on the character selection screen.
 
-Los addons están en desarrollo para **WoW Forever beta**, con interfaz `16001`. No se da por hecha su compatibilidad con Retail, Classic Era u otras versiones.
+Do not copy the entire repository folder into `AddOns`. You do not need development tools to play.
 
-En algunas builds de la beta se han observado problemas al recuperar los datos guardados tras recargar la interfaz o cerrar el juego. Esto puede afectar a las tareas y a la lista de enemigos. Las restricciones del juego también pueden impedir que Revenge identifique a determinados jugadores. Consulta el [registro de compatibilidad](docs/BLIZZARD_API.md) para ver las builds revisadas y lo que sigue pendiente de probar.
+## Current status
 
-## Ideas y problemas
+The addons are in development for **WoW Forever beta**, with interface `16001`. Compatibility with Retail, Classic Era, or other versions is not assumed.
 
-Puedes [abrir una incidencia](https://github.com/luisjedev/wow-forever-addons/issues/new) para proponer mejoras o contar qué falla. Indica el addon, la versión del juego y los pasos para reproducirlo. Si incluyes una captura o un error, elimina antes los datos personales.
+Some beta builds have shown problems restoring saved data after reloading the interface or closing the game. This can affect tasks and the enemy list. Game restrictions may also prevent Revenge from identifying certain players. See the [compatibility log](docs/BLIZZARD_API.md) for the builds reviewed and the tests still pending.
 
-Para colaborar con el código, consulta la [guía de desarrollo](docs/DEVELOPMENT.md).
+## Ideas and issues
 
-Proyecto independiente, sin afiliación con Blizzard Entertainment. World of Warcraft pertenece a Blizzard Entertainment.
+You can [open an issue](https://github.com/luisjedev/wow-forever-addons/issues/new) to suggest improvements or report a problem. Include the addon, game version, and steps to reproduce it. Remove personal data from any screenshots or error reports before sharing them.
+
+To contribute code, see the [development guide](docs/DEVELOPMENT.md).
+
+An independent project with no affiliation with Blizzard Entertainment. World of Warcraft belongs to Blizzard Entertainment.

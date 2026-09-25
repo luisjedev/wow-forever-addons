@@ -1,8 +1,8 @@
-# Desarrollo
+# Development
 
-## Una única copia de trabajo
+## One working copy
 
-El repositorio es el lugar donde se edita, se hacen commits y se publica. `Interface/AddOns` contiene enlaces simbólicos a las carpetas de los addons:
+The repository is where editing, commits, and publishing happen. `Interface/AddOns` contains symlinks to the addon folders:
 
 ```text
 WoW Forever Addons/
@@ -10,14 +10,14 @@ WoW Forever Addons/
 ├── Revenge/             ← Interface/AddOns/Revenge
 ├── docs/
 ├── AGENTS.md
-└── .local/              (privado, excluido de Git)
+└── .local/              (private, excluded from Git)
 ```
 
-El juego lee los mismos archivos que editas. No hay que copiar cambios ni mantener dos versiones sincronizadas. GitHub guarda el historial y permite compartirlos; el trabajo diario ocurre en tu clon local.
+The game reads the same files you edit. There is no need to copy changes or keep two versions in sync. GitHub stores the history and lets you share it; daily work happens in your local clone.
 
-En este equipo los enlaces ya están preparados. Abre la carpeta **WoW Forever Addons** del escritorio como proyecto en tu editor o en Codex para trabajar también con las instrucciones comunes.
+The symlinks are already set up on this machine. Open the **WoW Forever Addons** folder on the desktop as a project in your editor or in Codex to include the shared instructions.
 
-Para preparar otro Mac o una instalación Linux, sustituye las rutas de este ejemplo:
+To set up another Mac or a Linux installation, replace the paths in this example:
 
 ```sh
 repo="$HOME/Desktop/WoW Forever Addons"
@@ -26,41 +26,41 @@ ln -s "$repo/TDL" "$addons/TDL"
 ln -s "$repo/Revenge" "$addons/Revenge"
 ```
 
-Los destinos deben estar libres: si ya existen carpetas, conserva antes una copia fuera de `AddOns`. No uses `ln -sf` para reemplazarlas a ciegas. En Windows se puede usar una unión de directorios con `mklink /J`. Si mueves el repositorio, actualiza los enlaces.
+The destinations must be unused: if folders already exist, back them up outside `AddOns` first. Do not use `ln -sf` to replace them blindly. On Windows, use a directory junction with `mklink /J`. If you move the repository, update the links.
 
-## Ciclo de trabajo
+## Workflow
 
-1. Edita el addon dentro del repositorio.
-2. Comprueba sintaxis y lógica fuera del juego.
-3. Usa `/reload` para recargar Lua. Reinicia el cliente al incorporar un addon nuevo o si no detecta cambios del manifiesto.
-4. Prueba el comportamiento y la persistencia real con el cliente de la build indicada.
-5. Revisa `git diff`, haz commit y push desde este repositorio.
+1. Edit the addon inside the repository.
+2. Check syntax and logic outside the game.
+3. Use `/reload` to reload Lua. Restart the client when adding a new addon or if it does not detect manifest changes.
+4. Test behavior and actual persistence in the specified client build.
+5. Review `git diff`, commit, and push from this repository.
 
-Cambiar de rama cambia inmediatamente los archivos que leerá el próximo `/reload`. Cada addon mantiene su propio `.toc`, versión y SavedVariables. Sus nombres se conservan para que WoW siga encontrando los datos existentes en `WTF`; esos datos no forman parte del repositorio.
+Switching branches immediately changes the files that the next `/reload` will read. Each addon keeps its own `.toc`, version, and SavedVariables. Their names are preserved so WoW can still find existing data in `WTF`; that data is not part of the repository.
 
-## Comprobaciones
+## Checks
 
-Desde la raíz, con Lua 5.1 o LuaJIT instalado:
+From the repository root, with Lua 5.1 or LuaJIT installed:
 
 ```sh
-luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua"}) do assert(loadfile(p)) end'
+luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua"}) do assert(loadfile(p)) end'
 (cd Revenge && luajit Revenge.test.lua)
 ```
 
-Puedes sustituir `luajit` por `lua5.1`. GitHub Actions ejecuta estas mismas comprobaciones. No emulan la API de WoW: hay que probar TDL, las placas de Revenge, la entrada y salida de combate, los cambios de zona y el guardado tras `/reload` y reinicio en el juego.
+You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. They do not emulate the WoW API: test TDL, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game.
 
-## Recuperación privada de esta instalación
+## Private recovery for this installation
 
-Durante la migración se conservaron los originales en `.local/originals/`. Revenge contenía una recuperación específica de un personaje. Sus datos se movieron a un addon local opcional, `.local/WoWForeverLocal/`, enlazado también desde `Interface/AddOns` y excluido de Git.
+The originals were preserved in `.local/originals/` during migration. Revenge contained recovery data for a specific character. That data was moved to an optional local addon, `.local/WoWForeverLocal/`, also linked from `Interface/AddOns` and excluded from Git.
 
-Revenge funciona sin ese addon; su dependencia es opcional. En este equipo, mantén **WoW Forever Local** activado para conservar la recuperación de la beta. Solo se aplica al personaje configurado, con lista vacía y revisión anterior. No sustituye una copia de seguridad de `WTF` y no garantiza que el cliente corrija su cargador de SavedVariables. Reinicia el juego después de esta migración para que descubra el addon local.
+Revenge works without that addon; its dependency is optional. On this machine, keep **WoW Forever Local** enabled to preserve beta recovery. It only applies to the configured character with an empty list and an older revision. It does not replace a backup of `WTF` or guarantee that the client fixes its SavedVariables loader. Restart the game after this migration so it discovers the local addon.
 
-No distribuyas `.local/`. Retira el mecanismo cuando la persistencia nativa se haya validado; conserva antes los datos. Las copias originales son una fotografía de la migración, no una segunda carpeta de trabajo.
+Do not distribute `.local/`. Remove the recovery mechanism once native persistence has been validated; preserve the data first. The original backups are a snapshot of the migration, not a second working folder.
 
-## Seguimiento de la API
+## API tracking
 
-`docs/BLIZZARD_API.md` mantiene el historial por producto y build, las fuentes y las pruebas pendientes. Una tarea diaria de Codex revisa la versión instalada y el código de la interfaz publicado en la rama `forever` del espejo Gethe/wow-ui-source. La programación está vinculada a esta instalación de Codex; clonar el repositorio no la instala.
+`docs/BLIZZARD_API.md` maintains the history by product and build, sources, and pending tests. A daily Codex task checks the installed version and the interface code published on the `forever` branch of the Gethe/wow-ui-source mirror. Its schedule is tied to this Codex installation; cloning the repository does not install it.
 
-La revisión está programada a las **10:00, hora de Madrid**. Para acceder a los archivos locales, el ordenador debe estar encendido y la aplicación ejecutándose; consulta la [documentación de tareas programadas](https://learn.chatgpt.com/docs/automations?surface=app).
+The review is scheduled for **10:00, Madrid time**. To access local files, the computer must be on and the app running; see the [scheduled tasks documentation](https://learn.chatgpt.com/docs/automations?surface=app).
 
-Cuando encuentra una build nueva o evidencia relevante, actualiza la documentación y publica únicamente esos cambios, si el estado de Git permite hacerlo sin mezclar trabajo pendiente. No cambia automáticamente el código de los addons ni el número de interfaz de sus `.toc`. No declara una validación en el juego que no se haya realizado. Si una fuente no está disponible, conserva la última evidencia y comunica el bloqueo.
+When the task finds a new build or relevant evidence, it updates the documentation and publishes only those changes, if Git's state allows it without mixing in pending work. It does not automatically change addon code or the interface number in `.toc` files. It does not claim in-game validation that has not taken place. If a source is unavailable, it keeps the last evidence and reports the blocker.

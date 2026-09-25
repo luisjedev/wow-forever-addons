@@ -1,59 +1,63 @@
-# Compatibilidad y limitaciones de la API Lua de Blizzard
+# Blizzard Lua API compatibility and limitations
 
-Este registro trata de la **API dentro del cliente de WoW**: funciones Lua, eventos, frames, valores secretos y SavedVariables. No trata de la API HTTP de Battle.net.
+This log covers the **API inside the WoW client**: Lua functions, events, frames, secret values, and SavedVariables. It does not cover the Battle.net HTTP API.
 
-Se amplía por cada versión y build que afecte a nuestros addons. No pretende certificar todas las versiones históricas de WoW. Una versión comercial puede contener varias builds con diferencias de API aunque el número `Interface` no cambie.
+It is extended for each version and build that affects our addons. It does not aim to certify every historical WoW version. A release version can include several builds with API differences even when the `Interface` number stays the same.
 
-## Referencia actual
+## Current reference
 
-| Dato | Valor |
+| Field | Value |
 | --- | --- |
-| Producto de desarrollo | `wow_classic_beta` · WoW Forever |
-| Cliente instalado observado el 25 de septiembre de 2026 | `1.60.1.70009` |
-| Interfaz declarada por TDL y Revenge | `16001` |
-| Fuente del código de Blizzard | [Gethe/wow-ui-source, rama forever](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Revisión documental consultada | [`bd2470a` · 1.60.1 (70009), 24 de septiembre de 2026](https://github.com/Gethe/wow-ui-source/commit/bd2470aed543f72697a044e989285b6c83e63f73) |
-| Última revisión de este registro | 25 de septiembre de 2026 |
+| Development product | `wow_classic_beta` · WoW Forever |
+| Installed client observed on September 25, 2026 | `1.60.1.70009` |
+| Interface declared by TDL and Revenge | `16001` |
+| Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
+| Source revision consulted | [`bd2470a` · 1.60.1 (70009), September 24, 2026](https://github.com/Gethe/wow-ui-source/commit/bd2470aed543f72697a044e989285b6c83e63f73) |
+| Last review of this log | September 25, 2026 |
 
-La versión instalada procede de la fila del producto `wow_classic_beta` en `.build.info`. El valor de interfaz procede de nuestros `.toc`; no equivale a una prueba en el cliente. En el juego, `/dump GetBuildInfo()` permite contrastar versión, build y número de interfaz.
+The installed version comes from the `wow_classic_beta` product row in `.build.info`. The interface value comes from our `.toc` files; it is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
-Gethe es un **espejo comunitario del código de la interfaz de Blizzard**, no un servicio oficial ni una garantía de publicación inmediata. Elegimos `forever` porque su commit identifica la misma build que el cliente instalado. No asumir que la rama `classic_beta` siga representando Forever.
+Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
-## Historial
+## History
 
-| Producto / versión / build | Evidencia | Limitaciones y estado |
+| Product / version / build | Evidence | Limitations and status |
 | --- | --- | --- |
-| Forever beta · 1.60.1 · 69913 | Nota previa incluida en [TDL/README.txt](../TDL/README.txt) | Se documentó un fallo al recuperar SavedVariables tras recarga o salida. Registro histórico del proyecto; no es confirmación oficial ni una nueva reproducción. |
-| Forever beta · 1.60.1 · 70009 | Instalación local y revisión de fuentes `bd2470a` | Restricciones de identidad y firmas revisadas en fuentes. Persistencia, combate y placas pendientes de validación dentro de esta build. No se da por corregido el fallo anterior. |
+| Forever beta · 1.60.1 · 69913 | Earlier note included in [TDL/README.txt](../TDL/README.txt) | A failure to restore SavedVariables after reload or exit was documented. This is a historical project record, not official confirmation or a new reproduction. |
+| Forever beta · 1.60.1 · 70009 | Local installation and source review at `bd2470a` | Identity restrictions and signatures reviewed in source. Persistence, combat, and nameplates still require validation in this build. The earlier failure is not considered fixed. |
 
 ## Forever 1.60.1 · build 70009
 
-| Área | Evidencia o limitación | Impacto y criterio |
+| Area | Evidence or limitation | Impact and approach |
 | --- | --- | --- |
-| Nombre de unidad | `UnitName` declara `SecretWhenUnitNameIdentityRestricted`. | Revenge necesita el nombre para comparar con su lista. Si no es accesible, omitir la identificación; probar el comportamiento en combate y PvP. |
-| Identidad y clase | `UnitNameUnmodified`, `UnitClassBase` y `UnitGUID` declaran `SecretWhenUnitIdentityRestricted`. `UnitClassBase` puede no devolver resultados. | No tratar la existencia de la función como permiso para procesar el resultado. Revisar también las rutas de inicialización. |
-| Placas de nombre | `C_NamePlate.GetNamePlateForUnit` declara `SecretArguments = "AllowedWhenUntainted"`. | Es una condición sobre los argumentos, no permiso general para modificar cualquier frame. Las estructuras internas que usa Revenge requieren una prueba visual por build. |
-| Nombre y apellido | La implementación Camelot de `NameUtil` usa nombre y apellido al componer la identidad. | No trasladar sin comprobar la interpretación nombre/reino de otras ramas. La documentación generada conserva nombres genéricos para los retornos. |
-| Datos guardados | La nota histórica de TDL describe un fallo del cargador. Revenge conserva una copia por personaje en una variable de cuenta y admite recuperación local opcional. | Son mitigaciones del proyecto, no evidencia de que Blizzard haya corregido el fallo. Verificar que añadir y borrar entradas persiste tras recarga y reinicio. |
-| Dependencias de UI | Revenge declara `Blizzard_NamePlates` y usa `plate.UnitFrame`, `healthBar` y `CompactUnitFrame_UpdateHealthColor`. | Estas referencias se han identificado en nuestro código; no se certifica estabilidad contractual de las estructuras de FrameXML. |
+| Unit name | `UnitName` declares `SecretWhenUnitNameIdentityRestricted`. | Revenge needs the name to compare it with its list. If it is inaccessible, skip identification; test behavior in combat and PvP. |
+| Identity and class | `UnitNameUnmodified`, `UnitClassBase`, and `UnitGUID` declare `SecretWhenUnitIdentityRestricted`. `UnitClassBase` may return no results. | Do not treat a function's existence as permission to process its result. Review initialization paths as well. |
+| Nameplates | `C_NamePlate.GetNamePlateForUnit` declares `SecretArguments = "AllowedWhenUntainted"`. | This is a condition on arguments, not general permission to modify any frame. The internal structures used by Revenge require a visual test for each build. |
+| First name and surname | The Camelot implementation of `NameUtil` uses first name and surname to compose identity. | Do not assume the name/realm interpretation from other branches applies without checking. The generated documentation retains generic names for return values. |
+| Saved data | TDL's historical note describes a loader failure. Revenge keeps a per-character copy in an account-wide variable and supports optional local recovery. | These are project mitigations, not evidence that Blizzard fixed the failure. Verify that adding and deleting entries persists after reload and restart. |
+| UI dependencies | Revenge declares `Blizzard_NamePlates` and uses `plate.UnitFrame`, `healthBar`, and `CompactUnitFrame_UpdateHealthColor`. | These references have been identified in our code; contractual stability of FrameXML structures is not certified. |
+| Floating button layering | Documented in source: `TargetFrameTemplate` uses `LOW` strata and frame level `500`; native character and spell windows inherit their strata. Revenge previously forced its floating button to `HIGH`. | Revenge now uses `LOW`, one frame level above `TargetFrame` when present, to preserve visibility at its initial anchor. Overlap with native windows and input handling remain pending in-game verification; inherited runtime strata are not established by the XML alone. |
 
-Fuentes de la build exacta: [UnitDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua), [NamePlateDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/NamePlateDocumentation.lua) y [Camelot/NameUtil.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua).
+Sources for the exact build: [UnitDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua), [NamePlateDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/NamePlateDocumentation.lua), and [Camelot/NameUtil.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua).
 
-Blizzard explica el objetivo de los valores secretos en su [artículo sobre combate y addons en Midnight](https://news.blizzard.com/en-us/article/24246290/combat-philosophy-and-addon-disarmament-in-midnight): ciertos datos pueden presentarse mediante operaciones permitidas sin quedar disponibles para decisiones del addon. Ese artículo da contexto; las restricciones concretas de Forever se contrastan con su propia build.
+Frame layering evidence for the same build: [TargetFrame.xml](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_UnitFrame/Mainline/TargetFrame.xml#L52), [Camelot/CharacterFrame.xml](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_UIPanels_Game/Camelot/CharacterFrame.xml#L403), and [Camelot/Blizzard_PlayerSpellsFrame.xml](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_PlayerSpells/Camelot/Blizzard_PlayerSpellsFrame.xml#L4).
 
-## Pruebas que faltan en 70009
+Blizzard explains the purpose of secret values in its [article on combat and addons in Midnight](https://news.blizzard.com/en-us/article/24246290/combat-philosophy-and-addon-disarmament-in-midnight): certain data can be displayed through permitted operations without becoming available for addon decisions. That article provides context; Forever's specific restrictions are checked against its own build.
 
-- **TDL:** crear, editar, completar y borrar tareas; comprobar idioma; recargar y reiniciar sin perder cambios.
-- **Revenge:** añadir manualmente y desde objetivo; observar placas al entrar y salir de alcance; comprobar jugadores cuya identidad no sea accesible, combate y cambios de zona.
-- **Persistencia de Revenge:** verificar altas y bajas tras `/reload` y reinicio, tanto sin recuperación local como con ella. No realizar pruebas destructivas sobre la lista personal.
-- **Errores y taint:** registrar mensaje exacto, pasos, build y contexto si se produce un fallo. Nunca incluir nombres reales, GUID de jugadores o contenido personal de SavedVariables.
+## Pending tests in 70009
 
-## Cómo se mantiene
+- **TDL:** create, edit, complete, and delete tasks; check language; reload and restart without losing changes.
+- **Revenge:** add manually and from the target; observe nameplates when entering and leaving range; check players whose identity is inaccessible, combat, and zone changes.
+- **Revenge interface:** check translated labels, tooltips, and status messages for clipping. After `/reload`, overlap the floating button with the character window, bags, quest log, map, Revenge, and TDL; verify it stays behind windows and remains clickable and draggable when unobstructed, including beside the target frame.
+- **Revenge persistence:** verify additions and deletions after `/reload` and restart, both with and without local recovery. Do not perform destructive tests on the personal list.
+- **Errors and taint:** record the exact message, steps, build, and context when a failure occurs. Never include real names, player GUIDs, or personal SavedVariables content.
 
-La revisión diaria de Codex compara la versión instalada y el último commit de la rama `forever` con este registro. También comprueba evidencia nueva relevante para problemas abiertos, aunque la build no cambie. Mantiene separadas la build instalada y la publicada en el espejo.
+## Maintenance
 
-Ante una novedad, añade una entrada con producto, versión, build, interfaz si está comprobada, fecha, fuente permanente, cambio relevante y addons afectados. Conserva el historial y las conclusiones anteriores en su build. Clasifica la evidencia como **documentada en fuentes**, **reproducida en el juego**, **reporte externo** o **pendiente de verificar**.
+The daily Codex review compares the installed version and the latest commit on the `forever` branch with this log. It also checks for relevant new evidence about open issues, even if the build has not changed. It distinguishes the installed build from the one published in the mirror.
 
-El proceso puede documentar automáticamente cambios de firmas y restricciones declaradas. No puede demostrar por sí solo que una función se comporte correctamente durante una sesión de juego. No eleva la compatibilidad ni modifica los `.toc` por el mero hecho de detectar una build nueva.
+For new findings, add an entry with product, version, build, interface if verified, date, permanent source, relevant change, and affected addons. Preserve history and earlier conclusions under their own build. Classify evidence as **documented in source**, **reproduced in the game**, **external report**, or **pending verification**.
 
-Si aparecen otras ramas del juego como objetivos del proyecto, tendrán sus propias entradas. No copiar conclusiones de Retail, Classic Era o una beta a otra sin evidencia.
+The process can automatically document signature changes and declared restrictions. It cannot prove on its own that a function behaves correctly during a game session. It does not expand compatibility claims or modify `.toc` files merely because it detects a new build.
+
+If other game branches become project targets, they will have their own entries. Do not copy conclusions from Retail, Classic Era, or one beta to another without evidence.

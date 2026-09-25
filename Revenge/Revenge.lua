@@ -1,5 +1,6 @@
 local addonName, addon = ...
 addon = addon or {}
+local L = addon.L
 
 local function CleanPart(text)
     text = tostring(text or ""):gsub("%c", " "):match("^%s*(.-)%s*$")
@@ -136,7 +137,7 @@ local function RefreshWindow()
     local enemies = SortedEnemies()
     local pages = math.max(1, math.ceil(#enemies / PAGE_SIZE))
     page = math.max(1, math.min(page, pages))
-    countText:SetText(("Enemigos guardados: %d"):format(#enemies))
+    countText:SetText(L["Saved enemies: %d"]:format(#enemies))
     pager:SetText(("%d / %d"):format(page, pages))
     previousButton:SetEnabled(page > 1)
     nextButton:SetEnabled(page < pages)
@@ -254,23 +255,23 @@ end
 local function AddEnemy(firstName, surname, class)
     firstName, surname = CleanPart(firstName), CleanPart(surname)
     if not firstName or not surname then
-        return false, "Escribe un nombre y un apellido válidos, sin espacios internos."
+        return false, L["Enter a valid first name and surname without internal spaces."]
     end
 
     local playerFirstName, playerSurname = ReadUnitName("player")
     local key = NameKey(firstName, surname)
     if playerFirstName and key == NameKey(playerFirstName, playerSurname) then
-        return false, "No puedes añadirte a ti mismo."
+        return false, L["You cannot add yourself."]
     end
     if db.enemies[key] then
-        return false, firstName .. " " .. surname .. " ya está en la lista."
+        return false, L["%s is already on the list."]:format(firstName .. " " .. surname)
     end
 
     db.enemies[key] = { firstName = firstName, surname = surname, class = class }
     TouchDB()
     page = math.ceil((#SortedEnemies()) / PAGE_SIZE)
     RefreshVisible()
-    return true, firstName .. " " .. surname .. " añadido."
+    return true, L["%s added."]:format(firstName .. " " .. surname)
 end
 
 local function AddManualEnemy()
@@ -285,16 +286,16 @@ end
 
 local function AddTargetEnemy()
     if not UnitExists("target") then
-        SetStatus("Selecciona primero a un jugador enemigo.", false)
+        SetStatus(L["Select an enemy player first."], false)
         return
     end
     if not IsEnemyPlayer("target") then
-        SetStatus("El objetivo debe ser un jugador enemigo.", false)
+        SetStatus(L["Your target must be an enemy player."], false)
         return
     end
     local firstName, surname = ReadUnitName("target")
     if not firstName then
-        SetStatus("El juego no permite leer el nombre completo de este objetivo.", false)
+        SetStatus(L["The game does not allow reading this target's full name."], false)
         return
     end
     local success, message = AddEnemy(firstName, surname, ReadUnitClass("target"))
@@ -304,13 +305,14 @@ end
 quickAddButton = CreateFrame("Button", "RevengeQuickAddButton", UIParent)
 quickAddButton:Hide()
 quickAddButton:SetSize(46, 46)
-quickAddButton:SetFrameStrata("HIGH")
+quickAddButton:SetFrameStrata("LOW")
 quickAddButton:SetClampedToScreen(true)
 quickAddButton:SetMovable(true)
 quickAddButton:EnableMouse(true)
 quickAddButton:RegisterForClicks("LeftButtonUp")
 quickAddButton:RegisterForDrag("RightButton")
 if TargetFrame then
+    quickAddButton:SetFrameLevel(TargetFrame:GetFrameLevel() + 1)
     quickAddButton:SetPoint("LEFT", TargetFrame, "RIGHT", -8, -4)
 else
     quickAddButton:SetPoint("CENTER", UIParent, "CENTER", -200, -160)
@@ -336,9 +338,9 @@ quickAddButton:SetScript("OnDragStop", function(self)
 end)
 quickAddButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Añadir a Revenge", 0.72, 0.12, 0.90)
-    GameTooltip:AddLine("Clic izquierdo: añadir objetivo", 1, 1, 1)
-    GameTooltip:AddLine("Arrastrar con botón derecho: mover", 0.7, 0.7, 0.7)
+    GameTooltip:SetText(L["Add to Revenge"], 0.72, 0.12, 0.90)
+    GameTooltip:AddLine(L["Left-click: add target"], 1, 1, 1)
+    GameTooltip:AddLine(L["Right-drag: move"], 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end)
 quickAddButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -418,11 +420,11 @@ local function CreateWindow()
             db.enemies[row.enemyKey] = nil
             TouchDB()
             RefreshVisible()
-            SetStatus(displayName .. " eliminado.", true)
+            SetStatus(L["%s removed."]:format(displayName), true)
         end)
         deleteButton:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Eliminar enemigo", 1, 0.82, 0)
+            GameTooltip:SetText(L["Remove enemy"], 1, 0.82, 0)
             GameTooltip:Show()
         end)
         deleteButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -441,13 +443,13 @@ local function CreateWindow()
     separator:SetPoint("TOPRIGHT", -24, -434)
     separator:SetHeight(1)
 
-    local targetButton = Button(window, "Añadir objetivo actual", 240, 32)
+    local targetButton = Button(window, L["Add current target"], 240, 32)
     targetButton:SetPoint("BOTTOMLEFT", 24, 12)
     targetButton:SetScript("OnClick", AddTargetEnemy)
 
     local firstNameLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     firstNameLabel:SetPoint("TOPLEFT", 28, -460)
-    firstNameLabel:SetText("Nombre")
+    firstNameLabel:SetText(L["First name"])
     firstNameInput = CreateFrame("EditBox", "RevengeFirstNameInput", window, "InputBoxTemplate")
     firstNameInput:SetSize(160, 30)
     firstNameInput:SetPoint("TOPLEFT", 24, -477)
@@ -460,7 +462,7 @@ local function CreateWindow()
 
     local surnameLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     surnameLabel:SetPoint("TOPLEFT", 204, -460)
-    surnameLabel:SetText("Apellido")
+    surnameLabel:SetText(L["Surname"])
     surnameInput = CreateFrame("EditBox", "RevengeSurnameInput", window, "InputBoxTemplate")
     surnameInput:SetSize(160, 30)
     surnameInput:SetPoint("TOPLEFT", 200, -477)
@@ -468,7 +470,7 @@ local function CreateWindow()
     surnameInput:SetMaxBytes(48)
     surnameInput:SetScript("OnEnterPressed", AddManualEnemy)
 
-    local addButton = Button(window, "Añadir", 116, 30)
+    local addButton = Button(window, L["Add"], 116, 30)
     addButton:SetPoint("TOPLEFT", 380, -477)
     addButton:SetScript("OnClick", AddManualEnemy)
 
@@ -514,7 +516,7 @@ minimapButton:SetScript("OnClick", ToggleWindow)
 minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:SetText("Revenge", 0.72, 0.12, 0.90)
-    GameTooltip:AddLine("Clic para abrir o cerrar la lista de enemigos.", 1, 1, 1)
+    GameTooltip:AddLine(L["Click to show or hide your enemy list."], 1, 1, 1)
     GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
