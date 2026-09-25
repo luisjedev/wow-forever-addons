@@ -1,0 +1,9 @@
+.DS_Store
+.local/
+WTF/
+Cache/
+Logs/
+SavedVariables/
+*.lua.bak
+.env
+.env.*

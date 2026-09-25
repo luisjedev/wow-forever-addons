@@ -1,0 +1,18 @@
+name: Check addons
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - name: Check Lua syntax
+        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua"}) do assert(loadfile(p)) end'
+      - name: Check Revenge logic
+        working-directory: Revenge
+        run: lua5.1 Revenge.test.lua

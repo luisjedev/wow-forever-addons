@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: TDL
+## IconTexture: Interface\AddOns\TDL\Assets\Icon
+## Notes: Lista de tareas para WoW
+## Version: 1.0.0
+## SavedVariablesPerCharacter: TDLDB
+
+Locales.lua
+TDL.lua

@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: Revenge
+## IconTexture: Interface\AddOns\Revenge\Assets\RevengeIconV2
+## Notes: Marca en las placas a los jugadores de tu lista de enemigos.
+## Version: 1.4.9
+## Dependencies: Blizzard_NamePlates
+## OptionalDeps: WoWForeverLocal
+## SavedVariables: RevengeBackupDB
+## SavedVariablesPerCharacter: RevengeDB
+## LoadSavedVariablesFirst: 1
+
+Revenge.lua
