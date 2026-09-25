@@ -12,3 +12,6 @@ A collection of Lua addons for WoW Forever. Read `README.md`, `docs/DEVELOPMENT.
 - Work in the repository; the `Interface/AddOns` symlinks point here. Tests can affect the local client: verify in the game with `/reload` and restart it when adding addons.
 - Run the syntax check and tests described in `docs/DEVELOPMENT.md`. Tests outside the game do not validate nameplates, combat, or actual persistence.
 - Keep changes small, without dependencies or speculative shared layers. Maintain tests for affected logic and avoid unnecessary changes to other addons.
+- After completing and validating repository changes, always commit and push them to GitHub without asking again, unless the user explicitly requests otherwise. Include only the task's reviewed files, preserve unrelated work, never force-push, and report any blocker that prevents publishing.
+
+For CurseForge project creation, updates, screenshots, or releases, use the repository skill at [.agents/skills/curseforge-publish/SKILL.md](.agents/skills/curseforge-publish/SKILL.md).
