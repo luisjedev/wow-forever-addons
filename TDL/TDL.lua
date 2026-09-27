@@ -3,10 +3,9 @@ local L = beta.L
 local betaDB = TDLDB
 if beta.character then TDLDB = beta.native end
 
-local db, window, input, saveButton, cancelButton, editorLabel, pager
-local previousButton, nextButton
-local rows, page, editing = {}, 1, nil
-local PAGE_SIZE = 8
+local db, window, input, saveButton, cancelButton, editorLabel, scroll, content
+local rows, editing = {}, nil
+local Refresh
 
 local function PlainText(text)
     return (text:gsub("|", "||"))
@@ -26,23 +25,85 @@ local function ResetEditor()
     editorLabel:SetText(L["New task"])
     saveButton:SetText(L["Add"])
     cancelButton:Hide()
+    input:SetPoint("RIGHT", saveButton, "LEFT", -12, 0)
 end
 
-local function Refresh()
-    local total = #db.tasks
-    local pages = math.max(1, math.ceil(total / PAGE_SIZE))
-    page = math.max(1, math.min(page, pages))
-    pager:SetText(string.format("%d / %d", page, pages))
-    previousButton:SetEnabled(page > 1)
-    nextButton:SetEnabled(page < pages)
+local function CreateRow(i)
+    local row = CreateFrame("Button", nil, content)
+    row:SetHeight(38)
+    row:SetPoint("TOPLEFT")
+    row:SetPoint("TOPRIGHT")
+    local background = row:CreateTexture(nil, "BACKGROUND")
+    background:SetAllPoints()
+    background:SetColorTexture(1, 0.82, 0.4, i % 2 == 1 and 0.06 or 0.02)
+    row.check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+    row.check:SetPoint("TOPLEFT", 0, -3)
+    row.check:SetScript("OnClick", function(self)
+        row.task.done = self:GetChecked() and true or false
+        Refresh()
+    end)
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.text:SetPoint("TOPLEFT", 38, -12)
+    row.text:SetPoint("TOPRIGHT", -52, -12)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetJustifyV("TOP")
+    row.disclosure = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    row.disclosure:SetPoint("TOPRIGHT", -34, -12)
+    row:SetScript("OnClick", function()
+        if row.canExpand then
+            row.expanded = not row.expanded
+            Refresh()
+        end
+    end)
 
+    local edit = Button(row, L["Edit"], 72)
+    row.edit = edit
+    edit:SetPoint("BOTTOMRIGHT", -112, 8)
+    edit:SetScript("OnClick", function()
+        editing = row.task
+        editorLabel:SetText(L["Edit task"])
+        input:SetText(editing.text)
+        saveButton:SetText(L["Save"])
+        cancelButton:Show()
+        input:SetPoint("RIGHT", cancelButton, "LEFT", -12, 0)
+        input:SetFocus()
+        input:HighlightText()
+    end)
+    local delete = Button(row, L["Delete"], 78)
+    row.delete = delete
+    delete:SetPoint("BOTTOMRIGHT", -30, 8)
+    delete:SetScript("OnClick", function()
+        StaticPopup_Show("TDL_DELETE", PlainText(row.task.text), nil, row.task)
+    end)
+    return row
+end
+
+Refresh = function()
+    -- ponytail: one frame per task; virtualize only if large lists make refresh slow.
+    for i = #rows + 1, #db.tasks do rows[i] = CreateRow(i) end
+    local height = 0
     for i, row in ipairs(rows) do
-        local task = db.tasks[(page - 1) * PAGE_SIZE + i]
+        local task = db.tasks[i]
+        if row.task ~= task then row.expanded = false end
         row.task = task
         row:SetShown(task ~= nil)
         if task then
             row.check:SetChecked(task.done)
             row.text:SetText(PlainText(task.text))
+            row.canExpand = row.text:GetUnboundedStringWidth() > row.text:GetWidth()
+            row.expanded = row.expanded and row.canExpand
+            row.text:SetWordWrap(row.expanded or false)
+            row.text:SetNonSpaceWrap(row.expanded or false)
+            row.text:SetHeight(0)
+            local textHeight = row.expanded and row.text:GetStringHeight() or row.text:GetLineHeight()
+            row.text:SetHeight(textHeight)
+            row:SetHeight(math.max(38, textHeight + 24) + 32)
+            row.disclosure:SetText(row.expanded and "-" or "+")
+            row.disclosure:SetShown(row.canExpand)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", 0, -height)
+            row:SetPoint("TOPRIGHT", 0, -height)
+            height = height + row:GetHeight() + 2
             if task.done then
                 row.text:SetTextColor(0.5, 0.8, 0.5)
             else
@@ -50,6 +111,10 @@ local function Refresh()
             end
         end
     end
+    content:SetHeight(math.max(1, height - 2))
+    scroll:UpdateScrollChildRect()
+    scroll.ScrollBar:SetValue(math.min(scroll.ScrollBar:GetValue(), scroll:GetVerticalScrollRange()))
+    scroll.ScrollBar:SetShown(scroll:GetVerticalScrollRange() > 0)
 end
 
 local function SaveTask()
@@ -59,14 +124,15 @@ local function SaveTask()
         input:SetFocus()
         return
     end
+    local adding = not editing
     if editing then
         editing.text = text
     else
         table.insert(db.tasks, { text = text, done = false })
-        page = math.ceil(#db.tasks / PAGE_SIZE)
     end
     ResetEditor()
     Refresh()
+    if adding then scroll.ScrollBar:SetValue(scroll:GetVerticalScrollRange()) end
 end
 
 StaticPopupDialogs["TDL_DELETE"] = {
@@ -115,71 +181,30 @@ local function CreateWindow()
     end
     window.TitleText:SetText(L["My tasks"])
     table.insert(UISpecialFrames, "TDLFrame")
+    if window.Inset then window.Inset:Hide() end
+    local background = window:CreateTexture(nil, "ARTWORK", nil, -7)
+    background:SetPoint("TOPLEFT", 8, -31)
+    background:SetPoint("BOTTOMRIGHT", -8, 8)
+    background:SetTexture("Interface\\AddOns\\TDL\\Assets\\Background")
+    background:SetTexCoord(0, 1, 0, 1)
+    background:SetVertexColor(0.82, 0.82, 0.82)
 
-    for i = 1, PAGE_SIZE do
-        local row = CreateFrame("Frame", nil, window)
-        row:SetSize(560, 38)
-        row:SetPoint("TOPLEFT", 20, -40 - (i - 1) * 40)
-        local background = row:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints()
-        background:SetColorTexture(1, 0.82, 0.4, i % 2 == 1 and 0.06 or 0.02)
-        row.check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-        row.check:SetPoint("LEFT", 0, 0)
-        row.check:SetScript("OnClick", function(self)
-            row.task.done = self:GetChecked() and true or false
-            Refresh()
-        end)
-        row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        row.text:SetPoint("LEFT", 38, 0)
-        row.text:SetSize(348, 34)
-        row.text:SetJustifyH("LEFT")
-        row.text:SetWordWrap(true)
-        row:EnableMouse(true)
-        row:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(PlainText(self.task.text), 1, 0.95, 0.82, 1, true)
-            GameTooltip:Show()
-        end)
-        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-        local edit = Button(row, L["Edit"], 72)
-        edit:SetPoint("RIGHT", -84, 0)
-        edit:SetScript("OnClick", function()
-            editing = row.task
-            editorLabel:SetText(L["Edit task"])
-            input:SetText(editing.text)
-            saveButton:SetText(L["Save"])
-            cancelButton:Show()
-            input:SetFocus()
-            input:HighlightText()
-        end)
-        local delete = Button(row, L["Delete"], 78)
-        delete:SetPoint("RIGHT", -2, 0)
-        delete:SetScript("OnClick", function()
-            StaticPopup_Show("TDL_DELETE", PlainText(row.task.text), nil, row.task)
-        end)
-        rows[i] = row
-    end
-
-    previousButton = Button(window, L["Previous"], 90)
-    previousButton:SetPoint("TOPLEFT", 20, -374)
-    previousButton:SetScript("OnClick", function() page = page - 1; Refresh() end)
-    nextButton = Button(window, L["Next"], 90)
-    nextButton:SetPoint("TOPRIGHT", -20, -374)
-    nextButton:SetScript("OnClick", function() page = page + 1; Refresh() end)
-    pager = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pager:SetPoint("TOP", 0, -380)
-    window:EnableMouseWheel(true)
-    window:SetScript("OnMouseWheel", function(_, delta)
-        page = page + (delta > 0 and -1 or 1)
-        Refresh()
-    end)
+    scroll = CreateFrame("ScrollFrame", "TDLScrollFrame", window, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 20, -40)
+    scroll:SetPoint("BOTTOMRIGHT", -20, 80)
+    scroll.scrollBarHideable = true
+    scroll.ScrollBar:ClearAllPoints()
+    scroll.ScrollBar:SetPoint("TOPRIGHT", 0, -16)
+    scroll.ScrollBar:SetPoint("BOTTOMRIGHT", 0, 16)
+    content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(scroll:GetWidth(), 1)
+    scroll:SetScrollChild(content)
 
     editorLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    editorLabel:SetPoint("TOPLEFT", 20, -414)
+    editorLabel:SetPoint("BOTTOMLEFT", 20, 58)
     input = CreateFrame("EditBox", "TDLInput", window, "InputBoxTemplate")
-    input:SetSize(348, 26)
-    input:SetPoint("TOPLEFT", 26, -439)
+    input:SetHeight(26)
+    input:SetPoint("BOTTOMLEFT", 26, 20)
     input:SetAutoFocus(false)
     input:SetMaxBytes(240)
     input:SetScript("OnEnterPressed", SaveTask)
@@ -187,10 +212,10 @@ local function CreateWindow()
         if editing then ResetEditor() else self:ClearFocus(); window:Hide() end
     end)
     saveButton = Button(window, L["Add"], 94)
-    saveButton:SetPoint("TOPLEFT", 382, -440)
+    saveButton:SetPoint("BOTTOMRIGHT", -20, 21)
     saveButton:SetScript("OnClick", SaveTask)
     cancelButton = Button(window, L["Cancel"], 94)
-    cancelButton:SetPoint("TOPLEFT", 484, -440)
+    cancelButton:SetPoint("RIGHT", saveButton, "LEFT", -8, 0)
     cancelButton:SetScript("OnClick", ResetEditor)
 
     window:SetScript("OnShow", Refresh)
@@ -273,7 +298,20 @@ minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
-events:SetScript("OnEvent", function(self)
+events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:SetScript("OnEvent", function(self, event, isInitialLogin, isReloadingUi)
+    if event == "PLAYER_ENTERING_WORLD" then
+        if db and (isInitialLogin or isReloadingUi) then
+            for _, task in ipairs(db.tasks) do
+                if not task.done then
+                    if not window then CreateWindow() end
+                    window:Show()
+                    break
+                end
+            end
+        end
+        return
+    end
     -- ponytail: this beta workaround covers the character configured in Beta.lua;
     -- remove it and the Data TOC entry once the native loader works.
     if TDLDB == nil and beta.character then

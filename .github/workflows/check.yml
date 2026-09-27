@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y lua5.1
       - name: Check Lua syntax
-        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua"}) do assert(loadfile(p)) end'
+        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua"}) do assert(loadfile(p)) end'
+      - name: Check TDL interface logic
+        run: lua5.1 TDL/TDL.test.lua
       - name: Check Revenge logic
         working-directory: Revenge
         run: lua5.1 Revenge.test.lua

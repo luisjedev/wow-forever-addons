@@ -4,7 +4,10 @@ Installation: extract the TDL folder into the matching WoW installation's
 Interface/AddOns directory. Restart WoW and enable TDL in the AddOns menu.
 Open the task list with the minimap button, /tdl or /todo.
 
-Create, edit, complete and delete tasks. Eight tasks per page.
+Create, edit, complete and delete tasks in one vertically scrolling list.
+Long tasks show an ellipsis. Click their text to expand or collapse them.
+The Edit and Delete buttons stay visible below each task.
+The window opens on login or UI reload when at least one task is unfinished.
 The interface automatically follows the client language, with English fallback.
 Supports English, Spanish (Spain and Latin America), French, German, Italian,
 Portuguese, Russian, Korean, Simplified Chinese and Traditional Chinese.

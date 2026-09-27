@@ -7,7 +7,8 @@ for _, name in ipairs({"SetSize", "SetFrameLevel", "SetFrameStrata", "SetClamped
     "EnableMouse", "SetHighlightTexture", "SetNormalTexture", "SetAllPoints", "SetTexture",
     "UnregisterEvent", "SetText", "SetAutoFocus", "SetMaxBytes", "SetJustifyH", "SetWordWrap",
     "SetColorTexture", "SetTexCoord", "SetVertexColor", "SetHeight", "SetWidth", "SetEnabled",
-    "SetChecked", "EnableMouseWheel", "ClearFocus", "SetTextColor", "SetPushedTexture", "SetDisabledTexture"}) do
+    "SetChecked", "EnableMouseWheel", "ClearFocus", "SetTextColor", "SetPushedTexture", "SetDisabledTexture",
+    "SetJustifyV", "SetNonSpaceWrap", "SetScrollChild", "UpdateScrollChildRect", "SetValue"}) do
     methods[name] = function() end
 end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
@@ -23,6 +24,10 @@ function methods:GetCenter() return 100, 200 end
 function methods:GetEffectiveScale() return 0.75 end
 function methods:GetWidth() return 160 end
 function methods:GetHeight() return 160 end
+function methods:GetLineHeight() return 14 end
+function methods:GetUnboundedStringWidth() return 60 end
+function methods:GetValue() return 0 end
+function methods:GetVerticalScrollRange() return 0 end
 function methods:IsShown() return self.shown end
 function methods:SetShown(shown)
     if self.shown == shown then return end
@@ -65,6 +70,7 @@ for _, name in ipairs({"TDL", "Revenge"}) do
         CreateFrame = function(_, globalName)
             local result = frame()
             result.TitleText = frame()
+            result.ScrollBar = frame()
             frames[#frames + 1] = result
             if globalName then _G[globalName] = result end
             return result

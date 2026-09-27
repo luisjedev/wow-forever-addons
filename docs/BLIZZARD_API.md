@@ -9,11 +9,11 @@ It is extended for each version and build that affects our addons. It does not a
 | Field | Value |
 | --- | --- |
 | Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on September 25, 2026 | `1.60.1.70009` |
+| Installed client observed on September 27, 2026 | `1.60.1.70009` |
 | Interface declared by TDL and Revenge | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Source revision consulted | [`bd2470a` · 1.60.1 (70009), September 24, 2026](https://github.com/Gethe/wow-ui-source/commit/bd2470aed543f72697a044e989285b6c83e63f73) |
-| Last review of this log | September 25, 2026 |
+| Last review of this log | September 27, 2026 |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The interface value comes from our `.toc` files; it is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
@@ -53,6 +53,16 @@ The installed product remains `wow_classic_beta`, version `1.60.1.70009`; both a
 - **Automated checks:** real addon handlers with frame stubs cover scaled cursor positioning, drag cleanup, position restoration, malformed saved angles, preserved existing entries, translations, and Revenge backup updates. These checks do not certify native persistence or combat behavior.
 - **Reproduced in the game:** after `/reload`, TDL displayed the new tooltip, opened and closed with left-click, and the user confirmed physical mouse dragging moves its icon. Revenge was found loading a separate installed copy rather than the repository; that copy was preserved privately and the development symlink restored. After reloading, both icons were visibly repositioned along the lower-left minimap rim. No list entries were edited for these checks.
 - **Pending verification:** position after another reload/restart, combat, UI scale changes, and replacement minimap shapes. Automated pointer dragging did not visibly move the icon, while the user confirmed TDL dragging; do not treat synthetic input as a reliable drag test for this client. The historical beta SavedVariables issue remains open.
+
+### TDL interface review · September 27, 2026
+
+Product `wow_classic_beta`, version `1.60.1`, build `70009`, addon interface `16001` remains the reference.
+
+- **Documented in source:** `PLAYER_ENTERING_WORLD` supplies `isInitialLogin` and `isReloadingUi`. TDL checks these flags after its `PLAYER_LOGIN` initialization, opening when a task is unfinished without reopening on ordinary zone transitions. See [SystemDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/SystemDocumentation.lua).
+- **Documented in source:** font strings expose independent word and non-space wrapping controls plus line and string height measurements. TDL disables both wrapping modes and fixes the line height while collapsed, then measures wrapped text when expanded. These measurements can be secret when anchored to secret geometry; TDL uses its own frames and user-authored task text. See [SimpleFontStringAPIDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleFontStringAPIDocumentation.lua).
+- **Documented in source:** `UIPanelScrollFrameTemplate` provides a scroll bar and mouse-wheel handlers. TDL uses it for one continuous list and updates its scroll child after accordion layout changes. See [SecureScrollTemplates.xml](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_SharedXML/SecureScrollTemplates.xml) and [SecureScrollTemplates.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_SharedXML/SecureScrollTemplates.lua).
+- **Reproduced in the game:** the initial layout let long unbroken text wrap below the collapsed row. After controlling both wrapping modes and text height, a long task displays a single-line ellipsis and expands or collapses on click. Edit and Delete stay visible below the text in both states. Expanding an earlier task pushes the next task down. The shared background, full-width editor group, absence of page controls, hidden scroll bar for a short list, and automatic opening after `/reload` were observed.
+- **Pending verification:** scroll an overflowing list using both wheel and bar, collapse a row near the bottom, and check translated fonts. Cold login, combat, zone transitions, and persistence after a full client restart still need in-game checks. Offline assertions cover more than eight tasks, layout offsets, scroll clamping, editing, deletion, and empty/completed/pending auto-open conditions; they do not validate client rendering or persistence. The historical SavedVariables limitation is not considered resolved.
 
 ## Pending tests in 70009
 

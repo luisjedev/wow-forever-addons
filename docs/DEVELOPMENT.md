@@ -43,12 +43,13 @@ Switching branches immediately changes the files that the next `/reload` will re
 From the repository root, with Lua 5.1 or LuaJIT installed:
 
 ```sh
-luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua"}) do assert(loadfile(p)) end'
+luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua"}) do assert(loadfile(p)) end'
+luajit TDL/TDL.test.lua
 (cd Revenge && luajit Revenge.test.lua)
 luajit tests/minimap.test.lua
 ```
 
-You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. The minimap check uses small frame stubs; these checks do not reproduce the WoW client: test TDL, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game.
+You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. The TDL and minimap checks use small frame stubs; these checks do not reproduce the WoW client: test TDL text truncation, accordion layout and scrolling, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game.
 
 ## Private recovery for this installation
 
