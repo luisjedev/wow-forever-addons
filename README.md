@@ -15,7 +15,7 @@ Hover over either minimap icon for its controls: left-click to open or close, an
 
 ### TDL · Remember your plans
 
-Unfinished quests, materials to gather, or plans for your next session. Create, edit, complete, and delete tasks in a movable window that follows your game's language. All tasks share one vertically scrolling list. Click a truncated task to expand or collapse its full text. Edit and Delete stay visible below each task. The window opens on login or UI reload when you have unfinished tasks.
+Unfinished quests, materials to gather, or plans for your next session. Create, edit, complete, and delete tasks in a movable window that follows your game's language. All tasks share one vertically scrolling list. Click a truncated task to expand or collapse it, or double-click any task to edit its text directly. Edits save automatically when you leave the field, close the window, reload the UI, or log out. Delete stays visible below each task, and the input at the bottom creates new tasks. The window opens on login or UI reload when you have unfinished tasks.
 
 ### Revenge · Some faces are worth remembering
 

@@ -8,7 +8,8 @@ for _, name in ipairs({"SetSize", "SetFrameLevel", "SetFrameStrata", "SetClamped
     "UnregisterEvent", "SetText", "SetAutoFocus", "SetMaxBytes", "SetJustifyH", "SetWordWrap",
     "SetColorTexture", "SetTexCoord", "SetVertexColor", "SetHeight", "SetWidth", "SetEnabled",
     "SetChecked", "EnableMouseWheel", "ClearFocus", "SetTextColor", "SetPushedTexture", "SetDisabledTexture",
-    "SetJustifyV", "SetNonSpaceWrap", "SetScrollChild", "UpdateScrollChildRect", "SetValue"}) do
+    "SetJustifyV", "SetNonSpaceWrap", "SetScrollChild", "UpdateScrollChildRect", "SetValue",
+    "SetFontObject", "SetMultiLine"}) do
     methods[name] = function() end
 end
 function methods:SetScript(name, callback) self.scripts[name] = callback end

@@ -8,7 +8,7 @@ for _, name in ipairs({"SetFrameLevel", "SetFrameStrata", "SetClampedToScreen", 
     "EnableMouse", "EnableMouseWheel", "RegisterForClicks", "RegisterForDrag", "SetHighlightTexture",
     "SetPushedTexture", "SetDisabledTexture", "SetAllPoints", "SetTexture", "SetAutoFocus", "SetMaxBytes",
     "SetJustifyH", "SetJustifyV", "SetColorTexture", "SetTexCoord", "SetVertexColor",
-    "ClearFocus", "SetFocus", "HighlightText", "SetTextColor", "UpdateScrollChildRect"}) do
+    "SetFontObject", "SetMultiLine", "SetCursorPosition", "HighlightText", "SetTextColor", "UpdateScrollChildRect"}) do
     methods[name] = function() end
 end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
@@ -22,13 +22,29 @@ function methods:SetHeight(height) self.height = height end
 function methods:GetWidth() return self.width or 560 end
 function methods:GetHeight() return self.height or 328 end
 function methods:GetFrameLevel() return 1 end
-function methods:SetText(text) self.label = text end
+function methods:SetText(text)
+    self.label = text
+    if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self, true) end
+end
 function methods:GetText() return self.label end
+function methods:SetFocus() self.focused = true end
+function methods:ClearFocus()
+    if not self.focused then return end
+    self.focused = false
+    if self.scripts.OnEditFocusLost then self.scripts.OnEditFocusLost(self) end
+end
 function methods:SetWordWrap(wrap) self.wrap = wrap end
 function methods:SetNonSpaceWrap(wrap) self.nonSpaceWrap = wrap end
 function methods:GetLineHeight() return 14 end
 function methods:GetUnboundedStringWidth() return #self.label * 14 end
-function methods:GetStringHeight() return 14 * math.ceil(#self.label / 40) end
+function methods:GetNumLines()
+    local count = 0
+    for line in ((self.label or "") .. "\n"):gmatch("(.-)\n") do
+        count = count + math.max(1, math.ceil(#line / 40))
+    end
+    return count
+end
+function methods:GetStringHeight() return 14 * self:GetNumLines() end
 function methods:SetChecked(checked) self.checked = checked end
 function methods:GetChecked() return self.checked end
 function methods:SetEnabled(enabled) self.enabled = enabled end
@@ -55,6 +71,7 @@ CreateFrame = function(_, name, parent)
     return result
 end
 UIParent, Minimap, GameTooltip = frame(), frame(), frame()
+UIErrorsFrame = {AddMessage = function(self, message) self.message = message end}
 StaticPopupDialogs, UISpecialFrames, SlashCmdList = {}, {}, {}
 StaticPopup_Hide = function() end
 local function event(name, ...)
@@ -98,32 +115,66 @@ saved.tasks[1].text = longText
 TDLFrame.scripts.OnShow()
 assert(rows[1]:GetHeight() == 70 and rows[1].text:GetHeight() == 14
     and not rows[1].text.wrap and not rows[1].text.nonSpaceWrap
-    and rows[1].edit:IsShown() and rows[1].delete:IsShown(),
+    and rows[1].delete:IsShown(),
     "collapsed text stays on one line with its actions visible underneath")
 click(rows[1])
 assert(rows[1].expanded and rows[1].text.wrap and rows[1].text.nonSpaceWrap
-    and rows[1].edit:IsShown() and rows[1].delete:IsShown() and rows[1]:GetHeight() > 70)
+    and rows[1].delete:IsShown() and rows[1]:GetHeight() > 70)
 assert(rows[2].points.TOPLEFT[2] == -rows[1]:GetHeight() - 2, "expansion pushes later rows down")
 assert(TDLScrollFrame:GetVerticalScrollRange() > 0, "overflow remains scrollable")
 TDLScrollFrame.ScrollBar:SetValue(TDLScrollFrame:GetVerticalScrollRange())
 click(rows[1])
 assert(rows[1]:GetHeight() == 70 and rows[2].points.TOPLEFT[2] == -72
-    and rows[1].edit:IsShown() and rows[1].delete:IsShown())
+    and rows[1].delete:IsShown())
 assert(TDLScrollFrame.ScrollBar:GetValue() == TDLScrollFrame:GetVerticalScrollRange(), "collapse clamps scrolling")
 click(rows[2])
 assert(not rows[2].expanded and not rows[2].disclosure:IsShown()
-    and rows[2].edit:IsShown() and rows[2].delete:IsShown(), "short tasks keep their actions without an accordion")
+    and rows[2].delete:IsShown(), "short tasks keep their actions without an accordion")
+TDLInput:SetText("New task draft")
+rows[9].scripts.OnDoubleClick()
+assert(rows[9].editor.focused and rows[9].editor:IsShown() and not rows[9].text:IsShown())
+rows[9].editor:SetText("  Español 中文 |cff00ff00 test\nSecond line  ")
+assert(saved.tasks[9].text == "Completed task 9", "inline changes wait for autosave")
+assert(rows[9]:GetHeight() > 70, "multiline editing grows the row")
+rows[9].editor.scripts.OnCursorChanged(rows[9].editor, 0, -14, 1, 14)
+assert(TDLScrollFrame.ScrollBar:GetValue() > 0, "caret scrolls into view")
+rows[9].editor:ClearFocus()
+assert(saved.tasks[9].text == "Español 中文 |cff00ff00 test\nSecond line" and not saved.tasks[9].done)
+assert(rows[9].text.label == "Español 中文 ||cff00ff00 test\nSecond line", "literal markup stays escaped")
+assert(TDLInput:GetText() == "New task draft", "inline editing preserves the new-task input")
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText("Saved when switching tasks")
+rows[2].scripts.OnDoubleClick()
+assert(saved.tasks[9].text == "Saved when switching tasks" and rows[2].editor.focused)
+rows[2].editor.scripts.OnEscapePressed()
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText("Español 中文 |cff00ff00 test\nSecond line")
+rows[9].editor:ClearFocus()
 click(rows[9])
-click(button("Edit", rows[9]))
-assert(TDLInput.points.RIGHT[1] == button("Cancel") and button("Cancel"):IsShown())
-TDLInput:SetText("  Español 中文 |cff00ff00 test  ")
-click(button("Save"))
-assert(saved.tasks[9].text == "Español 中文 |cff00ff00 test" and not saved.tasks[9].done)
-assert(rows[9].text.label == "Español 中文 ||cff00ff00 test", "literal markup stays escaped")
-assert(not button("Cancel"):IsShown() and TDLInput.points.RIGHT[1] == button("Add"))
+assert(not rows[9].text.label:find("\n"), "collapsed multiline tasks stay on one line")
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText(" \n ")
+rows[9].editor:ClearFocus()
+assert(saved.tasks[9].text:find("Second line") and UIErrorsFrame.message == "Enter a task before saving.",
+    "empty edits preserve the saved task and report validation")
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText(string.rep("x", 241))
+rows[9].editor:ClearFocus()
+assert(saved.tasks[9].text:find("Second line") and UIErrorsFrame.message == "Shorten the task text.")
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText("Saved on close")
+TDLFrame:Hide()
+assert(saved.tasks[9].text == "Saved on close", "closing the addon saves the active edit")
+TDL_Toggle()
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText("Saved on reload or logout")
+event("PLAYER_LOGOUT")
+assert(saved.tasks[9].text == "Saved on reload or logout")
+rows[9].scripts.OnDoubleClick()
+rows[9].editor:SetText("Saved on completion")
 rows[9].check:SetChecked(true)
 click(rows[9].check)
-assert(saved.tasks[9].done)
+assert(saved.tasks[9].done and saved.tasks[9].text == "Saved on completion")
 TDLFrame:Hide()
 event("PLAYER_ENTERING_WORLD", false, true)
 assert(not TDLFrame:IsShown(), "completing the last task prevents auto-open")

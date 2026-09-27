@@ -3,12 +3,18 @@ local L = beta.L
 local betaDB = TDLDB
 if beta.character then TDLDB = beta.native end
 
-local db, window, input, saveButton, cancelButton, editorLabel, scroll, content
+local db, window, input, editorLabel, scroll, content
 local rows, editing = {}, nil
-local Refresh
+local Refresh, SaveEdit
 
 local function PlainText(text)
     return (text:gsub("|", "||"))
+end
+
+local function CleanText(text)
+    return (text:gsub("%c", function(character)
+        return character == "\n" and "\n" or " "
+    end):match("^%s*(.-)%s*$"))
 end
 
 local function Button(parent, text, width)
@@ -16,16 +22,6 @@ local function Button(parent, text, width)
     button:SetSize(width, 24)
     button:SetText(text)
     return button
-end
-
-local function ResetEditor()
-    editing = nil
-    input:SetText("")
-    input:ClearFocus()
-    editorLabel:SetText(L["New task"])
-    saveButton:SetText(L["Add"])
-    cancelButton:Hide()
-    input:SetPoint("RIGHT", saveButton, "LEFT", -12, 0)
 end
 
 local function CreateRow(i)
@@ -39,7 +35,9 @@ local function CreateRow(i)
     row.check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
     row.check:SetPoint("TOPLEFT", 0, -3)
     row.check:SetScript("OnClick", function(self)
-        row.task.done = self:GetChecked() and true or false
+        local done = self:GetChecked() and true or false
+        SaveEdit()
+        row.task.done = done
         Refresh()
     end)
     row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -50,29 +48,56 @@ local function CreateRow(i)
     row.disclosure = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.disclosure:SetPoint("TOPRIGHT", -34, -12)
     row:SetScript("OnClick", function()
+        if editing == row then return end
+        SaveEdit()
         if row.canExpand then
             row.expanded = not row.expanded
             Refresh()
         end
     end)
-
-    local edit = Button(row, L["Edit"], 72)
-    row.edit = edit
-    edit:SetPoint("BOTTOMRIGHT", -112, 8)
-    edit:SetScript("OnClick", function()
-        editing = row.task
-        editorLabel:SetText(L["Edit task"])
-        input:SetText(editing.text)
-        saveButton:SetText(L["Save"])
-        cancelButton:Show()
-        input:SetPoint("RIGHT", cancelButton, "LEFT", -12, 0)
-        input:SetFocus()
-        input:HighlightText()
+    row.editor = CreateFrame("EditBox", nil, row)
+    row.editor:SetPoint("TOPLEFT", 38, -12)
+    row.editor:SetPoint("TOPRIGHT", -52, -12)
+    row.editor:SetFontObject("GameFontHighlight")
+    row.editor:SetMultiLine(true)
+    row.editor:SetJustifyH("LEFT")
+    row.editor:SetJustifyV("TOP")
+    row.editor:SetAutoFocus(false)
+    row.editor:SetMaxBytes(240)
+    row.editor:SetScript("OnTextChanged", function(_, userInput)
+        if editing == row then
+            if userInput then row.dirty = true end
+            Refresh()
+        end
+    end)
+    row.editor:SetScript("OnEditFocusLost", SaveEdit)
+    row.editor:SetScript("OnEscapePressed", SaveEdit)
+    row.editor:SetScript("OnCursorChanged", function(_, x, y, width, height)
+        if editing ~= row then return end
+        local top = row.offset + 12 - y
+        local value = scroll.ScrollBar:GetValue()
+        if top < value then
+            value = top
+        elseif top + height > value + scroll:GetHeight() then
+            value = top + height - scroll:GetHeight()
+        end
+        scroll.ScrollBar:SetValue(math.max(0, math.min(value, scroll:GetVerticalScrollRange())))
+    end)
+    row:SetScript("OnDoubleClick", function()
+        SaveEdit()
+        row.dirty = false
+        row.editor:SetText(row.task.text)
+        editing = row
+        row.expanded = true
+        Refresh()
+        row.editor:SetFocus()
+        row.editor:SetCursorPosition(#row.task.text)
     end)
     local delete = Button(row, L["Delete"], 78)
     row.delete = delete
     delete:SetPoint("BOTTOMRIGHT", -30, 8)
     delete:SetScript("OnClick", function()
+        SaveEdit()
         StaticPopup_Show("TDL_DELETE", PlainText(row.task.text), nil, row.task)
     end)
     return row
@@ -89,17 +114,26 @@ Refresh = function()
         row:SetShown(task ~= nil)
         if task then
             row.check:SetChecked(task.done)
-            row.text:SetText(PlainText(task.text))
-            row.canExpand = row.text:GetUnboundedStringWidth() > row.text:GetWidth()
-            row.expanded = row.expanded and row.canExpand
+            local text = editing == row and row.editor:GetText() or task.text
+            row.text:SetText(PlainText(text))
+            row.canExpand = text:find("\n", 1, true) ~= nil or row.text:GetUnboundedStringWidth() > row.text:GetWidth()
+            row.expanded = editing == row or (row.expanded and row.canExpand)
+            if not row.expanded then row.text:SetText(PlainText(text:gsub("%c", " "))) end
             row.text:SetWordWrap(row.expanded or false)
             row.text:SetNonSpaceWrap(row.expanded or false)
             row.text:SetHeight(0)
             local textHeight = row.expanded and row.text:GetStringHeight() or row.text:GetLineHeight()
+            if editing == row then
+                textHeight = math.max(textHeight, row.editor:GetNumLines() * row.text:GetLineHeight())
+            end
             row.text:SetHeight(textHeight)
+            row.editor:SetHeight(math.max(row.text:GetLineHeight(), textHeight))
+            row.text:SetShown(editing ~= row)
+            row.editor:SetShown(editing == row)
             row:SetHeight(math.max(38, textHeight + 24) + 32)
             row.disclosure:SetText(row.expanded and "-" or "+")
             row.disclosure:SetShown(row.canExpand)
+            row.offset = height
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", 0, -height)
             row:SetPoint("TOPRIGHT", 0, -height)
@@ -116,22 +150,37 @@ Refresh = function()
     scroll.ScrollBar:SetValue(math.min(scroll.ScrollBar:GetValue(), scroll:GetVerticalScrollRange()))
 end
 
+SaveEdit = function()
+    if not editing then return end
+    local row = editing
+    local text = CleanText(row.editor:GetText())
+    editing = nil
+    if row.dirty then
+        if text ~= "" and #text <= 240 then
+            row.task.text = text
+        else
+            UIErrorsFrame:AddMessage(text == "" and L["Enter a task before saving."] or L["Shorten the task text."], 1, 0.2, 0.2)
+        end
+    end
+    row.dirty = false
+    row.editor:ClearFocus()
+    Refresh()
+end
+
 local function SaveTask()
+    SaveEdit()
     local text = input:GetText():gsub("%c", " "):match("^%s*(.-)%s*$")
     if text == "" or #text > 240 then
         editorLabel:SetText(text == "" and L["Enter a task before saving."] or L["Shorten the task text."])
         input:SetFocus()
         return
     end
-    local adding = not editing
-    if editing then
-        editing.text = text
-    else
-        table.insert(db.tasks, { text = text, done = false })
-    end
-    ResetEditor()
+    table.insert(db.tasks, { text = text, done = false })
+    input:SetText("")
+    input:ClearFocus()
+    editorLabel:SetText(L["New task"])
     Refresh()
-    if adding then scroll.ScrollBar:SetValue(scroll:GetVerticalScrollRange()) end
+    scroll.ScrollBar:SetValue(scroll:GetVerticalScrollRange())
 end
 
 StaticPopupDialogs["TDL_DELETE"] = {
@@ -139,10 +188,10 @@ StaticPopupDialogs["TDL_DELETE"] = {
     button1 = L["Delete"],
     button2 = L["Cancel"],
     OnAccept = function(_, task)
+        SaveEdit()
         for i, item in ipairs(db.tasks) do
             if item == task then
                 table.remove(db.tasks, i)
-                if editing == task then ResetEditor() end
                 Refresh()
                 break
             end
@@ -162,6 +211,7 @@ local function CreateWindow()
     window:SetClampedToScreen(true)
     window:SetMovable(true)
     window:EnableMouse(true)
+    window:SetScript("OnMouseDown", SaveEdit)
     window:RegisterForDrag("LeftButton")
     window:SetScript("OnDragStart", window.StartMoving)
     window:SetScript("OnDragStop", function(self)
@@ -200,6 +250,7 @@ local function CreateWindow()
 
     editorLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     editorLabel:SetPoint("BOTTOMLEFT", 20, 58)
+    editorLabel:SetText(L["New task"])
     input = CreateFrame("EditBox", "TDLInput", window, "InputBoxTemplate")
     input:SetHeight(26)
     input:SetPoint("BOTTOMLEFT", 26, 20)
@@ -207,22 +258,21 @@ local function CreateWindow()
     input:SetMaxBytes(240)
     input:SetScript("OnEnterPressed", SaveTask)
     input:SetScript("OnEscapePressed", function(self)
-        if editing then ResetEditor() else self:ClearFocus(); window:Hide() end
+        self:ClearFocus()
+        window:Hide()
     end)
-    saveButton = Button(window, L["Add"], 94)
+    local saveButton = Button(window, L["Add"], 94)
     saveButton:SetPoint("BOTTOMRIGHT", -20, 21)
     saveButton:SetScript("OnClick", SaveTask)
-    cancelButton = Button(window, L["Cancel"], 94)
-    cancelButton:SetPoint("RIGHT", saveButton, "LEFT", -8, 0)
-    cancelButton:SetScript("OnClick", ResetEditor)
+    input:SetPoint("RIGHT", saveButton, "LEFT", -12, 0)
 
     window:SetScript("OnShow", Refresh)
     window:SetScript("OnHide", function()
+        SaveEdit()
         input:ClearFocus()
         GameTooltip:Hide()
         StaticPopup_Hide("TDL_DELETE")
     end)
-    ResetEditor()
 end
 
 function TDL_Toggle()
@@ -297,7 +347,9 @@ minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:RegisterEvent("PLAYER_LOGOUT")
 events:SetScript("OnEvent", function(self, event, isInitialLogin, isReloadingUi)
+    if event == "PLAYER_LOGOUT" then SaveEdit(); return end
     if event == "PLAYER_ENTERING_WORLD" then
         if db and (isInitialLogin or isReloadingUi) then
             for _, task in ipairs(db.tasks) do
