@@ -114,7 +114,6 @@ Refresh = function()
     content:SetHeight(math.max(1, height - 2))
     scroll:UpdateScrollChildRect()
     scroll.ScrollBar:SetValue(math.min(scroll.ScrollBar:GetValue(), scroll:GetVerticalScrollRange()))
-    scroll.ScrollBar:SetShown(scroll:GetVerticalScrollRange() > 0)
 end
 
 local function SaveTask()
@@ -192,7 +191,6 @@ local function CreateWindow()
     scroll = CreateFrame("ScrollFrame", "TDLScrollFrame", window, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 20, -40)
     scroll:SetPoint("BOTTOMRIGHT", -20, 80)
-    scroll.scrollBarHideable = true
     scroll.ScrollBar:ClearAllPoints()
     scroll.ScrollBar:SetPoint("TOPRIGHT", 0, -16)
     scroll.ScrollBar:SetPoint("BOTTOMRIGHT", 0, 16)

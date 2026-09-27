@@ -140,7 +140,10 @@ StaticPopupDialogs.TDL_DELETE.OnAccept(nil, saved.tasks[9])
 assert(#saved.tasks == 8 and not rows[9]:IsShown(), "deleted rows are hidden")
 StaticPopupDialogs.TDL_DELETE.OnAccept(nil, saved.tasks[1])
 assert(rows[1].task == saved.tasks[1] and not rows[1].expanded, "reused rows reset their expansion")
-while #saved.tasks > 0 do StaticPopupDialogs.TDL_DELETE.OnAccept(nil, saved.tasks[1]) end
+while #saved.tasks > 1 do StaticPopupDialogs.TDL_DELETE.OnAccept(nil, saved.tasks[1]) end
+assert(TDLScrollFrame:GetVerticalScrollRange() == 0 and TDLScrollFrame.ScrollBar:IsShown()
+    and not TDLScrollFrame.scrollBarHideable, "short lists keep the native scrollbar visible")
+StaticPopupDialogs.TDL_DELETE.OnAccept(nil, saved.tasks[1])
 assert(not rows[1]:IsShown() and TDLScrollFrame.ScrollBar:GetValue() == 0
-    and not TDLScrollFrame.ScrollBar:IsShown(), "empty list hides rows and scrolling")
+    and TDLScrollFrame.ScrollBar:IsShown(), "empty list hides rows but keeps the scrollbar visible")
 print("TDL accordion, continuous scrolling, editing and automatic opening: OK")
