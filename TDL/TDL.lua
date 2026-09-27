@@ -213,6 +213,8 @@ minimapButton:SetSize(32, 32)
 minimapButton:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 0, 0)
 minimapButton:SetFrameLevel(Minimap:GetFrameLevel() + 8)
 minimapButton:RegisterForClicks("LeftButtonUp")
+minimapButton:SetMovable(true)
+minimapButton:RegisterForDrag("LeftButton")
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 local icon = minimapButton:CreateTexture(nil, "BACKGROUND")
 icon:SetSize(20, 20)
@@ -222,11 +224,49 @@ local border = minimapButton:CreateTexture(nil, "OVERLAY")
 border:SetSize(54, 54)
 border:SetPoint("TOPLEFT")
 border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+local function UpdateMinimapPosition()
+    local angle = db and db.minimapAngle
+    if type(angle) ~= "number" or angle ~= angle or math.abs(angle) == math.huge then return end
+    local width, height = Minimap:GetWidth(), Minimap:GetHeight()
+    if canaccessvalue and (not canaccessvalue(width) or not canaccessvalue(height)) then return end
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER",
+        math.cos(angle) * (width / 2 + 8), math.sin(angle) * (height / 2 + 8))
+end
+
+local function DragMinimapButton()
+    local x, y = GetCursorPosition()
+    local centerX, centerY = Minimap:GetCenter()
+    local scale = Minimap:GetEffectiveScale()
+    if canaccessvalue and (not canaccessvalue(x) or not canaccessvalue(y)
+        or not canaccessvalue(centerX) or not canaccessvalue(centerY) or not canaccessvalue(scale)) then return end
+    if not centerX or not centerY then return end
+    x, y = x / scale - centerX, y / scale - centerY
+    if x == 0 and y == 0 then return end
+    db.minimapAngle = math.atan2(y, x)
+    UpdateMinimapPosition()
+end
+
+local function StopMinimapDrag(self)
+    if self:GetScript("OnUpdate") then
+        self:SetScript("OnUpdate", nil)
+    end
+    GameTooltip:Hide()
+end
+
+minimapButton:SetScript("OnDragStart", function(self)
+    if not db then return end
+    GameTooltip:Hide()
+    self:SetScript("OnUpdate", DragMinimapButton)
+end)
+minimapButton:SetScript("OnDragStop", StopMinimapDrag)
+minimapButton:SetScript("OnHide", StopMinimapDrag)
 minimapButton:SetScript("OnClick", TDL_Toggle)
 minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:SetText("TDL", 1, 0.82, 0)
-    GameTooltip:AddLine(L["Click to show or hide your tasks."], 1, 1, 1)
+    GameTooltip:AddLine(L["Left-click: Open / close"], 1, 1, 1)
+    GameTooltip:AddLine(L["Drag: Move"], 1, 1, 1)
     GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -247,6 +287,7 @@ events:SetScript("OnEvent", function(self)
     db = TDLDB
     db.recoveryReady = nil
     if type(db.tasks) ~= "table" then db.tasks = {} end
+    UpdateMinimapPosition()
     self:UnregisterEvent("PLAYER_LOGIN")
 end)
 

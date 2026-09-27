@@ -11,6 +11,8 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 | **[TDL](TDL)** | Your in-game task list. Add plans, edit them, and mark what you have completed. | Minimap button, `/tdl`, or `/todo` |
 | **[Revenge](Revenge)** | Keep a list of enemy players and recognize their nameplates with a marker and a distinctive style when the game allows identification. | Minimap button or `/rvg` |
 
+Hover over either minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
+
 ### TDL · Remember your plans
 
 Unfinished quests, materials to gather, or plans for your next session. Create, edit, complete, and delete tasks in a movable window. The list shows eight tasks per page and follows your game's language.

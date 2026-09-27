@@ -18,7 +18,8 @@ local translations = {
         ["First name"] = "Nombre",
         ["Surname"] = "Apellido",
         ["Add"] = "Añadir",
-        ["Click to show or hide your enemy list."] = "Clic para abrir o cerrar la lista de enemigos.",
+        ["Left-click: Open / close"] = "Clic izquierdo: abrir / cerrar",
+        ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
         ["Saved enemies: %d"] = "Ennemis enregistrés : %d",
@@ -38,7 +39,8 @@ local translations = {
         ["First name"] = "Prénom",
         ["Surname"] = "Nom de famille",
         ["Add"] = "Ajouter",
-        ["Click to show or hide your enemy list."] = "Cliquez pour afficher ou masquer votre liste d’ennemis.",
+        ["Left-click: Open / close"] = "Clic gauche : ouvrir / fermer",
+        ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
         ["Saved enemies: %d"] = "Gespeicherte Feinde: %d",
@@ -58,7 +60,8 @@ local translations = {
         ["First name"] = "Vorname",
         ["Surname"] = "Nachname",
         ["Add"] = "Hinzufügen",
-        ["Click to show or hide your enemy list."] = "Klicken, um deine Feindesliste ein- oder auszublenden.",
+        ["Left-click: Open / close"] = "Linksklick: öffnen / schließen",
+        ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
         ["Saved enemies: %d"] = "Nemici salvati: %d",
@@ -78,7 +81,8 @@ local translations = {
         ["First name"] = "Nome",
         ["Surname"] = "Cognome",
         ["Add"] = "Aggiungi",
-        ["Click to show or hide your enemy list."] = "Clicca per mostrare o nascondere la lista dei nemici.",
+        ["Left-click: Open / close"] = "Clic sinistro: apri / chiudi",
+        ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
         ["Saved enemies: %d"] = "Inimigos salvos: %d",
@@ -98,7 +102,8 @@ local translations = {
         ["First name"] = "Nome",
         ["Surname"] = "Sobrenome",
         ["Add"] = "Adicionar",
-        ["Click to show or hide your enemy list."] = "Clique para mostrar ou ocultar sua lista de inimigos.",
+        ["Left-click: Open / close"] = "Clique esquerdo: abrir / fechar",
+        ["Drag: Move"] = "Arraste: mover",
     },
     ruRU = {
         ["Saved enemies: %d"] = "Сохранённые враги: %d",
@@ -118,7 +123,8 @@ local translations = {
         ["First name"] = "Имя",
         ["Surname"] = "Фамилия",
         ["Add"] = "Добавить",
-        ["Click to show or hide your enemy list."] = "Нажмите, чтобы показать или скрыть список врагов.",
+        ["Left-click: Open / close"] = "ЛКМ: открыть / закрыть",
+        ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
         ["Saved enemies: %d"] = "저장된 적: %d명",
@@ -138,7 +144,8 @@ local translations = {
         ["First name"] = "이름",
         ["Surname"] = "성",
         ["Add"] = "추가",
-        ["Click to show or hide your enemy list."] = "클릭하면 적 목록을 열거나 닫습니다.",
+        ["Left-click: Open / close"] = "좌클릭: 열기 / 닫기",
+        ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
         ["Saved enemies: %d"] = "已保存的敌人：%d",
@@ -158,7 +165,8 @@ local translations = {
         ["First name"] = "名字",
         ["Surname"] = "姓氏",
         ["Add"] = "添加",
-        ["Click to show or hide your enemy list."] = "点击显示或隐藏敌人列表。",
+        ["Left-click: Open / close"] = "左键点击：打开 / 关闭",
+        ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
         ["Saved enemies: %d"] = "已儲存的敵人：%d",
@@ -178,7 +186,8 @@ local translations = {
         ["First name"] = "名字",
         ["Surname"] = "姓氏",
         ["Add"] = "新增",
-        ["Click to show or hide your enemy list."] = "點擊顯示或隱藏敵人清單。",
+        ["Left-click: Open / close"] = "左鍵點擊：開啟 / 關閉",
+        ["Drag: Move"] = "拖曳：移動",
     },
 }
 translations.esMX = translations.esES

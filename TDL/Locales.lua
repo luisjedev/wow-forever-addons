@@ -14,7 +14,8 @@ local translations = {
         ["Enter a task before saving."] = "Escribe una tarea antes de guardarla.",
         ["Shorten the task text."] = "Acorta el texto de la tarea.",
         ["Delete this task?\n\n%s"] = "¿Eliminar esta tarea?\n\n%s",
-        ["Click to show or hide your tasks."] = "Clic para abrir o cerrar tus tareas.",
+        ["Left-click: Open / close"] = "Clic izquierdo: abrir / cerrar",
+        ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
         ["My tasks"] = "Mes tâches",
@@ -30,7 +31,8 @@ local translations = {
         ["Enter a task before saving."] = "Saisissez une tâche avant de l’enregistrer.",
         ["Shorten the task text."] = "Raccourcissez le texte de la tâche.",
         ["Delete this task?\n\n%s"] = "Supprimer cette tâche ?\n\n%s",
-        ["Click to show or hide your tasks."] = "Cliquez pour afficher ou masquer vos tâches.",
+        ["Left-click: Open / close"] = "Clic gauche : ouvrir / fermer",
+        ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
         ["My tasks"] = "Meine Aufgaben",
@@ -46,7 +48,8 @@ local translations = {
         ["Enter a task before saving."] = "Gib vor dem Speichern eine Aufgabe ein.",
         ["Shorten the task text."] = "Kürze den Aufgabentext.",
         ["Delete this task?\n\n%s"] = "Diese Aufgabe löschen?\n\n%s",
-        ["Click to show or hide your tasks."] = "Klicken, um deine Aufgaben ein- oder auszublenden.",
+        ["Left-click: Open / close"] = "Linksklick: öffnen / schließen",
+        ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
         ["My tasks"] = "Le mie attività",
@@ -62,7 +65,8 @@ local translations = {
         ["Enter a task before saving."] = "Inserisci un’attività prima di salvarla.",
         ["Shorten the task text."] = "Accorcia il testo dell’attività.",
         ["Delete this task?\n\n%s"] = "Eliminare questa attività?\n\n%s",
-        ["Click to show or hide your tasks."] = "Clicca per mostrare o nascondere le tue attività.",
+        ["Left-click: Open / close"] = "Clic sinistro: apri / chiudi",
+        ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
         ["My tasks"] = "Minhas tarefas",
@@ -78,7 +82,8 @@ local translations = {
         ["Enter a task before saving."] = "Escreva uma tarefa antes de salvar.",
         ["Shorten the task text."] = "Encurte o texto da tarefa.",
         ["Delete this task?\n\n%s"] = "Excluir esta tarefa?\n\n%s",
-        ["Click to show or hide your tasks."] = "Clique para mostrar ou ocultar suas tarefas.",
+        ["Left-click: Open / close"] = "Clique esquerdo: abrir / fechar",
+        ["Drag: Move"] = "Arraste: mover",
     },
     ruRU = {
         ["My tasks"] = "Мои задачи",
@@ -94,7 +99,8 @@ local translations = {
         ["Enter a task before saving."] = "Введите задачу перед сохранением.",
         ["Shorten the task text."] = "Сократите текст задачи.",
         ["Delete this task?\n\n%s"] = "Удалить эту задачу?\n\n%s",
-        ["Click to show or hide your tasks."] = "Нажмите, чтобы показать или скрыть задачи.",
+        ["Left-click: Open / close"] = "ЛКМ: открыть / закрыть",
+        ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
         ["My tasks"] = "내 할 일",
@@ -110,7 +116,8 @@ local translations = {
         ["Enter a task before saving."] = "저장하기 전에 할 일을 입력하세요.",
         ["Shorten the task text."] = "할 일 내용을 줄여 주세요.",
         ["Delete this task?\n\n%s"] = "이 할 일을 삭제할까요?\n\n%s",
-        ["Click to show or hide your tasks."] = "클릭하면 할 일 목록을 열거나 닫습니다.",
+        ["Left-click: Open / close"] = "좌클릭: 열기 / 닫기",
+        ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
         ["My tasks"] = "我的待办事项",
@@ -126,7 +133,8 @@ local translations = {
         ["Enter a task before saving."] = "请先输入待办事项再保存。",
         ["Shorten the task text."] = "请缩短待办事项的文字。",
         ["Delete this task?\n\n%s"] = "删除此待办事项？\n\n%s",
-        ["Click to show or hide your tasks."] = "点击显示或隐藏待办事项。",
+        ["Left-click: Open / close"] = "左键点击：打开 / 关闭",
+        ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
         ["My tasks"] = "我的待辦事項",
@@ -142,7 +150,8 @@ local translations = {
         ["Enter a task before saving."] = "請先輸入待辦事項再儲存。",
         ["Shorten the task text."] = "請縮短待辦事項的文字。",
         ["Delete this task?\n\n%s"] = "刪除此待辦事項？\n\n%s",
-        ["Click to show or hide your tasks."] = "點擊顯示或隱藏待辦事項。",
+        ["Left-click: Open / close"] = "左鍵點擊：開啟 / 關閉",
+        ["Drag: Move"] = "拖曳：移動",
     },
 }
 translations.esMX = translations.esES

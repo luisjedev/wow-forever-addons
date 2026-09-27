@@ -44,6 +44,16 @@ Frame layering evidence for the same build: [TargetFrame.xml](https://github.com
 
 Blizzard explains the purpose of secret values in its [article on combat and addons in Midnight](https://news.blizzard.com/en-us/article/24246290/combat-philosophy-and-addon-disarmament-in-midnight): certain data can be displayed through permitted operations without becoming available for addon decisions. That article provides context; Forever's specific restrictions are checked against its own build.
 
+## Minimap controls review · September 27, 2026
+
+The installed product remains `wow_classic_beta`, version `1.60.1.70009`; both addons still declare interface `16001`.
+
+- **Documented in source:** the matching build exposes `RegisterForDrag` and `GetEffectiveScale` in [SimpleFrameAPIDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua). Scale results carry a secret-aspect annotation. [Camelot/Skin.lua](https://github.com/Gethe/wow-ui-source/blob/bd2470aed543f72697a044e989285b6c83e63f73/Interface/AddOns/Blizzard_Minimap/Camelot/Skin.lua) selects the native circular minimap mask for fixed and rotated modes.
+- **Affected addons:** TDL and Revenge now provide minimap tooltips, left-click window toggling, left-button dragging around the native minimap, and no right-click action. Dragging skips inaccessible cursor/geometry values and only reanchors each addon’s own button. Settings live in the existing character DB; Revenge updates its revision and existing backup on changes.
+- **Automated checks:** real addon handlers with frame stubs cover scaled cursor positioning, drag cleanup, position restoration, malformed saved angles, preserved existing entries, translations, and Revenge backup updates. These checks do not certify native persistence or combat behavior.
+- **Reproduced in the game:** after `/reload`, TDL displayed the new tooltip, opened and closed with left-click, and the user confirmed physical mouse dragging moves its icon. Revenge was found loading a separate installed copy rather than the repository; that copy was preserved privately and the development symlink restored. After reloading, both icons were visibly repositioned along the lower-left minimap rim. No list entries were edited for these checks.
+- **Pending verification:** position after another reload/restart, combat, UI scale changes, and replacement minimap shapes. Automated pointer dragging did not visibly move the icon, while the user confirmed TDL dragging; do not treat synthetic input as a reliable drag test for this client. The historical beta SavedVariables issue remains open.
+
 ## Pending tests in 70009
 
 - **TDL:** create, edit, complete, and delete tasks; check language; reload and restart without losing changes.

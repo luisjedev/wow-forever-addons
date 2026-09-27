@@ -503,6 +503,8 @@ minimapButton:SetSize(32, 32)
 minimapButton:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 2, 2)
 minimapButton:SetFrameLevel(Minimap:GetFrameLevel() + 8)
 minimapButton:RegisterForClicks("LeftButtonUp")
+minimapButton:SetMovable(true)
+minimapButton:RegisterForDrag("LeftButton")
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
 minimapIcon:SetSize(20, 20)
@@ -512,11 +514,50 @@ local minimapBorder = minimapButton:CreateTexture(nil, "OVERLAY")
 minimapBorder:SetSize(54, 54)
 minimapBorder:SetPoint("TOPLEFT")
 minimapBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+local function UpdateMinimapPosition()
+    local angle = db and db.minimapAngle
+    if type(angle) ~= "number" or angle ~= angle or math.abs(angle) == math.huge then return end
+    local width, height = Minimap:GetWidth(), Minimap:GetHeight()
+    if canaccessvalue and (not canaccessvalue(width) or not canaccessvalue(height)) then return end
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER",
+        math.cos(angle) * (width / 2 + 8), math.sin(angle) * (height / 2 + 8))
+end
+
+local function DragMinimapButton()
+    local x, y = GetCursorPosition()
+    local centerX, centerY = Minimap:GetCenter()
+    local scale = Minimap:GetEffectiveScale()
+    if canaccessvalue and (not canaccessvalue(x) or not canaccessvalue(y)
+        or not canaccessvalue(centerX) or not canaccessvalue(centerY) or not canaccessvalue(scale)) then return end
+    if not centerX or not centerY then return end
+    x, y = x / scale - centerX, y / scale - centerY
+    if x == 0 and y == 0 then return end
+    db.minimapAngle = math.atan2(y, x)
+    UpdateMinimapPosition()
+end
+
+local function StopMinimapDrag(self)
+    if self:GetScript("OnUpdate") then
+        self:SetScript("OnUpdate", nil)
+        TouchDB()
+    end
+    GameTooltip:Hide()
+end
+
+minimapButton:SetScript("OnDragStart", function(self)
+    if not db then return end
+    GameTooltip:Hide()
+    self:SetScript("OnUpdate", DragMinimapButton)
+end)
+minimapButton:SetScript("OnDragStop", StopMinimapDrag)
+minimapButton:SetScript("OnHide", StopMinimapDrag)
 minimapButton:SetScript("OnClick", ToggleWindow)
 minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:SetText("Revenge", 0.72, 0.12, 0.90)
-    GameTooltip:AddLine(L["Click to show or hide your enemy list."], 1, 1, 1)
+    GameTooltip:AddLine(L["Left-click: Open / close"], 1, 1, 1)
+    GameTooltip:AddLine(L["Drag: Move"], 1, 1, 1)
     GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -539,6 +580,7 @@ local function InitializeDB()
     RevengeDB = db
     RevengeBackupDB = backupRoot
     if backupKey then backupRoot.characters[backupKey] = db end
+    UpdateMinimapPosition()
     local position = db.quickButtonPosition
     if type(position) == "table" and type(position[1]) == "number" and type(position[2]) == "number" then
         quickAddButton:ClearAllPoints()
