@@ -2,7 +2,7 @@
 ## Title: Revenge
 ## IconTexture: Interface\AddOns\Revenge\Assets\RevengeIconV2
 ## Notes: Marks nameplates of players on your enemy list.
-## Version: 1.4.9
+## Version: 1.4.10
 ## Dependencies: Blizzard_NamePlates
 ## OptionalDeps: WoWForeverLocal
 ## SavedVariables: RevengeBackupDB
