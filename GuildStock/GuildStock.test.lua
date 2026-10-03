@@ -166,6 +166,7 @@ C_TradeSkillUI = {
     end,
 }
 local sent, restriction, sendResult, registerResult, club = {}, false, 0, 0, 123
+local chatLockdown = false
 local members = {
     {name = "Self Example", isSelf = true, presence = 1},
     {name = "Peer Example", isSelf = false, presence = 1},
@@ -173,6 +174,7 @@ local members = {
 C_ChatInfo = {
     RegisterAddonMessagePrefix = function() return registerResult end,
     AreOutgoingAddonChatMessagesRestricted = function() return restriction end,
+    InChatMessagingLockdown = function() return chatLockdown end,
     SendAddonMessage = function(prefix, message, channel, target)
         assert(channel == "GUILD" and target == nil, "all addon traffic must use GUILD without a whisper target")
         sent[#sent + 1] = {prefix, message, channel, target}
@@ -341,15 +343,21 @@ assert(addon.probe.registration == "Success")
 registerResult = 1
 addon.RegisterProbe()
 assert(addon.probe.registration == "DuplicatePrefix")
-restriction = true
+chatLockdown = true
 assert(addon.StartProbe() == addon.L["Probe unavailable: check Settings and /guildstock diagnostics."] and #sent == 0)
-restriction = secret
+chatLockdown = secret
 addon.StartProbe()
 assert(#sent == 0)
-restriction, club = false, nil
+chatLockdown = nil
 addon.StartProbe()
 assert(#sent == 0)
-club = 123
+chatLockdown, combat = false, true
+addon.StartProbe()
+assert(#sent == 0)
+combat, club = false, nil
+addon.StartProbe()
+assert(#sent == 0)
+club, restriction = 123, true
 addon.StartProbe()
 assert(#sent == 1 and sent[1][3] == "GUILD" and addon.probe.GUILD == "Success")
 local token = sent[1][2]:match("^2|P|(.+)$")
@@ -400,6 +408,28 @@ club = 123
 Event("PLAYER_GUILD_UPDATE", "player")
 Receive("2|P|103-20")
 assert(#sent == 4)
+
+clock, sendResult = clock + 61, 11
+assert(addon.StartProbe() == addon.L["Probe unavailable: check Settings and /guildstock diagnostics."])
+assert(addon.probe.GUILD == "AddOnMessageLockdown" and #sent == 5)
+Receive("2|P|104-20")
+assert(#sent == 5, "native rejection disarms the probe and cannot trigger replies")
+sendResult = 0
+
+-- Diagnostics distinguish a false flag from an unavailable read and never expose identities.
+local originalPrint, diagnosticLines = print, {}
+print = function(line) diagnosticLines[#diagnosticLines + 1] = line end
+restriction, chatLockdown = true, false
+SlashCmdList.GUILDSTOCK("diagnostics")
+restriction, chatLockdown = secret, secret
+SlashCmdList.GUILDSTOCK("diagnostics")
+print = originalPrint
+local diagnosticText = table.concat(diagnosticLines, "\n")
+assert(diagnosticText:find("AreOutgoingAddonChatMessagesRestricted: true", 1, true))
+assert(diagnosticText:find("InChatMessagingLockdown: false", 1, true))
+assert(diagnosticText:find("AreOutgoingAddonChatMessagesRestricted: Unavailable", 1, true))
+assert(not diagnosticText:find("Peer Example", 1, true) and not diagnosticText:find("Self Example", 1, true))
+restriction, chatLockdown = false, false
 
 -- Reused character skill cells keep two slots and clear stale icons when professions disappear.
 local playerRow = Frame()
@@ -817,7 +847,7 @@ languageOptions.frFR.scripts.OnClick()
 assert(saved.settings == "preserve unsupported preferences" and addon.temporaryPreferences)
 saved.settings = settingsBefore
 addon.Refresh()
-assert(#sent == 4, "UI operations never send addon messages")
+assert(#sent == 5, "UI operations never send addon messages")
 GuildStockMinimapButton.scripts.OnClick()
 assert(not GuildStockFrame:IsShown())
 GuildStockMinimapButton.scripts.OnDragStart(GuildStockMinimapButton)

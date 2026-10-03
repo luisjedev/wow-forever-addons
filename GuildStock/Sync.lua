@@ -35,7 +35,8 @@ local function Scope()
     return not absent and current ~= nil and current == guild
 end
 local function Unlocked()
-    return world and addon.Read(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown) == false
+    return world and addon.Read(InCombatLockdown) == false
+        and addon.Read(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown) == false
 end
 local function Roster()
     if not Unlocked() or not Scope()
@@ -71,8 +72,8 @@ local function Peer(name)
 end
 local function CanSend()
     if not registered or not Unlocked() then state.status = "waiting"; return false end
-    local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
-    if restricted ~= false then state.status = restricted == true and "restricted" or "waiting"; return false end
+    -- Forever 70205 can report restricted=true while the native GUILD send returns Success.
+    -- The native send result is authoritative; retain combat/lockdown gates and bounded retries.
     if not Roster() then state.status = "waiting"; return false end
     if addon.temporary or not addon.ShareableSnapshot() then state.status = "waiting"; return false end
     return true
@@ -352,9 +353,6 @@ function addon.SyncTick()
     Flush()
 end
 function addon.SyncStatus()
-    if addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) == true then
-        return L["Addon messages restricted"], L["Outgoing addon messages are restricted. Your bag inventory remains available."]
-    end
     local titles = {waiting = "Waiting for guild, bags or messaging permissions", ready = "Automatic guild synchronization",
         failed = "Guild synchronization interrupted", limited = "Guild synchronization limit reached"}
     return L[titles[state.status] or titles.waiting], L["Changes are grouped for five minutes. Received inventories show their observation time."]

@@ -10,6 +10,10 @@ The user requested automatic synchronization ready for a multi-client trial befo
 
 The [current README](README.md#automatic-guild-synchronization) defines the implemented packet limits, recovery triggers, loss-detection tradeoff, local privacy behavior and test workflow. The remaining sections preserve the earlier product proposal; unimplemented history persistence, exhaustive catalog coverage and stronger roster guarantees are not release claims. Two-client delivery and platform rendering remain pending native verification.
 
+### 0.3.1 transport correction
+
+A native build-70205 GUILD diagnostic returned `Success` despite the outgoing restriction flag being true. The flag alone is therefore not a reliable send veto in this build. Version 0.3.1 consults native send results while retaining combat/lockdown gates, privacy and membership checks, and bounded retries. Diagnostics show the raw flags separately. This supersedes the earlier restriction-based feasibility conclusion; actual peer inventory delivery remains a separate test.
+
 ## Player experience
 
 One movable window, opened through a minimap button or slash command, with four tabs: Materials, Characters, My inventory, and Settings. English is the implementation's base language; Spanish belongs in locale tables. The concept images show the Spanish translation and fictional sample data.

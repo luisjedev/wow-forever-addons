@@ -984,6 +984,10 @@ SlashCmdList.GUILDSTOCK = function(command)
     elseif command == "diagnostics" then
         local version, build, _, interface = GetBuildInfo()
         print("GuildStock: " .. version .. "." .. build .. " / " .. interface)
+        for _, key in ipairs({"AreOutgoingAddonChatMessagesRestricted", "InChatMessagingLockdown"}) do
+            local value = addon.Read(C_ChatInfo and C_ChatInfo[key])
+            print(key .. ": " .. (value == nil and L["Unavailable"] or tostring(value)))
+        end
         print(L["Prefix registration"] .. ": " .. (addon.probe.registration or L["Unavailable"]))
         for _, key in ipairs({"GUILD", "received", "confirmed", "unmatched"}) do
             print(key .. ": " .. tostring(addon.probe[key] or L["Not tested"]))

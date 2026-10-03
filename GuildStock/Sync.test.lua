@@ -15,7 +15,7 @@ local function Client(name)
     env.GetLocale = function() return "enUS" end
     env.GetTime, env.time = function() return clock end, function() return epoch + math.floor(clock) end
     env.canaccessvalue = function(value) return value ~= secret end
-    env.InCombatLockdown = function() return false end
+    env.InCombatLockdown = function() return client.combat or false end
     env.IsInGuild = function() return client.guild ~= nil end
     env.GetProfessions = function() return 1, 2 end
     env.GetProfessionInfo = function(i) return "Synthetic", nil, nil, nil, nil, nil, i end
@@ -38,7 +38,7 @@ local function Client(name)
         InChatMessagingLockdown = function() return client.lockdown end,
         SendAddonMessage = function(prefix, message, channel, target)
             assert(channel == "GUILD" and target == nil and #message <= 240)
-            assert(client.restricted == false and client.lockdown == false)
+            assert(not client.combat and client.lockdown == false)
             log[#log + 1] = {sender = name, message = message, at = clock, guild = client.guild}
             if client.result == 0 then bus[#bus + 1] = {sender = name, message = message, prefix = prefix, guild = client.guild} end
             return client.result
@@ -100,12 +100,14 @@ local function Receive(client, sender, message, channel)
     client:Event("CHAT_MSG_ADDON", "GuildStockS1", message, channel or "GUILD", sender.name)
 end
 local a, b = Client("Alpha Example"), Client("Beta Example")
+a.restricted, b.restricted = true, true -- Reported flag can disagree with native send permission.
 b.inventory = {[2589] = {count = 4, bound = 0}, [2835] = {count = 2, bound = 0}, [999999] = {count = 99, bound = 0}}
 a:Login(); b:Login(); Step(90)
 assert(Received(a,b) and Received(b,a), "login alone must exchange complete inventories in both directions")
 assert(Received(b,a).snapshot.items[2770].count == 7 and Received(a,b).snapshot.items[2589].count == 4)
 assert(not Received(a,b).snapshot.items[999999], "only catalog materials are shared")
 assert(Received(a,b).skills[1] == "Alchemy" and Received(a,b).skills[2] == "Mining")
+assert(a.addon.SyncStatus() == "Automatic guild synchronization")
 assert(#a.addon.GuildCharacters() == 1 and #a.addon.MaterialOwners(2589, true) == 1)
 local quiet = #log; Step(600); assert(#log == quiet, "unchanged inventories must not emit heartbeats")
 
@@ -179,13 +181,13 @@ Receive(b,a,"1|H|"..oldSession.."|999")
 Step(40)
 assert(Received(b,a).snapshot.items[2770].count == 42)
 
--- Restrictions and lockdown block all outgoing packets, with local inventory still usable.
-a.restricted = true; a.inventory[2770].count = 43; a.addon.Observe(); quiet = #log; Step(320)
+-- Actual lockdown blocks outgoing packets, with local inventory still usable.
+a.lockdown = true; a.inventory[2770].count = 43; a.addon.Observe(); quiet = #log; Step(320)
 for i=quiet+1,#log do assert(log[i].sender ~= a.name) end
-assert(a.addon.snapshot.items[2770].count == 43 and a.addon.SyncStatus() == "Addon messages restricted")
-a.restricted = false; a.lockdown = true; quiet = #log; Step(20)
+assert(a.addon.snapshot.items[2770].count == 43 and a.addon.sync.status == "waiting")
+a.lockdown = false; a.combat = true; quiet = #log; Step(20)
 for i=quiet+1,#log do assert(log[i].sender ~= a.name) end
-a.lockdown = false; Step(100); assert(Received(b,a).snapshot.items[2770].count == 43)
+a.combat = false; Step(100); assert(Received(b,a).snapshot.items[2770].count == 43)
 
 -- Temporary roster/guild unavailability hides, but does not delete, dated records.
 b.rosterReady = false; local record = Received(b,a)
@@ -238,10 +240,11 @@ filter=nil
 -- Initial readiness, unavailable flags, unknown saved schemas and failed registration fail closed.
 clients,bus,log,clock = {},{},{},0
 local e,f=Client("Epsilon Example"),Client("Zeta Example")
-e.rosterReady=false; f.restricted=true; e:Login();f:Login();Step(60);assert(#log==0)
-e.rosterReady=true; e.restricted=secret;Step(30);assert(#log==0)
-e.restricted=false;e.lockdown=secret;Step(30);assert(#log==0)
-e.lockdown=false;f.restricted=false;Step(120);assert(Received(e,f) and Received(f,e))
+e.rosterReady=false; f.lockdown=true; e:Login();f:Login();Step(60);assert(#log==0)
+e.rosterReady=true; e.lockdown=secret;Step(30);assert(#log==0)
+e.lockdown=nil;Step(30);assert(#log==0)
+e.lockdown=false;f.lockdown=false;e.restricted=secret;f.restricted=nil
+Step(120);assert(Received(e,f) and Received(f,e))
 clients,bus,log,clock = {},{},{},0
 local g,h=Client("Eta Example"),Client("Theta Example")
 g.registration=2;h.env.GuildStockDB={version=99,hiddenItems="preserve"}
@@ -251,10 +254,19 @@ assert(h.env.GuildStockDB.hiddenItems=="preserve" and g.addon.snapshot)
 -- API failure attempts are bounded; they never masquerade as remote receipts.
 clients,bus,log,clock = {},{},{},0
 local j,k=Client("Iota Example"),Client("Kappa Example")
-j.result=3;k.restricted=true;j:Login();k:Login();Step(180)
+j.result=3;k.lockdown=true;j:Login();k:Login();Step(180)
 local attempts=0;for _,packet in ipairs(log) do if packet.sender==j.name then attempts=attempts+1 end end
 assert(attempts==3 and j.addon.sync.result=="AddonMessageThrottle" and not Received(k,j))
 quiet=#log;Step(300);assert(#log==quiet,"bounded failures do not become a periodic retry broadcast")
+
+-- A native rejection is authoritative even if the preliminary lockdown flag is false.
+clients,bus,log,clock = {},{},{},0
+local rejected=Client("Rejected Example")
+rejected.restricted=true;rejected.result=11;rejected:Login();Step(180)
+assert(#log==3 and rejected.addon.sync.sent==0 and rejected.addon.sync.received==0)
+assert(rejected.addon.sync.result=="AddOnMessageLockdown" and rejected.addon.sync.status=="failed")
+assert(rejected.addon.SyncStatus()=="Guild synchronization interrupted")
+quiet=#log;Step(300);assert(#log==quiet, "native denial must not create an endless retry loop")
 
 -- No packet may contain an item excluded while a multipart snapshot is queued.
 clients,bus,log,clock = {},{},{},0

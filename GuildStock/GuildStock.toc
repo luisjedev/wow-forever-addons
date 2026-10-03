@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: GuildStock
 ## Notes: Browse profession materials and automatically share bag inventories with your guild.
-## Version: 0.3.0
+## Version: 0.3.1
 ## SavedVariablesPerCharacter: GuildStockDB
 
 Locales.lua

@@ -26,7 +26,8 @@ local function Guild()
 end
 
 local function CanSend()
-    return registered and addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) == false
+    return registered and addon.Read(InCombatLockdown) == false
+        and addon.Read(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown) == false
         and Guild() ~= nil
 end
 
