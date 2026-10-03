@@ -154,6 +154,14 @@ Reference remains Forever beta `1.60.1.70205`, interface `16001`. The detail ico
 
 Syntax and all repository regression checks pass. A native `/reload` completed, but computer control detected user activity before the revised GuildStock window could be opened. Visual verification of the new layout, long names and English/Spanish footer fit remains pending; frame stubs do not verify rendering.
 
+### GuildStock Skills column · October 3, 2026
+
+Same build reference: Forever beta `1.60.1.70205`, interface `16001`. The character table now orders its columns as Player, Skills, Bags, Last online and Whisper. A reusable Skills cell renders exactly two primary-profession icons, leaving bordered empty slots for missing, unknown or inaccessible values. Secondary professions are excluded. No profession collection, peer records, transport or SavedVariables changes are included; connecting the cell to real character rows still depends on guild synchronization.
+
+Syntax and all repository regression checks pass. Cell checks cover two, one and zero professions, an empty first slot, secondary/unknown/inaccessible values, and clearing old icons on reused rows. After `/reload`, a native screenshot confirmed the five English headings, compact material header and single-line footer without overlap. Computer control reported user activity during opening, but the subsequent observation showed GuildStock open with Skills in the correct position. Actual skill cells on live character rows, Spanish rendering and other scales remain unverified. No player records or screenshots are published.
+
+**Empty-state follow-up:** at the user's request, Materials now shows only “No players found with this material.” centered in the empty table, with no crate icon. This describes the current result set and does not establish that no guild member owns the item. The live restriction check and technical explanation remain in Settings; transport permissions and the pending synchronization implementation are unchanged. Following another `/reload`, native observation confirmed the English message, absent icon and Skills heading together. Syntax and all repository checks pass; Spanish rendering remains pending.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

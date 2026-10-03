@@ -10,6 +10,10 @@ local temporarySettings = {}
 local gold, cream, muted = {0.68, 0.51, 0.24}, {0.94, 0.90, 0.76}, {0.61, 0.66, 0.67}
 local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
 local viewLabels = { all = "All materials", favorites = "Favorites" }
+local playerColumns = {
+    {"Player", 15, 144}, {"Skills", 176, 64}, {"Bags", 259, 44},
+    {"Last online", 321, 113}, {"Whisper", 449, 89},
+}
 
 local function Preferences()
     if addon.db.settings == nil then addon.db.settings = {} end
@@ -53,6 +57,32 @@ local function Icon(parent, texture, x, y, size)
     icon:SetTexture(texture or "Interface\\Icons\\INV_Misc_QuestionMark")
     icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     return icon
+end
+
+-- Character rows will supply validated primary-profession keys from guild data.
+function addon.SetPlayerSkills(row, skills)
+    if not row.skillSlots then
+        row.skillSlots = {}
+        for i = 1, 2 do
+            local slot = Panel(row, 0, 0, 26, 26)
+            slot:ClearAllPoints()
+            slot:SetPoint("LEFT", playerColumns[2][2] + 3 + (i - 1) * 32, 0)
+            slot.icon = Icon(slot, nil, 2, 2, 22)
+            row.skillSlots[i] = slot
+        end
+    end
+    for i = 1, 2 do
+        local key = addon.Accessible(skills) and type(skills) == "table" and skills[i]
+        local texture
+        if addon.Accessible(key) and type(key) == "string" and key ~= "Cooking" and key ~= "FirstAid" then
+            for _, profession in ipairs(addon.professions) do
+                if profession[1] == key then texture = "Interface\\Icons\\" .. profession[2]; break end
+            end
+        end
+        local icon = row.skillSlots[i].icon
+        icon:SetTexture(texture)
+        icon:SetShown(texture ~= nil)
+    end
 end
 
 local function Tip(frame, value)
@@ -233,8 +263,7 @@ function addon.Refresh()
             detailName:SetText(L["Select a material"])
             detailProfessions:SetText("")
         end
-        local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
-        emptyOwners:SetText(L[restricted == true and "Guild data is unavailable while addon messages are restricted." or "Waiting for guild data"])
+        emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
     elseif page == "inventory" then
         local entries = addon.Materials("all", nil, bagSearch:GetText(), true)
         RenderList(bagList, entries, true)
@@ -327,17 +356,17 @@ local function CreateWindow()
     detailStar = StarButton(details, 539, 17, function() if selected then addon.ToggleFavorite(selected); addon.Refresh() end end)
     local tablePanel = Panel(details, 17, 67, 554, 463)
     tablePanel:SetPoint("BOTTOMRIGHT", -16, 36)
-    local columns = {{"Player", 15, 174}, {"Bags", 199, 60}, {"Last online", 287, 131}, {"Whisper", 442, 96}}
     local tableHeader = Panel(tablePanel, 0, 0, 554, 41)
     tableHeader:SetBackdropColor(0.25, 0.29, 0.31, 1)
-    for _, column in ipairs(columns) do Label(tableHeader, L[column[1]], column[2], 13, column[3], 14) end
-    local emptyIcon = Icon(tablePanel, "Interface\\Icons\\INV_Crate_01", 249, 0, 48)
-    emptyIcon:ClearAllPoints()
-    emptyIcon:SetPoint("CENTER", 0, 8)
-    emptyIcon:SetAlpha(0.45)
+    for _, column in ipairs(playerColumns) do
+        local heading = Label(tableHeader, L[column[1]], column[2], 13, column[3], 14)
+        heading:SetWordWrap(false)
+        if column[1] == "Skills" then heading:SetJustifyH("CENTER") end
+    end
     emptyOwners = Label(tablePanel, "", 35, 0, 484, 18, muted)
     emptyOwners:ClearAllPoints()
-    emptyOwners:SetPoint("TOP", emptyIcon, "BOTTOM", 0, -18)
+    emptyOwners:SetPoint("CENTER", 0, -20)
+    emptyOwners:SetJustifyV("MIDDLE")
     emptyOwners:SetJustifyH("CENTER")
     local quantityNote = Label(details, L["Quantities reflect the last synchronization."], 17, 538, 269, 13, muted)
     quantityNote:SetWordWrap(false)

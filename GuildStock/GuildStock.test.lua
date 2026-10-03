@@ -37,6 +37,7 @@ function methods:SetSize(width, height) self.width, self.height = width, height 
 function methods:SetScale(value) self.scale = value end
 function methods:GetScale() return self.scale or 1 end
 function methods:SetBackdropColor(...) self.background = {...} end
+function methods:SetTexture(value) self.texture = value end
 function methods:SetChecked(value) self.checked = value end
 function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
@@ -277,6 +278,28 @@ Event("PLAYER_GUILD_UPDATE", "player")
 Receive("2|P|103-20")
 assert(#sent == 4)
 
+-- Reused character skill cells keep two slots and clear stale icons when professions disappear.
+local playerRow = Frame()
+addon.SetPlayerSkills(playerRow, {"Alchemy", "Mining"})
+local skillSlots = playerRow.skillSlots
+assert(#skillSlots == 2 and skillSlots[1].icon:IsShown() and skillSlots[2].icon:IsShown())
+assert(skillSlots[1].icon.texture == "Interface\\Icons\\Trade_Alchemy")
+assert(skillSlots[2].icon.texture == "Interface\\Icons\\Trade_Mining")
+addon.SetPlayerSkills(playerRow, {"Engineering"})
+assert(playerRow.skillSlots == skillSlots and skillSlots[1].icon:IsShown())
+assert(skillSlots[1].icon.texture == "Interface\\Icons\\Trade_Engineering")
+assert(not skillSlots[2].icon:IsShown() and skillSlots[2].icon.texture == nil and skillSlots[2]:IsShown())
+addon.SetPlayerSkills(playerRow, {[2] = "Herbalism"})
+assert(not skillSlots[1].icon:IsShown() and skillSlots[2].icon:IsShown(), "a missing first profession does not hide the second")
+for _, skills in ipairs({{}, {"Cooking", "FirstAid"}, {"Fishing", "unknown"}, {secret, secret}, secret}) do
+    addon.SetPlayerSkills(playerRow, skills)
+    for _, slot in ipairs(skillSlots) do
+        assert(slot:IsShown() and not slot.icon:IsShown() and slot.icon.texture == nil, "empty placeholders contain no stale or secondary icons")
+    end
+end
+addon.SetPlayerSkills(playerRow, nil)
+assert(not skillSlots[1].icon:IsShown() and not skillSlots[2].icon:IsShown())
+
 -- Exercise recipe discovery, real filters and native interface handlers with synthetic items.
 bags[0] = {Item(10, 5, false), Item(20, 2, true)}
 addon.Observe()
@@ -362,5 +385,6 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     local localized = {}
     assert(loadfile("GuildStock/Locales.lua"))("GuildStock", localized)
     assert(localized.L["My inventory"] == "Mi inventario" and localized.L["unknown"] == "unknown")
+    assert(localized.L["Skills"] == "Profesiones")
 end
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")
