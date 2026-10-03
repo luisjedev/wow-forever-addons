@@ -51,7 +51,10 @@ end
 
 local function Label(parent, value, x, y, width, size, color, heading)
     local label = parent:CreateFontString(nil, "OVERLAY")
-    label:SetFont(heading and STANDARD_TEXT_FONT or (GetLocale():match("^en") or GetLocale():match("^es")) and "Fonts\\ARIALN.TTF" or STANDARD_TEXT_FONT, size or 15)
+    -- Retain all alphabets and rasterize at the intended size instead of stretching text.
+    label:SetFontObject(heading and "GameFontNormal" or "ChatFontNormal")
+    label:SetFontHeight(size or 15)
+    label:SetShadowOffset(0, 0)
     label:SetPoint("TOPLEFT", x, -y)
     label:SetWidth(width)
     label:SetJustifyH("LEFT")
@@ -520,6 +523,8 @@ function addon.Refresh()
         settings.offline:SetChecked(preferences.showOffline ~= false)
         settings.minimap:SetChecked(preferences.showMinimap ~= false)
         settings.initial.label:SetText(L[viewLabels[InitialView()]])
+        local language = addon.LanguageChoice(preferences.language)
+        settings.language.label:SetText(language[1] == "auto" and L["Automatic (game language)"] or language[2])
         scaleLabel:SetText(string.format("%d %%", math.floor((window:GetScale() or 1) * 100 + 0.5)))
         settings.saveNotice:SetText(L[(addon.temporary or addon.temporaryPreferences)
             and "Saved data is unsupported; using temporary data without replacing it." or "Changes are saved automatically."])
@@ -528,6 +533,7 @@ end
 
 local function SelectPage(value)
     page = value
+    if settings then settings.choices:Hide(); settings.languages:Hide() end
     if search then
         search:ClearFocus(); bagSearch:ClearFocus(); characterSearch:ClearFocus(); characterItemSearch:ClearFocus()
     end
@@ -708,6 +714,7 @@ local function CreateWindow()
     end)
     Label(display, L["Opening view"], 19, 154, 160, 16)
     settings.initial = Button(display, "", 181, 143, 271, 34, function()
+        settings.languages:Hide()
         settings.choices:SetShown(not settings.choices:IsShown())
     end)
     settings.initial:SetBackdropBorderColor(unpack(colors.border))
@@ -742,6 +749,30 @@ local function CreateWindow()
         Preferences().scale = math.floor(value * 20 + 0.5) / 20
         ApplyScale(); addon.Refresh()
     end)
+    Label(interface, L["Language"], 670, 14, 410, 16)
+    settings.language = Button(interface, "", 670, 40, 420, 34, function()
+        settings.choices:Hide()
+        settings.languages:SetShown(not settings.languages:IsShown())
+    end)
+    settings.language:SetBackdropBorderColor(unpack(colors.border))
+    settings.language.label:SetWidth(372)
+    Icon(settings.language, "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up", 390, 5, 24)
+    Label(interface, L["Use /reload to apply. Item names keep the game language."], 650, 79, 448, 11, muted)
+    settings.languages = Panel(settings, 0, 0, 548, 214, colors.border)
+    settings.languages:ClearAllPoints()
+    settings.languages:SetPoint("BOTTOMRIGHT", settings.language, "TOPRIGHT", 0, 4)
+    settings.languages:SetFrameLevel(settings.language:GetFrameLevel() + 10)
+    settings.languages:Hide()
+    for i, language in ipairs(addon.languages) do
+        local key, text = language[1], language[2]
+        local option = Button(settings.languages, key == "auto" and L["Automatic (game language)"] or text,
+            2 + ((i - 1) % 2) * 272, 2 + math.floor((i - 1) / 2) * 35, 272, 34, function()
+                Preferences().language = key ~= "auto" and key or nil
+                settings.languages:Hide()
+                addon.Refresh()
+            end)
+        option.language = key
+    end
     local sync = Panel(settings, 26, 388, 1114, 131)
     Label(sync, L["Synchronization"], 16, 14, 1040, 20, cream, true)
     syncStatus = Label(sync, "", 21, 52, 1050, 16, gold)
@@ -752,6 +783,7 @@ local function CreateWindow()
     window:SetScript("OnHide", function()
         search:ClearFocus(); bagSearch:ClearFocus(); characterSearch:ClearFocus(); characterItemSearch:ClearFocus()
         settings.choices:Hide()
+        settings.languages:Hide()
     end)
     ApplyScale()
 end

@@ -112,6 +112,30 @@ function addon.DiscoverRecipes()
     end
 end
 
+-- Lua 5.1's lower only folds ASCII. Cover the Latin/Cyrillic alphabets in our locales.
+local lowerLetters = {
+    ["À"] = "à", ["Á"] = "á", ["Â"] = "â", ["Ã"] = "ã", ["Ä"] = "ä", ["Å"] = "å",
+    ["Ç"] = "ç", ["È"] = "è", ["É"] = "é", ["Ê"] = "ê", ["Ë"] = "ë", ["Ì"] = "ì",
+    ["Í"] = "í", ["Î"] = "î", ["Ï"] = "ï", ["Ñ"] = "ñ", ["Ò"] = "ò", ["Ó"] = "ó",
+    ["Ô"] = "ô", ["Õ"] = "õ", ["Ö"] = "ö", ["Ù"] = "ù", ["Ú"] = "ú", ["Û"] = "û",
+    ["Ü"] = "ü", ["Ý"] = "ý", ["Ÿ"] = "ÿ", ["Æ"] = "æ", ["Œ"] = "œ", ["ẞ"] = "ß",
+    ["А"] = "а", ["Б"] = "б", ["В"] = "в", ["Г"] = "г", ["Д"] = "д", ["Е"] = "е", ["Ё"] = "ё",
+    ["Ж"] = "ж", ["З"] = "з", ["И"] = "и", ["Й"] = "й", ["К"] = "к", ["Л"] = "л", ["М"] = "м",
+    ["Н"] = "н", ["О"] = "о", ["П"] = "п", ["Р"] = "р", ["С"] = "с", ["Т"] = "т", ["У"] = "у",
+    ["Ф"] = "ф", ["Х"] = "х", ["Ц"] = "ц", ["Ч"] = "ч", ["Ш"] = "ш", ["Щ"] = "щ", ["Ъ"] = "ъ",
+    ["Ы"] = "ы", ["Ь"] = "ь", ["Э"] = "э", ["Ю"] = "ю", ["Я"] = "я",
+}
+local function SearchText(value)
+    return (value:lower():gsub("[\194-\244][\128-\191]+", lowerLetters))
+end
+local function ItemSearchText(id, nativeName)
+    local names = {nativeName}
+    for _, localeNames in pairs(addon.itemNames) do
+        if localeNames[id] then names[#names + 1] = localeNames[id] end
+    end
+    return SearchText(table.concat(names, "\n"))
+end
+
 function addon.Materials(view, profession, search, inventory)
     local catalog = addon.Catalog()
     if sortedCatalog ~= catalog then addon.InvalidateMaterials(); sortedCatalog = catalog end
@@ -120,7 +144,7 @@ function addon.Materials(view, profession, search, inventory)
         for id, professions in pairs(catalog) do
             if addon.Integer(id, 1, 2147483647) and type(professions) == "table" then
                 local data = addon.ItemData(id)
-                sortedMaterials[#sortedMaterials + 1] = {id = id, name = data.name, icon = data.icon, search = data.name:lower()}
+                sortedMaterials[#sortedMaterials + 1] = {id = id, name = data.name, icon = data.icon, search = ItemSearchText(id, data.name)}
             end
         end
         table.sort(sortedMaterials, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
@@ -130,7 +154,7 @@ function addon.Materials(view, profession, search, inventory)
         filterSnapshot, filterFavorites = addon.snapshot, addon.db.favorites
     end
     local favorites = type(addon.db.favorites) == "table" and addon.db.favorites or {}
-    search = (search or ""):lower()
+    search = SearchText(search or "")
     -- Keep only the last query per navigation filter, not an unbounded search history.
     local key = (view or "all") .. ":" .. (profession or "all") .. (inventory and ":bags" or "")
     local cached = filteredMaterials[key]
@@ -172,10 +196,10 @@ end
 function addon.CharacterItems(character, search)
     local result = {}
     if not character then return result end
-    search = (search or ""):lower()
+    search = SearchText(search or "")
     for id, item in pairs(character.snapshot.items) do
         local data = addon.ItemData(id)
-        if data.name:lower():find(search, 1, true) then
+        if ItemSearchText(id, data.name):find(search, 1, true) then
             result[#result + 1] = {id = id, name = data.name, icon = data.icon, count = item.count}
         end
     end

@@ -7,5 +7,6 @@
 Locales.lua
 GuildStock.lua
 Probe.lua
+ItemNames.lua
 Catalog.lua
 UI.lua

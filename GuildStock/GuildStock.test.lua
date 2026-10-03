@@ -18,7 +18,7 @@ local methods = {}
 for _, method in ipairs({ "SetSize", "SetFrameLevel", "SetFrameStrata", "SetClampedToScreen", "SetMovable",
     "EnableMouse", "RegisterForDrag", "RegisterForClicks", "SetHighlightTexture", "SetTexture", "SetWidth",
     "SetJustifyH", "SetJustifyV", "SetScrollChild", "UpdateScrollChildRect", "StartMoving", "StopMovingOrSizing", "SetBackdrop", "SetBackdropBorderColor", "SetAllPoints",
-    "SetFont", "SetFontObject", "SetTextColor", "SetTexCoord", "SetVertexColor", "SetWordWrap", "SetAutoFocus",
+    "SetFont", "SetFontObject", "SetShadowOffset", "SetTextColor", "SetTexCoord", "SetVertexColor", "SetWordWrap", "SetAutoFocus",
     "SetMaxLetters", "ClearFocus", "SetOrientation", "SetMinMaxValues", "SetValueStep", "SetObeyStepOnDrag",
     "SetThumbTexture", "SetDesaturated", "SetAlpha" }) do
     methods[method] = function() end
@@ -48,6 +48,9 @@ function methods:GetScale() return self.scale or 1 end
 function methods:SetBackdropColor(...) self.background = {...} end
 function methods:SetBackdropBorderColor(...) self.border = {...} end
 function methods:SetTexture(value) self.texture = value end
+function methods:SetFont(path, size) self.fontPath, self.fontSize = path, size end
+function methods:SetFontObject(value) self.fontObject = value end
+function methods:SetFontHeight(value) self.fontSize = value end
 function methods:SetAtlas(value) self.atlas = value end
 function methods:SetChecked(value) self.checked = value end
 function methods:SetFillToInterior(value) self.fillToInterior = value end
@@ -171,7 +174,7 @@ C_Club = {
     GetMemberInfo = function(_, id) return members[id] end,
 }
 local addon = {}
-for _, file in ipairs({ "Locales", "GuildStock", "Probe", "Catalog", "UI" }) do
+for _, file in ipairs({ "Locales", "GuildStock", "Probe", "ItemNames", "Catalog", "UI" }) do
     assert(loadfile("GuildStock/" .. file .. ".lua"))("GuildStock", addon)
 end
 local function Event(event, ...)
@@ -739,6 +742,34 @@ local slider
 for _, f in ipairs(frames) do if f.scripts.OnValueChanged then slider = f end end
 slider.scripts.OnValueChanged(slider, 0.9)
 assert(saved.settings.scale == 0.9 and GuildStockFrame:GetScale() == 0.9)
+-- Language selection is per character and takes effect on the next UI load.
+local languageButton = Click("Automatic (game language)")
+local languageOptions = {}
+for _, frame in ipairs(frames) do if frame.language then languageOptions[frame.language] = frame end end
+local languageMenu = languageOptions.enUS.parent
+assert(languageMenu:IsShown())
+for _, entry in ipairs(addon.languages) do
+    local option = languageOptions[entry[1]]
+    assert(option, "every language is selectable")
+    assert(option.label.fontObject == "ChatFontNormal" and option.label.fontSize == 16 and not option.label.fontPath,
+        "language names use the body font family at its intended size")
+end
+languageOptions.esES.scripts.OnClick()
+assert(saved.settings.language == "esES" and languageButton.label:GetText() == "Español" and not languageMenu:IsShown())
+assert(addon.L["Settings"] == "Settings" and GetLocale() == "enUS", "selection cannot change the game or partially relabel the UI")
+assert(saved.settings.scale == 0.9 and saved.settings.initialView == "favorites", "other preferences are preserved")
+languageButton.scripts.OnClick()
+Click("Materials")
+assert(not languageMenu:IsShown(), "changing tabs closes the language menu")
+Click("Settings")
+languageButton.scripts.OnClick()
+languageOptions.auto.scripts.OnClick()
+assert(saved.settings.language == nil and languageButton.label:GetText() == "Automatic (game language)")
+saved.settings = "preserve unsupported preferences"
+languageOptions.frFR.scripts.OnClick()
+assert(saved.settings == "preserve unsupported preferences" and addon.temporaryPreferences)
+saved.settings = settingsBefore
+addon.Refresh()
 assert(#sent == 4, "UI operations never send addon messages")
 GuildStockMinimapButton.scripts.OnClick()
 assert(not GuildStockFrame:IsShown())
@@ -801,6 +832,92 @@ do
     assert(locales.esES["Not shared with guild"] == "No se comparte" and locales.esES["Share"] == "Compartir")
     assert(locales.esES["Not shared"] == "No compartidos")
     assert(locales.esES["My professions"] == "Mis profesiones" and locales.esES["Other professions"] == "Otras profesiones")
+end
+
+-- Alternate item names search the discovered catalog without replacing native data.
+do
+    local localeCount = 0
+    for _, names in pairs(addon.itemNames) do
+        localeCount = localeCount + 1
+        local count = 0
+        for id, name in pairs(names) do
+            count = count + 1
+            assert(type(id) == "number" and id > 0 and addon.itemNames.enUS[id])
+            assert(type(name) == "string" and name:find("%S") and not name:find("[|\n\r]"))
+        end
+        assert(count == 579, "each locale must cover the same reagent subset")
+    end
+    assert(localeCount == 11, "include both Spanish item-name variants")
+    local previousDB, previousSnapshot, previousData = addon.db, addon.snapshot, addon.itemData
+    addon.db = {version = 1, catalog = {[2770] = {Mining = true}, [2589] = {Tailoring = true}, [300001] = {}},
+        favorites = {[2770] = true}}
+    addon.snapshot = {items = {[2770] = {count = 7}}}
+    addon.itemData = {[2770] = {name = "Mineral de cobre", icon = 123}, [2589] = {name = "Paño de lino"},
+        [300001] = {name = "New native material"}}
+    addon.InvalidateMaterials()
+    assert(#addon.Materials("all") == 3, "aliases must never populate the discovered catalog")
+    for _, names in pairs(addon.itemNames) do
+        local matches = addon.Materials("all", nil, names[2770])
+        assert(#matches == 1 and matches[1].id == 2770 and matches[1].name == "Mineral de cobre")
+        local bags = addon.Materials("all", nil, names[2770], true)
+        assert(#bags == 1 and bags[1].count == 7)
+        local character = addon.CharacterItems({snapshot = addon.snapshot}, names[2770])
+        assert(#character == 1 and character[1].id == 2770 and character[1].name == "Mineral de cobre"
+            and character[1].icon == 123 and character[1].count == 7)
+    end
+    for _, query in ipairs({"COPPER ORE", "MINERAL DE COBRE", "MINÉRIO", "МЕДНАЯ"}) do
+        assert(addon.Materials("all", nil, query)[1].id == 2770, "case folding across supported alphabets")
+    end
+    assert(#addon.Materials("favorites", "Mining", "copper") == 1)
+    assert(#addon.Materials("all", "Tailoring", "copper") == 0)
+    assert(#addon.Materials("all", nil, "linen cloth", true) == 0, "search does not invent bag quantities")
+    assert(addon.Materials("all", nil, "new native")[1].id == 300001, "uncatalogued names retain native search")
+    assert(#addon.Materials("all", nil, "Copper.*") == 0 and #addon.Materials("all", nil, "[") == 0)
+    addon.ApplyLanguage("zhCN")
+    assert(addon.Materials("all", nil, "copper")[1].name == "Mineral de cobre", "UI locale does not change item data")
+    addon.ApplyLanguage()
+    addon.db, addon.snapshot, addon.itemData = previousDB, previousSnapshot, previousData
+    addon.InvalidateMaterials()
+end
+
+-- Saved language overrides must load only from a supported character database.
+do
+    local function InitializeLanguage(savedData, clientLocale)
+        local env = setmetatable({GuildStockDB = savedData, GetLocale = function() return clientLocale end,
+            CreateFrame = Frame}, {__index = function(_, key) if key ~= "GuildStockDB" then return _G[key] end end})
+        local localized = {}
+        for _, file in ipairs({"Locales", "GuildStock"}) do
+            setfenv(assert(loadfile("GuildStock/" .. file .. ".lua")), env)("GuildStock", localized)
+        end
+        local captured = localized.L
+        localized.Initialize()
+        assert(localized.L == captured, "initialization preserves the locale table used by every module")
+        return localized, env
+    end
+    local data = {version = 1, own = old, settings = {language = "frFR", scale = 0.9}, favorites = {[10] = true}}
+    local localized, env = InitializeLanguage(data, "enUS")
+    assert(localized.L["Settings"] == "Paramètres" and localized.db == data and localized.snapshot == old)
+    assert(data.settings.language == "frFR" and data.settings.scale == 0.9 and data.favorites[10])
+    localized.ApplyLanguage("enUS")
+    assert(localized.L["Settings"] == "Settings" and not rawget(localized.L, "Settings"), "returning to English clears old translations")
+    localized, env = InitializeLanguage(nil, "esMX")
+    assert(localized.L["Settings"] == "Ajustes" and env.GuildStockDB.version == 1)
+    for _, value in ipairs({"auto", "unsupported", false, {}}) do
+        data = {version = 1, settings = {language = value}}
+        localized = InitializeLanguage(data, "deDE")
+        assert(localized.L["Settings"] == "Einstellungen" and data.settings.language == value)
+    end
+    localized = InitializeLanguage({version = 1, settings = {language = "enGB"}}, "esES")
+    assert(localized.L["Settings"] == "Settings")
+    localized = InitializeLanguage({version = 1, settings = {language = "esMX"}}, "enUS")
+    assert(localized.L["Settings"] == "Ajustes")
+    data = {version = 1, settings = "preserve unsupported preferences"}
+    localized = InitializeLanguage(data, "enUS")
+    assert(localized.L["Settings"] == "Settings" and data.settings == "preserve unsupported preferences")
+    data = {version = 99, settings = {language = "frFR"}, marker = "preserve"}
+    localized, env = InitializeLanguage(data, "enUS")
+    assert(localized.temporary and env.GuildStockDB == data and data.marker == "preserve")
+    assert(localized.L["Settings"] == "Settings", "unsupported schemas cannot apply an unverified preference")
 end
 
 -- Large catalogs exercise bounded UI work, recycled actions and cache invalidation.

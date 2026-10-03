@@ -39,6 +39,7 @@ function addon.Initialize()
         addon.db = saved
         if ValidSnapshot(saved.own) then addon.snapshot = saved.own end
     end
+    addon.ApplyLanguage(type(addon.db.settings) == "table" and addon.db.settings.language or nil)
 end
 
 function addon.IsItemHidden(id)

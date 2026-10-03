@@ -1,6 +1,9 @@
 local _, addon = ...
 local translations = {
     esES = {
+        ["Language"] = "Idioma",
+        ["Automatic (game language)"] = "Automático (idioma del juego)",
+        ["Use /reload to apply. Item names keep the game language."] = "Aplica con /reload. Los objetos mantienen el idioma del juego.",
         ["Guild materials"] = "Materiales de hermandad",
         ["Materials"] = "Materiales",
         ["Characters"] = "Personajes",
@@ -105,6 +108,9 @@ local translations = {
         ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
+        ["Language"] = "Langue",
+        ["Automatic (game language)"] = "Automatique (langue du jeu)",
+        ["Use /reload to apply. Item names keep the game language."] = "Appliquez avec /reload. Les objets gardent la langue du jeu.",
         ["Guild materials"] = "Matériaux de guilde",
         ["Materials"] = "Matériaux",
         ["Characters"] = "Personnages",
@@ -209,6 +215,9 @@ local translations = {
         ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
+        ["Language"] = "Sprache",
+        ["Automatic (game language)"] = "Automatisch (Spielsprache)",
+        ["Use /reload to apply. Item names keep the game language."] = "Mit /reload anwenden. Gegenstandsnamen bleiben in der Spielsprache.",
         ["Guild materials"] = "Gildenmaterialien",
         ["Materials"] = "Materialien",
         ["Characters"] = "Charaktere",
@@ -313,6 +322,9 @@ local translations = {
         ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
+        ["Language"] = "Lingua",
+        ["Automatic (game language)"] = "Automatica (lingua del gioco)",
+        ["Use /reload to apply. Item names keep the game language."] = "Applica con /reload. Gli oggetti mantengono la lingua del gioco.",
         ["Guild materials"] = "Materiali di gilda",
         ["Materials"] = "Materiali",
         ["Characters"] = "Personaggi",
@@ -417,6 +429,9 @@ local translations = {
         ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
+        ["Language"] = "Idioma",
+        ["Automatic (game language)"] = "Automático (idioma do jogo)",
+        ["Use /reload to apply. Item names keep the game language."] = "Use /reload para aplicar. Os itens mantêm o idioma do jogo.",
         ["Guild materials"] = "Materiais da guilda",
         ["Materials"] = "Materiais",
         ["Characters"] = "Personagens",
@@ -521,6 +536,9 @@ local translations = {
         ["Drag: Move"] = "Arrastar: mover",
     },
     ruRU = {
+        ["Language"] = "Язык",
+        ["Automatic (game language)"] = "Автоматически (язык игры)",
+        ["Use /reload to apply. Item names keep the game language."] = "Применить: /reload. Названия предметов остаются на языке игры.",
         ["Guild materials"] = "Материалы гильдии",
         ["Materials"] = "Материалы",
         ["Characters"] = "Персонажи",
@@ -625,6 +643,9 @@ local translations = {
         ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
+        ["Language"] = "언어",
+        ["Automatic (game language)"] = "자동 (게임 언어)",
+        ["Use /reload to apply. Item names keep the game language."] = "/reload로 적용합니다. 아이템 이름은 게임 언어를 따릅니다.",
         ["Guild materials"] = "길드 재료",
         ["Materials"] = "재료",
         ["Characters"] = "캐릭터",
@@ -729,6 +750,9 @@ local translations = {
         ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
+        ["Language"] = "语言",
+        ["Automatic (game language)"] = "自动（游戏语言）",
+        ["Use /reload to apply. Item names keep the game language."] = "使用 /reload 应用。物品名称保持游戏语言。",
         ["Guild materials"] = "公会材料",
         ["Materials"] = "材料",
         ["Characters"] = "角色",
@@ -833,6 +857,9 @@ local translations = {
         ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
+        ["Language"] = "語言",
+        ["Automatic (game language)"] = "自動（遊戲語言）",
+        ["Use /reload to apply. Item names keep the game language."] = "使用 /reload 套用。物品名稱維持遊戲語言。",
         ["Guild materials"] = "公會材料",
         ["Materials"] = "材料",
         ["Characters"] = "角色",
@@ -938,7 +965,31 @@ local translations = {
     },
 }
 translations.esMX = translations.esES
+addon.languages = {
+    {"auto", "Automatic (game language)"}, {"enUS", "English"}, {"esES", "Español"},
+    {"frFR", "Français"}, {"deDE", "Deutsch"}, {"itIT", "Italiano"}, {"ptBR", "Português (Brasil)"},
+    {"ruRU", "Русский"}, {"koKR", "한국어"}, {"zhCN", "简体中文"}, {"zhTW", "繁體中文"},
+}
+
+function addon.LanguageChoice(value)
+    if value == "enGB" then value = "enUS" end
+    if value == "esMX" then value = "esES" end
+    for _, entry in ipairs(addon.languages) do
+        if value == entry[1] then return entry end
+    end
+    return addon.languages[1]
+end
+
 -- English keys also provide the fallback for unsupported locales or missing text.
-addon.L = setmetatable(translations[GetLocale()] or {}, {
+addon.L = setmetatable({}, {
     __index = function(_, key) return key == "FirstAid" and "First Aid" or key end,
 })
+
+function addon.ApplyLanguage(value)
+    local choice = addon.LanguageChoice(value)[1]
+    addon.locale = choice == "auto" and GetLocale() or choice
+    -- Keep the same table: the other files retain local references to addon.L.
+    for key in pairs(addon.L) do addon.L[key] = nil end
+    for key, text in pairs(translations[addon.locale] or {}) do addon.L[key] = text end
+end
+addon.ApplyLanguage()
