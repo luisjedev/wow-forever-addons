@@ -37,11 +37,13 @@ function methods:SetSize(width, height) self.width, self.height = width, height 
 function methods:SetScale(value) self.scale = value end
 function methods:GetScale() return self.scale or 1 end
 function methods:SetBackdropColor(...) self.background = {...} end
+function methods:SetBackdropBorderColor(...) self.border = {...} end
 function methods:SetTexture(value) self.texture = value end
 function methods:SetAtlas(value) self.atlas = value end
 function methods:SetChecked(value) self.checked = value end
 function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
+function methods:SetWidth(value) self.width = value end
 function methods:GetStringHeight() return #(self.text or "") end
 function methods:GetFrameLevel() return 1 end
 function methods:GetWidth() return self.width or 160 end
@@ -61,9 +63,10 @@ function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
 methods.CreateTexture, methods.CreateFontString, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame, Frame
-CreateFrame = function(_, name, parent)
+CreateFrame = function(_, name, parent, template)
     local f = Frame()
     f.parent = parent
+    f.template = template
     f.TitleText, f.ScrollBar = Frame(), Frame()
     frames[#frames + 1] = f
     if name then _G[name] = f end
@@ -160,6 +163,41 @@ Drain()
 assert(GuildStockDB == saved and saved.favorites[10])
 assert(addon.snapshot.items[10].count == 9 and addon.snapshot.items[10].bound == 2)
 assert(addon.snapshot.items[20].count == 1 and reads[5])
+
+-- Privacy is per item across all stacks; it must not destroy the complete local observation.
+local privateObservation = addon.snapshot
+addon.SetItemHidden(10, true)
+local exclusions = saved.hiddenItems
+local shareable = addon.ShareableSnapshot()
+assert(exclusions[10] and not shareable.items[10] and shareable.items[20].count == 1)
+assert(shareable.observedAt == privateObservation.observedAt and shareable.hiddenItems == nil)
+assert(addon.snapshot == privateObservation and saved.own.items[10].count == 9 and saved.own.items[10].bound == 2)
+shareable.items[20].count = 999
+assert(saved.own.items[20].count == 1, "exported copies cannot mutate local quantities")
+addon.db, addon.snapshot = nil, nil
+Event("PLAYER_LOGIN")
+Drain()
+assert(saved.hiddenItems == exclusions and addon.IsItemHidden(10) and not addon.ShareableSnapshot().items[10], "login restores exclusions")
+addon.SetItemHidden(20, true)
+assert(next(addon.ShareableSnapshot().items) == nil, "all hidden is a complete empty sharing snapshot")
+addon.SetItemHidden(10, false)
+addon.SetItemHidden(20, false)
+assert(addon.ShareableSnapshot().items[10].count == 9 and exclusions[10] == nil)
+for _, invalid in ipairs({0, -1, 1.5, "10", secret}) do addon.SetItemHidden(invalid, true) end
+addon.SetItemHidden(10, "true")
+assert(next(exclusions) == nil, "invalid actions cannot create saved exclusions")
+for _, unsupported in ipairs({"keep me", {[10] = "unknown"}, {["10"] = true}}) do
+    saved.hiddenItems = unsupported
+    assert(addon.ShareableSnapshot() == nil and saved.hiddenItems == unsupported, "unsupported privacy data prevents exports and stays intact")
+end
+saved.hiddenItems = "keep me"
+addon.SetItemHidden(10, true)
+assert(saved.hiddenItems == "keep me")
+saved.hiddenItems = exclusions
+local withObservation = addon.snapshot
+addon.snapshot = nil
+assert(addon.ShareableSnapshot() == nil, "missing observations cannot be advertised as empty")
+addon.snapshot = withObservation
 assert(addon.ProfessionNames() == "Engineering, Cooking", "secondary professions survive nil holes")
 
 local complete = addon.snapshot
@@ -210,6 +248,7 @@ for _, unknown in ipairs({ {version = 2, own = old, favorites = {10}}, {legacy =
     addon.Initialize()
     addon.Observe()
     assert(GuildStockDB == unknown and addon.temporary and addon.db ~= unknown)
+    assert(addon.ShareableSnapshot() == nil, "unknown saved schemas cannot silently discard privacy choices for sharing")
 end
 GuildStockDB, addon.db, addon.snapshot, addon.temporary = saved, nil, nil, nil
 addon.Initialize()
@@ -372,8 +411,56 @@ end
 assert(bagInput, "inventory rows include profession uses")
 assert(not bagInput.list.rows[1]:GetScript("OnEnter"), "inventory item names and quantities have no row tooltip")
 local function ItemRow(list, id)
-    for _, row in ipairs(list.rows) do if row.itemID == id then return row end end
+    for _, row in ipairs(list.rows) do if row.itemID == id and row:IsShown() then return row end end
 end
+local bagRows = bagInput.list
+local function HiddenRow(id)
+    for _, frame in ipairs(frames) do
+        if frame.itemID == id and frame.sharing and not frame.usedBy and frame:IsShown() then return frame end
+    end
+end
+local packetsBeforeHiding = #sent
+local rawBeforeHiding = addon.snapshot
+local shareCheck = ItemRow(bagRows, 10).sharing
+assert(shareCheck.template == "UICheckButtonTemplate" and shareCheck:GetChecked())
+shareCheck:SetChecked(false)
+shareCheck.scripts.OnClick(shareCheck)
+assert(addon.IsItemHidden(10) and ItemRow(bagRows, 10) and HiddenRow(10), "excluded items stay in the bag list and also appear on the right")
+assert(ItemRow(bagRows, 10).count:GetText() == 5 and ItemRow(bagRows, 10).privateNote:IsShown())
+assert(ItemRow(bagRows, 10).privateNote:GetText() == "Not shared with guild" and not shareCheck:GetChecked())
+assert(ItemRow(bagRows, 10).border[4] == 0 and HiddenRow(10).border[4] == 0, "inventory rows have no separator borders")
+assert(#addon.Materials("all") == 2 and #addon.Materials("favorites") == 1, "hiding does not remove catalog or favorites")
+assert(addon.snapshot == rawBeforeHiding and not addon.ShareableSnapshot().items[10])
+local hiddenRow = HiddenRow(10)
+assert(hiddenRow.sharing.template == "UIPanelButtonTemplate" and hiddenRow.sharing:GetText() == "Share", "restore uses a native Blizzard button")
+assert(math.abs((bagRows.width + 24) / (hiddenRow.parent.width + 24) - 7 / 3) < 0.001, "inventory panes use the requested 70/30 split")
+bagInput:SetText("no matching material")
+assert(HiddenRow(10), "bag search cannot conceal privacy preferences")
+hiddenRow.sharing.scripts.OnClick(hiddenRow.sharing)
+assert(not addon.IsItemHidden(10) and not HiddenRow(10) and addon.ShareableSnapshot().items[10].count == 5)
+assert(not ItemRow(bagRows, 10), "restoring sharing respects the current bag search")
+bagInput:SetText("")
+assert(ItemRow(bagRows, 10).sharing:GetChecked() and not ItemRow(bagRows, 10).privateNote:IsShown(), "restoring sharing clears the row indicator")
+local otherCheck = ItemRow(bagRows, 20).sharing
+otherCheck:SetChecked(false)
+otherCheck.scripts.OnClick(otherCheck)
+assert(HiddenRow(20).label:GetText() == "Item #20", "unloaded hidden items have an ID placeholder")
+bags[0] = {}
+bags[5] = {}
+addon.Observe()
+assert(HiddenRow(20) and saved.hiddenItems[20], "an absent item stays hidden until explicitly restored")
+addon.db, addon.snapshot = nil, nil
+addon.Initialize()
+assert(saved.hiddenItems[20] and #addon.HiddenItems() == 1, "initialization preserves absent hidden items")
+bags[0] = {Item(10, 5, false), Item(20, 2, true)}
+addon.Observe()
+assert(not addon.ShareableSnapshot().items[20] and ItemRow(bagRows, 20).privateNote:IsShown(), "reacquired items stay visible and excluded")
+otherCheck = ItemRow(bagRows, 20).sharing
+otherCheck:SetChecked(true)
+otherCheck.scripts.OnClick(otherCheck)
+assert(not HiddenRow(20) and not ItemRow(bagRows, 20).privateNote:IsShown(), "the checkbox can also restore sharing")
+assert(ItemRow(bagRows, 20).count:GetText() == 2 and addon.ShareableSnapshot().items[20].bound == 2)
+assert(#sent == packetsBeforeHiding, "privacy actions and observations do not activate the probe transport")
 local materialUses = addon.Catalog()[10]
 materialUses.Cooking, materialUses.FirstAid = true, true
 materialUses.Alchemy, materialUses.Unknown = secret, true
@@ -390,9 +477,17 @@ for _, profession in ipairs(addon.professions) do allUses[profession[1]] = true 
 addon.db.catalog[10] = allUses
 addon.Refresh()
 assert(#ownUses.slots == #addon.professions, "material uses are not limited to two primary professions")
+local lastOwnUse = ownUses.slots[#addon.professions]
+assert(lastOwnUse.point[2] + lastOwnUse.width <= ownUses.width, "all profession icons fit beside the sharing checkbox")
+for _, slot in ipairs(ownUses.slots) do
+    assert(slot.width == 24 and slot.icon.width == 20, "profession icons retain their original size")
+    local top = ownUses.point[3] + slot.point[3]
+    assert(top <= 0 and top - slot.height >= -55, "wrapped professions fit inside their inventory row")
+end
 addon.db.catalog[10] = materialUses
 addon.Refresh()
 assert(not ownUses.slots[4]:IsShown(), "reused rows hide obsolete profession icons")
+assert(ownUses.slots[1].point[3] == 0, "short profession lists recenter after a wrapped row is reused")
 Click("Materials")
 materialInput:SetText("sample")
 assert(detailUses:IsShown() and #detailUses.slots == 3 and not detailUses.unknown:IsShown())
@@ -449,6 +544,7 @@ end
 assert(characterInput and peerItemInput, "both searchable character panes are active")
 local peerRows = peerItemInput.list.rows
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
+assert(not peerRows[1].sharing, "only My inventory has privacy controls")
 assert(peerRows[1].usedBy.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
 assert(peerRows[2].usedBy.unknown:IsShown(), "a peer-only item does not invent profession uses")
 assert(not peerRows[2].usedBy:GetScript("OnEnter"), "unknown peer uses have no cell tooltip")
@@ -497,7 +593,7 @@ addon.ToggleFavorite(20)
 assert(saved.favorites[20] == nil and saved.favorites[10])
 Click("Settings")
 local checks = {}
-for _, f in ipairs(frames) do if f.checked ~= nil then checks[#checks + 1] = f end end
+for _, f in ipairs(frames) do if f.checked ~= nil and not f.parent.itemID then checks[#checks + 1] = f end end
 assert(#checks == 2)
 checks[2]:SetChecked(false)
 checks[2].scripts.OnClick(checks[2])
@@ -543,5 +639,7 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     assert(localized.L["Characters"] == "Personajes")
     assert(localized.L["Used by"] == "Usado por")
     assert(localized.L["Fishing"] == "Pesca")
+    assert(localized.L["Not shared with guild"] == "No se comparte" and localized.L["Share"] == "Compartir")
+    assert(localized.L["Not shared"] == "No compartidos")
 end
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

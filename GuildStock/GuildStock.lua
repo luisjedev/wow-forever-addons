@@ -41,6 +41,34 @@ function addon.Initialize()
     end
 end
 
+function addon.IsItemHidden(id)
+    return type(addon.db.hiddenItems) == "table" and addon.db.hiddenItems[id] == true
+end
+
+function addon.SetItemHidden(id, hidden)
+    if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return end
+    if addon.db.hiddenItems == nil then addon.db.hiddenItems = {} end
+    if type(addon.db.hiddenItems) ~= "table" then return end -- Preserve unsupported saved data.
+    addon.db.hiddenItems[id] = hidden or nil
+end
+
+-- The future GUILD inventory sender must build from this copy at send time, never db.own.
+-- Local observations retain all bag contents; hidden IDs and quantities never enter this copy.
+function addon.ShareableSnapshot()
+    if not addon.db or not addon.snapshot or addon.temporary
+        or (addon.db.hiddenItems ~= nil and type(addon.db.hiddenItems) ~= "table") then return nil end
+    for id, hidden in pairs(addon.db.hiddenItems or {}) do
+        if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return nil end
+    end
+    local result = {items = {}, observedAt = addon.snapshot.observedAt}
+    for id, item in pairs(addon.snapshot.items) do
+        if not addon.IsItemHidden(id) then
+            result.items[id] = {count = item.count, bound = item.bound}
+        end
+    end
+    return result
+end
+
 -- Runtime view of complete observations; the future GUILD receiver must verify membership
 -- before populating guildData = { guildID = ..., characters = { [id] = { name, snapshot } } }.
 -- No network producer or persisted peer cache is enabled by this interface prototype.

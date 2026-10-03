@@ -5,7 +5,7 @@ local page, view, profession = "materials", "all", nil
 local tabs, navigation, professionButtons = {}, {}, {}
 local browser, inventory, settings, sidebar, materialList, details
 local bagList, search, bagSearch, listTitle, listHint, detailName, detailProfessions, detailIcon, detailSlot, detailStar, emptyOwners
-local inventoryNote, syncStatus, syncDescription, scaleLabel
+local inventoryNote, hiddenList, syncStatus, syncDescription, scaleLabel
 local characters, characterList, characterItems, characterSearch, characterItemSearch
 local selectedCharacter, characterName, characterNote
 local temporarySettings = {}
@@ -104,10 +104,11 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local function InventoryHeader(parent, x, y, width)
+local function InventoryHeader(parent, x, y, width, sharing)
     local header = Panel(parent, x, y, width, 39)
     header:SetBackdropColor(unpack(colors.header))
-    local contentWidth = width - 24 -- reserve the same scrollbar space as the rows
+    if sharing then header:SetBackdropBorderColor(0, 0, 0, 0) end
+    local contentWidth = width - 24 - (sharing and 92 or 0) -- same scrollbar/action space as the rows
     Label(header, L["Material"], 19, 11, contentWidth * 0.5 - 33, 15)
     Label(header, L["Used by"], contentWidth * 0.5, 11, contentWidth * 0.5 - 114, 15)
     Label(header, L["Bags"], contentWidth - 100, 11, 100, 15):SetJustifyH("CENTER")
@@ -124,7 +125,7 @@ end
 
 local function SetMaterialProfessions(cell, professions)
     local count = 0
-    local size = math.min(24, math.floor((cell:GetWidth() + 2) / #addon.professions) - 2)
+    local size, columns = 24, math.max(1, math.floor((cell:GetWidth() + 2) / 26))
     if addon.Accessible(professions) and type(professions) == "table" then
         for _, profession in ipairs(addon.professions) do
             local known = professions[profession[1]]
@@ -143,6 +144,13 @@ local function SetMaterialProfessions(cell, professions)
                 slot:Show()
             end
         end
+    end
+    -- Keep icons readable in narrow inventories, centering two lines inside the 55-pixel row.
+    local top = (24 - (math.ceil(count / columns) * 26 - 2)) / 2
+    for i = 1, count do
+        local slot = cell.slots[i]
+        slot:ClearAllPoints()
+        slot:SetPoint("TOPLEFT", ((i - 1) % columns) * 26, -top - math.floor((i - 1) / columns) * 26)
     end
     for i = count + 1, #cell.slots do cell.slots[i]:Hide() end
     cell.unknown:SetShown(count == 0)
@@ -236,37 +244,73 @@ end
 
 local function RenderList(list, entries, snapshot)
     local own = snapshot ~= nil
+    local hidden = list.hidden
+    local contentWidth = list.width - (list.sharing and 92 or 0)
     local catalog = own and addon.Catalog()
     -- ponytail: one reused row per discovered material; virtualize if large catalogs make refresh slow.
     for i, entry in ipairs(entries) do
         local row = list.rows[i]
         if not row then
             row = Button(list.content, "", 0, (i - 1) * 55, list.width, 55, function(self)
-                if not own then selected = self.itemID; addon.Refresh() end
+                if not own and not hidden then selected = self.itemID; addon.Refresh() end
             end)
             local slot = Panel(row, 7, 6, 43, 43, gold)
+            if list.sharing or hidden then slot:SetBackdropBorderColor(0, 0, 0, 0) end
             row.icon = Icon(slot, nil, 2, 2, 39)
             row.label:ClearAllPoints()
             row.label:SetPoint("LEFT", 59, 0)
-            row.label:SetWidth(own and list.width * 0.5 - 73 or list.width - 96)
+            row.label:SetWidth(own and contentWidth * 0.5 - 73 or list.width - (hidden and 155 or 96))
             row.label:SetJustifyH("LEFT")
             if own then
-                row.usedBy = MaterialProfessionCell(row, list.width * 0.5, 15.5, list.width * 0.5 - 114)
-                row.count = Label(row, "", list.width - 100, 18, 100, 16)
+                row.usedBy = MaterialProfessionCell(row, contentWidth * 0.5, 15.5, contentWidth * 0.5 - 114)
+                row.count = Label(row, "", contentWidth - 100, 18, 100, 16)
                 row.count:SetJustifyH("CENTER")
-            else
+            elseif not hidden then
                 row.star = StarButton(row, list.width - 36, 11, function() addon.ToggleFavorite(row.itemID); addon.Refresh() end)
+            end
+            if list.sharing then
+                row.sharing = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+                row.sharing:SetPoint("TOPLEFT", list.width - 88, -13.5)
+                row.sharing:SetSize(28, 28)
+                Label(row, L["Share"], list.width - 59, 20, 59, 14)
+                row.sharing:SetScript("OnClick", function(self)
+                    addon.SetItemHidden(row.itemID, not self:GetChecked())
+                    GameTooltip:Hide()
+                    addon.Refresh()
+                end)
+                Tip(row.sharing, L["Share this item with your guild. Uncheck to stop sharing."])
+                row.privateNote = Label(row, L["Not shared with guild"], 59, 32, contentWidth * 0.5 - 73, 12, muted)
+                row.privateNote:SetWordWrap(false)
+            elseif hidden then
+                row.sharing = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                row.sharing:SetPoint("TOPLEFT", list.width - 88, -14)
+                row.sharing:SetSize(84, 27)
+                row.sharing:SetText(L["Share"])
+                row.sharing:SetScript("OnClick", function()
+                    addon.SetItemHidden(row.itemID, false)
+                    GameTooltip:Hide()
+                    addon.Refresh()
+                end)
+                Tip(row.sharing, L["Share this item again."])
             end
             list.rows[i] = row
         end
         row.itemID = entry.id
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        Highlight(row, not own and entry.id == selected)
+        Highlight(row, not own and not hidden and entry.id == selected)
+        if list.sharing or hidden then row:SetBackdropBorderColor(0, 0, 0, 0) end
+        if list.sharing then
+            local excluded = addon.IsItemHidden(entry.id)
+            row.sharing:SetChecked(not excluded)
+            row.privateNote:SetShown(excluded)
+            row.label:ClearAllPoints()
+            row.label:SetPoint("LEFT", 59, excluded and 8 or 0)
+        end
         if own then
             row.count:SetText(entry.count)
             SetMaterialProfessions(row.usedBy, catalog[entry.id])
-        else
+        elseif not hidden then
             Star(row.star, entry.id)
         end
         row:Show()
@@ -370,6 +414,9 @@ function addon.Refresh()
         RenderList(bagList, entries, addon.snapshot)
         bagList.empty:SetShown(#entries == 0)
         bagList.empty:SetText(L[addon.snapshot and "No matching materials." or "No complete bag observation yet."])
+        local hidden = addon.HiddenItems()
+        RenderList(hiddenList, hidden)
+        hiddenList.empty:SetShown(#hidden == 0)
         inventoryNote:SetText(addon.incomplete and L["Incomplete bag read; retaining the previous observation."] or L["Quantities for your current character."])
     else
         local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
@@ -507,12 +554,22 @@ local function CreateWindow()
     inventory = Panel(window, 7, 77, 1166, 566)
     Label(inventory, L["My inventory"], 25, 20, 1050, 29, cream, true)
     Label(inventory, L["Profession materials in your bags"], 26, 63, 1050, 17, muted)
-    bagSearch = Search(inventory, "Search my bags...", 23, 98, 1118)
-    InventoryHeader(inventory, 23, 148, 1118)
-    bagList = Scroll(inventory, 23, 187, 1118, 325)
+    local bagWidth, hiddenWidth = 1100 * 0.7, 1100 * 0.3 -- 18-pixel gutter
+    bagSearch = Search(inventory, "Search my bags...", 23, 98, bagWidth)
+    InventoryHeader(inventory, 23, 148, bagWidth, true)
+    bagList = Scroll(inventory, 23, 187, bagWidth, 325)
+    bagList.sharing = true
     bagSearch.list = bagList
-    bagList.empty = Label(inventory, "", 160, 283, 840, 17, muted)
+    bagList.empty = Label(inventory, "", 45, 283, bagWidth - 68, 17, muted)
     bagList.empty:SetJustifyH("CENTER")
+    local hiddenPanel = Panel(inventory, 23 + bagWidth + 18, 98, hiddenWidth, 414)
+    hiddenPanel:SetBackdropBorderColor(0, 0, 0, 0)
+    Label(hiddenPanel, L["Not shared"], 14, 12, hiddenWidth - 28, 22, cream, true)
+    Label(hiddenPanel, L["Excluded from guild sharing. Use Share to include them again."], 14, 44, hiddenWidth - 28, 14, muted)
+    hiddenList = Scroll(hiddenPanel, 0, 89, hiddenWidth, 325)
+    hiddenList.hidden = true
+    hiddenList.empty = Label(hiddenPanel, L["No excluded items."], 20, 185, hiddenWidth - 40, 17, muted)
+    hiddenList.empty:SetJustifyH("CENTER")
     inventoryNote = Label(inventory, "", 26, 534, 1090, 13, muted)
 
     settings = Panel(window, 7, 77, 1166, 566)

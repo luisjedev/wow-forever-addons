@@ -93,6 +93,19 @@ function addon.Materials(view, profession, search, inventory)
     return result
 end
 
+function addon.HiddenItems()
+    local result = {}
+    local hidden = type(addon.db.hiddenItems) == "table" and addon.db.hiddenItems or {}
+    for id, value in pairs(hidden) do
+        if addon.Integer(id, 1, 2147483647) and value == true then
+            local data = addon.ItemData(id)
+            result[#result + 1] = {id = id, name = data.name, icon = data.icon}
+        end
+    end
+    table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
+    return result
+end
+
 function addon.ToggleFavorite(id)
     if addon.db.favorites == nil then addon.db.favorites = {} end
     if type(addon.db.favorites) ~= "table" then return end
