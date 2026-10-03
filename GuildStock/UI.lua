@@ -102,13 +102,13 @@ function addon.SetPlayerRace(row, raceID, x)
 end
 
 -- Character rows use validated primary-profession keys from guild data.
-function addon.SetPlayerSkills(row, skills)
+function addon.SetPlayerSkills(row, skills, x)
     if not row.skillSlots then
         row.skillSlots = {}
         for i = 1, 2 do
             local slot = Panel(row, 0, 0, 26, 26, colors.border)
             slot:ClearAllPoints()
-            slot:SetPoint("LEFT", playerColumns[2][2] + 3 + (i - 1) * 32, 0)
+            slot:SetPoint("LEFT", (x or playerColumns[2][2] + 3) + (i - 1) * 32, 0)
             slot.icon = Icon(slot, nil, 2, 2, 22)
             row.skillSlots[i] = slot
         end
@@ -561,11 +561,12 @@ local function RefreshCharacters()
             row.label:SetJustifyH("LEFT")
             row.label:ClearAllPoints()
             row.label:SetPoint("LEFT", 46, 0)
-            row.label:SetWidth(characterList.width - 56)
+            row.label:SetWidth(characterList.width - 124)
             characterList.rows[i] = row
         end
         row.characterID = entry.id
         addon.SetPlayerRace(row, entry.race, 10)
+        addon.SetPlayerSkills(row, entry.skills, characterList.width - 68)
         row.separator:SetShown(i < #entries)
         row.label:SetText(entry.name)
         SyncTip(row, entry)

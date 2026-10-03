@@ -1401,6 +1401,21 @@ assert(owner.raceIcon.atlas == "raceicon128-gnome-male", "material owners use th
 Click("Characters")
 local characterRow = characterInput.list.rows[1]
 assert(characterRow.raceIcon.atlas == owner.raceIcon.atlas, "both player lists use the same race")
+for i = 1, 2 do
+    assert(characterRow.skillSlots[i].icon.texture == owner.skillSlots[i].icon.texture,
+        "Characters rows use the same primary-profession icons as Materials")
+end
+assert(characterRow.label.point[2] + characterRow.label.width < characterRow.skillSlots[1].point[2],
+    "character names reserve space before the profession icons")
+assert(characterRow.skillSlots[2].point[2] + characterRow.skillSlots[2].width <= characterRow.width - 10,
+    "both profession slots fit inside the character row")
+addon.guildData.characters["Peer Fullname"].skills = {"Engineering"}; addon.Refresh()
+assert(characterRow.skillSlots[1].icon.texture == "Interface\\Icons\\Trade_Engineering"
+    and not characterRow.skillSlots[2].icon:IsShown(), "refresh replaces skills and clears a missing second profession")
+addon.guildData.characters["Peer Fullname"].skills = nil; addon.Refresh()
+assert(not characterRow.skillSlots[1].icon:IsShown() and not characterRow.skillSlots[2].icon:IsShown(),
+    "missing profession data clears both icons on a reused Characters row")
+addon.guildData.characters["Peer Fullname"].skills = {"Alchemy", "Mining"}
 peerRace = nil; addon.Refresh()
 assert(characterRow.raceIcon.atlas == nil, "missing roster race clears the previous character badge")
 Click("Materials")

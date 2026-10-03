@@ -29,6 +29,12 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 
 **Documented in matching-build source:** the [native addon list](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_AddOnList/AddonList.lua#L364) reads `IconTexture` metadata; GuildStock now declares the same bundled icon there. **Validation:** Lua syntax and all six repository suites pass; the texture's dimensions, alpha and uncompressed encoding were checked offline. Native keyboard input did not reliably enter the reload command, and a clipboard attempt timed out. No successful reload or rendering check is claimed. Header, minimap, profession/recipe shortcuts, addon-list metadata and other scales remain pending after reload or a client restart if the new asset/metadata is not detected. Saved data and synchronization are unchanged. No screenshots or player records are published.
 
+### GuildStock Characters list profession icons · October 4, 2026
+
+**Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`, interface `16001` from the existing client reference. **Affected addon:** GuildStock. Each row in the Characters tab's left-hand list now reuses Materials' two primary-profession slots, aligned to the right of the name. Names reserve space for the icons and retain their full-name tooltip. Missing profession data clears old icons while retaining the existing empty borders. No new client API, saved data or transport behavior is introduced.
+
+**Validation:** syntax and all six repository suites pass in an isolated copy of the committed baseline plus this UI change. Added assertions cover matching icons in both views, name/icon spacing, slot fit, skill updates and stale-icon removal. Concurrent bank-inventory edits caused unrelated failures in the shared checkout; those changes are excluded from this validation and commit. Native `/reload` and visual verification remain pending while those edits are in progress, including long names, other scales and locales. No screenshots or player records are published.
+
 ## History
 
 | Product / version / build | Evidence | Limitations and status |
