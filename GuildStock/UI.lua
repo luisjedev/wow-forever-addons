@@ -767,7 +767,6 @@ local function CreateWindow(colors)
     UISpecialFrames[#UISpecialFrames + 1] = "GuildStockFrame"
     Icon(window, "Interface\\AddOns\\GuildStock\\Assets\\Icon", 19, 15, 49):SetTexCoord(0, 1, 0, 1)
     Label(window, "GuildStock", 82, 13, 260, 28, cream, true)
-    Label(window, L["Guild materials"], 83, 45, 260, 15, muted)
     for i, tab in ipairs({{"Materials", "materials"}, {"Characters", "characters"}, {"My inventory", "inventory"}, {"Settings", "settings"}}) do
         tabs[tab[2]] = Button(window, L[tab[1]], 348 + (i - 1) * 166, 16, 166, 45, function() SelectPage(tab[2]) end)
         tabs[tab[2]].tab = true
