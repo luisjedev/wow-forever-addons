@@ -11,9 +11,10 @@ local selectedCharacter, characterName, characterNote
 local temporarySettings = {}
 local gold, cream, muted = {0.64, 0.46, 0.23}, {0.94, 0.88, 0.73}, {0.70, 0.64, 0.54}
 local colors = {
-    window = {0.16, 0.12, 0.08, 0.99}, panel = {0.22, 0.17, 0.11, 0.98},
-    border = {0.35, 0.27, 0.17}, button = {0.15, 0.11, 0.07, 0.96},
-    selected = {0.39, 0.28, 0.12, 1}, header = {0.30, 0.23, 0.14, 1},
+    window = {0.095, 0.075, 0.045, 1}, panel = {0.125, 0.10, 0.06, 1},
+    border = {0.35, 0.27, 0.17}, button = {0.105, 0.08, 0.045, 1},
+    selected = {0.18, 0.14, 0.06, 1}, selectedBorder = {1, 0.82, 0},
+    header = {0.16, 0.12, 0.06, 1},
     text = {0.83, 0.78, 0.67},
 }
 local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
@@ -82,7 +83,8 @@ function addon.SetPlayerSkills(row, skills)
     for i = 1, 2 do
         local key = addon.Accessible(skills) and type(skills) == "table" and skills[i]
         local texture
-        if addon.Accessible(key) and type(key) == "string" and key ~= "Cooking" and key ~= "FirstAid" then
+        if addon.Accessible(key) and type(key) == "string"
+            and key ~= "Cooking" and key ~= "FirstAid" and key ~= "Fishing" then
             for _, profession in ipairs(addon.professions) do
                 if profession[1] == key then texture = "Interface\\Icons\\" .. profession[2]; break end
             end
@@ -155,7 +157,7 @@ local function Button(parent, text, x, y, width, height, callback, texture)
     button:SetBackdropColor(unpack(colors.button))
     button:SetBackdropBorderColor(unpack(colors.border))
     button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
-    button:GetHighlightTexture():SetVertexColor(1, 0.8, 0.4, 0.08)
+    button:GetHighlightTexture():SetVertexColor(1, 0.8, 0.4, 0.025)
     button.label = Label(button, text, texture and 47 or 10, (height - 18) / 2, width - (texture and 58 or 20), 16)
     button.label:SetWordWrap(false)
     if not texture then button.label:SetJustifyH("CENTER") end
@@ -167,7 +169,7 @@ end
 
 local function Highlight(button, active)
     button:SetBackdropColor(unpack(active and colors.selected or colors.button))
-    button:SetBackdropBorderColor(unpack(active and gold or colors.border))
+    button:SetBackdropBorderColor(unpack(active and colors.selectedBorder or colors.border))
     button.label:SetTextColor(unpack(active and cream or colors.text))
 end
 

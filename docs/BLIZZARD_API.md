@@ -201,6 +201,8 @@ Reference remains product `wow_classic_beta`, installed version `1.60.1.70205`, 
 
 **Automated:** syntax and all repository regression checks pass. New checks exercise synchronized list/detail favorite states and tooltips, replacing detail icons when selecting another material, empty searches, unknown mappings, secondary professions, and all supported icons fitting the header. Existing inventory and saved-data checks continue to pass. **Reproduced in the game:** after `/reload`, the Materials view displayed the bronze palette, Used by heading, filled and outline stars, and two profession icons beneath a material name; each icon showed its own Blacksmithing or Mining tooltip. My inventory and Settings displayed the same warm palette, with inventory icons still aligned. **Pending:** Spanish rendering, other UI scales, full restart, and populated guild character tables. These visual checks do not validate persistence or synchronization. No screenshots or player records are published.
 
+**Palette follow-up:** using the native professions panel as the visual reference, base surfaces, table headers and selected fills were darkened to near-black bronze. Selected tabs, materials, navigation filters and character rows now share a bright yellow border; the mouseover wash is subtler. Only color constants and their existing assignments changed. Syntax and all repository regression checks pass. Two native reload attempts were interrupted by detected user activity; the revised palette remains pending in-game visual verification. This does not change the earlier icon/tooltip observations or compatibility limitations.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
