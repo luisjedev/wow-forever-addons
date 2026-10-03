@@ -83,8 +83,7 @@ function addon.SetPlayerSkills(row, skills)
     for i = 1, 2 do
         local key = addon.Accessible(skills) and type(skills) == "table" and skills[i]
         local texture
-        if addon.Accessible(key) and type(key) == "string"
-            and key ~= "Cooking" and key ~= "FirstAid" and key ~= "Fishing" then
+        if addon.Accessible(key) and type(key) == "string" and key ~= "Cooking" and key ~= "FirstAid" then
             for _, profession in ipairs(addon.professions) do
                 if profession[1] == key then texture = "Interface\\Icons\\" .. profession[2]; break end
             end
