@@ -27,6 +27,7 @@ local es = {
     ["Enchanting"] = "Encantamiento",
     ["Cooking"] = "Cocina",
     ["FirstAid"] = "Primeros auxilios",
+    ["Fishing"] = "Pesca",
     ["Mining"] = "Minería",
     ["Herbalism"] = "Herboristería",
     ["Skinning"] = "Desuello",

@@ -335,6 +335,19 @@ for _, frame in ipairs(frames) do
     if frame.icon and frame.icon.atlas == "auctionhouse-icon-favorite-off" and not frame.parent.label then detailFavorite = frame end
 end
 assert(materialInput and detailUses and detailFavorite)
+-- Fishing is a secondary profession filter and shares the material-use renderer.
+local fishingButton = Click("Fishing")
+assert(fishingButton.image.texture == "Interface\\Icons\\Trade_Fishing")
+assert(not materialInput.list.rows[1]:IsShown(), "Fishing without observed associations has no matches")
+addon.Catalog()[20].Fishing = true
+addon.Refresh()
+assert(materialInput.list.rows[1].itemID == 20 and materialInput.list.rows[1]:IsShown())
+assert(not materialInput.list.rows[2]:IsShown(), "Fishing filters out unrelated materials")
+assert(detailUses.slots[2].icon.texture == "Interface\\Icons\\Trade_Fishing")
+detailUses.slots[2].scripts.OnEnter(detailUses.slots[2])
+assert(GameTooltip:GetText() == "Fishing")
+addon.Catalog()[20].Fishing = nil
+Click("All professions")
 assert(detailUses.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
 detailUses.slots[1].scripts.OnEnter(detailUses.slots[1])
 assert(GameTooltip:GetText() == "Cooking", "material detail uses the same profession tooltip as inventory")
@@ -528,5 +541,6 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     assert(localized.L["Skills"] == "Profesiones")
     assert(localized.L["Characters"] == "Personajes")
     assert(localized.L["Used by"] == "Usado por")
+    assert(localized.L["Fishing"] == "Pesca")
 end
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

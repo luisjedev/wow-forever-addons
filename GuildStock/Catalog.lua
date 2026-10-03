@@ -6,6 +6,7 @@ addon.professions = {
     { "Engineering", "Trade_Engineering" }, { "Tailoring", "Trade_Tailoring" },
     { "Leatherworking", "Trade_LeatherWorking" }, { "Enchanting", "Trade_Engraving" },
     { "Cooking", "INV_Misc_Food_15" }, { "FirstAid", "Spell_Holy_SealOfSacrifice" },
+    { "Fishing", "Trade_Fishing" },
     { "Mining", "Trade_Mining" }, { "Herbalism", "Trade_Herbalism" }, { "Skinning", "INV_Misc_Pelt_Wolf_01" },
 }
 

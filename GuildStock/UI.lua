@@ -83,7 +83,8 @@ function addon.SetPlayerSkills(row, skills)
     for i = 1, 2 do
         local key = addon.Accessible(skills) and type(skills) == "table" and skills[i]
         local texture
-        if addon.Accessible(key) and type(key) == "string" and key ~= "Cooking" and key ~= "FirstAid" then
+        if addon.Accessible(key) and type(key) == "string"
+            and key ~= "Cooking" and key ~= "FirstAid" and key ~= "Fishing" then
             for _, profession in ipairs(addon.professions) do
                 if profession[1] == key then texture = "Interface\\Icons\\" .. profession[2]; break end
             end
@@ -124,6 +125,7 @@ end
 
 local function SetMaterialProfessions(cell, professions)
     local names = {}
+    local size = math.min(24, math.floor((cell:GetWidth() + 2) / #addon.professions) - 2)
     if addon.Accessible(professions) and type(professions) == "table" then
         for _, profession in ipairs(addon.professions) do
             local known = professions[profession[1]]
@@ -132,9 +134,9 @@ local function SetMaterialProfessions(cell, professions)
                 names[#names + 1] = name
                 local slot = cell.slots[#names]
                 if not slot then
-                    slot = Panel(cell, (#names - 1) * 26, 0, 24, 24)
+                    slot = Panel(cell, (#names - 1) * (size + 2), 0, size, size)
                     slot:EnableMouse(true)
-                    slot.icon = Icon(slot, nil, 2, 2, 20)
+                    slot.icon = Icon(slot, nil, 2, 2, size - 4)
                     cell.slots[#names] = slot
                 end
                 slot.icon:SetTexture("Interface\\Icons\\" .. profession[2])

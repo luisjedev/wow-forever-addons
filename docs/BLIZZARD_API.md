@@ -203,6 +203,14 @@ Reference remains product `wow_classic_beta`, installed version `1.60.1.70205`, 
 
 **Palette follow-up:** using the native professions panel as the visual reference, base surfaces, table headers and selected fills were darkened to near-black bronze. Selected tabs, materials, navigation filters and character rows now share a bright yellow border; the mouseover wash is subtler. Only color constants and their existing assignments changed. Syntax and all repository regression checks pass. Two native reload attempts were interrupted by detected user activity; the revised palette remains pending in-game visual verification. This does not change the earlier icon/tooltip observations or compatibility limitations.
 
+### GuildStock Fishing filter · October 3, 2026
+
+Reference remains product `wow_classic_beta`, installed version `1.60.1.70205`, interface `16001`. GuildStock now includes Fishing in its profession sidebar and material-use icons, with Pesca for `esES`/`esMX`. It remains excluded from character cells reserved for two primary professions. Material-use icons shrink in the narrower Characters inventory so all twelve supported professions fit.
+
+**Documented in source:** the matching build's [Camelot profession book](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBook.lua#L18) renders Fishing as a secondary profession. Adding the category does not establish material associations: the existing catalog records observed recipe inputs, not items obtained by fishing. A Fishing filter with no discovered associations can remain empty.
+
+**Automated:** syntax and all repository regression checks pass, including the Fishing button, empty/populated filtering with synthetic associations, icon and tooltip, Spanish translations, exclusion from primary-profession cells and twelve-icon fit. **Pending native verification:** computer control interrupted the reload attempt after detecting user activity; the observed window still showed the previous list. Verify the new button/icon and scrolling after `/reload`, Spanish rendering and populated Characters rows. No persistence or fishing-catalog coverage is validated by this change.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
