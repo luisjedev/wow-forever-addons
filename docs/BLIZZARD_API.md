@@ -267,6 +267,12 @@ GuildStock creates one child using that template, anchored at the bottom-right w
 
 **Automated:** syntax and all repository regression checks pass. Added checks cover absent/late/already-loaded profession UI, combat deferral, single attachment, bottom anchoring, native-tab preservation, opening/closing, ignored right/outside releases, tooltip cleanup and no outgoing packets. **Reproduced in the game:** after `/reload`, opening Blacksmithing displayed the crate in a matching native tab at the bottom-right, with a clear gap below the profession tabs. Concurrent user activity interrupted the overview and shortcut-click attempts; live opening/closing and overview navigation remain **pending**, as do tooltip behavior, other scales, combat and a full restart. No screenshots or player records are published.
 
+### GuildStock native close and clear buttons · October 3, 2026
+
+**Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`; interface remains `16001`. GuildStock's window-close button and all four search-clear buttons now use `UIPanelCloseButtonNoScripts`, retaining their existing sizes and click actions. The matching-build [Blizzard template](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml#L134) supplies the native red exit button's normal, pressed, disabled and highlight atlases. Using the template without its default click script lets search buttons clear their own fields without hiding their parent panels.
+
+**Automated:** syntax and all repository regression checks pass. **Pending native verification:** computer control interrupted the `/reload` attempt after detecting user activity; the observed window still showed the previous text glyphs. Verify native textures, hover/pressed states, window closing and clearing each search after reload. This visual change affects GuildStock only and does not change SavedVariables or transport. No screenshots or player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

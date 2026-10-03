@@ -174,6 +174,15 @@ local function Button(parent, text, x, y, width, height, callback, texture)
     return button
 end
 
+local function CloseButton(parent, x, y, size, callback)
+    local button = CreateFrame("Button", nil, parent, "UIPanelCloseButtonNoScripts")
+    button:SetPoint("TOPLEFT", x, -y)
+    button:SetSize(size, size)
+    button:RegisterForClicks("LeftButtonUp")
+    button:SetScript("OnClick", callback)
+    return button
+end
+
 local function Highlight(button, active)
     if not button.selection then
         local marker = button:CreateTexture(nil, "ARTWORK")
@@ -217,7 +226,7 @@ local function Search(parent, placeholder, x, y, width)
     end)
     field:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     field:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    Button(shell, "×", width - 31, 3, 28, 28, function() field:SetText(""); field:ClearFocus() end)
+    CloseButton(shell, width - 31, 3, 28, function() field:SetText(""); field:ClearFocus() end)
     field:SetText("")
     return field
 end
@@ -514,7 +523,7 @@ local function CreateWindow()
         tabs[tab[2]] = Button(window, L[tab[1]], 348 + (i - 1) * 166, 16, 166, 45, function() SelectPage(tab[2]) end)
         tabs[tab[2]].tab = true
     end
-    Button(window, "×", 1138, 14, 30, 30, function() window:Hide() end)
+    CloseButton(window, 1138, 14, 30, function() window:Hide() end)
     browser = CreateFrame("Frame", nil, window)
     browser:SetAllPoints()
     sidebar = Panel(browser, 7, 77, 247, 566)
