@@ -9,7 +9,13 @@ local inventoryNote, syncStatus, syncDescription, scaleLabel
 local characters, characterList, characterItems, characterSearch, characterItemSearch
 local selectedCharacter, characterName, characterNote
 local temporarySettings = {}
-local gold, cream, muted = {0.68, 0.51, 0.24}, {0.94, 0.90, 0.76}, {0.61, 0.66, 0.67}
+local gold, cream, muted = {0.64, 0.46, 0.23}, {0.94, 0.88, 0.73}, {0.70, 0.64, 0.54}
+local colors = {
+    window = {0.16, 0.12, 0.08, 0.99}, panel = {0.22, 0.17, 0.11, 0.98},
+    border = {0.35, 0.27, 0.17}, button = {0.15, 0.11, 0.07, 0.96},
+    selected = {0.39, 0.28, 0.12, 1}, header = {0.30, 0.23, 0.14, 1},
+    text = {0.83, 0.78, 0.67},
+}
 local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
 local viewLabels = { all = "All materials", favorites = "Favorites" }
 local playerColumns = {
@@ -35,8 +41,8 @@ local function Panel(parent, x, y, width, height, border)
     frame:SetPoint("TOPLEFT", x, -y)
     frame:SetSize(width, height)
     frame:SetBackdrop(backdrop)
-    frame:SetBackdropColor(0.18, 0.22, 0.24, 0.98)
-    frame:SetBackdropBorderColor(unpack(border or {0.23, 0.28, 0.29}))
+    frame:SetBackdropColor(unpack(colors.panel))
+    frame:SetBackdropBorderColor(unpack(border or colors.border))
     return frame
 end
 
@@ -98,24 +104,25 @@ end
 
 local function InventoryHeader(parent, x, y, width)
     local header = Panel(parent, x, y, width, 39)
-    header:SetBackdropColor(0.25, 0.29, 0.31, 1)
+    header:SetBackdropColor(unpack(colors.header))
     local contentWidth = width - 24 -- reserve the same scrollbar space as the rows
     Label(header, L["Material"], 19, 11, contentWidth * 0.5 - 33, 15)
     Label(header, L["Used by"], contentWidth * 0.5, 11, contentWidth * 0.5 - 114, 15)
     Label(header, L["Bags"], contentWidth - 100, 11, 100, 15):SetJustifyH("CENTER")
 end
 
-local function SetMaterialProfessions(row, professions, width)
-    if not row.usedBy then
-        local cell = CreateFrame("Frame", nil, row)
-        cell:SetPoint("LEFT", width * 0.5, 0)
-        cell:SetSize(width * 0.5 - 114, 24)
-        cell:EnableMouse(true)
-        cell.slots = {}
-        cell.unknown = Label(cell, "—", 0, 3, 24, 16, muted)
-        row.usedBy = cell
-    end
-    local cell, names = row.usedBy, {}
+local function MaterialProfessionCell(parent, x, y, width)
+    local cell = CreateFrame("Frame", nil, parent)
+    cell:SetPoint("TOPLEFT", x, -y)
+    cell:SetSize(width, 24)
+    cell:EnableMouse(true)
+    cell.slots = {}
+    cell.unknown = Label(cell, "—", 0, 3, 24, 16, muted)
+    return cell
+end
+
+local function SetMaterialProfessions(cell, professions)
+    local names = {}
     if addon.Accessible(professions) and type(professions) == "table" then
         for _, profession in ipairs(addon.professions) do
             local known = professions[profession[1]]
@@ -145,8 +152,8 @@ local function Button(parent, text, x, y, width, height, callback, texture)
     button:SetPoint("TOPLEFT", x, -y)
     button:SetSize(width, height)
     button:SetBackdrop(backdrop)
-    button:SetBackdropColor(0.12, 0.16, 0.18, 0.7)
-    button:SetBackdropBorderColor(0.20, 0.25, 0.26)
+    button:SetBackdropColor(unpack(colors.button))
+    button:SetBackdropBorderColor(unpack(colors.border))
     button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
     button:GetHighlightTexture():SetVertexColor(1, 0.8, 0.4, 0.08)
     button.label = Label(button, text, texture and 47 or 10, (height - 18) / 2, width - (texture and 58 or 20), 16)
@@ -159,9 +166,9 @@ local function Button(parent, text, x, y, width, height, callback, texture)
 end
 
 local function Highlight(button, active)
-    button:SetBackdropColor(active and 0.40 or 0.13, active and 0.31 or 0.17, active and 0.12 or 0.19, 0.96)
-    button:SetBackdropBorderColor(unpack(active and gold or {0.12, 0.17, 0.18}))
-    button.label:SetTextColor(unpack(active and cream or {0.79, 0.82, 0.80}))
+    button:SetBackdropColor(unpack(active and colors.selected or colors.button))
+    button:SetBackdropBorderColor(unpack(active and gold or colors.border))
+    button.label:SetTextColor(unpack(active and cream or colors.text))
 end
 
 local function Search(parent, placeholder, x, y, width)
@@ -201,18 +208,26 @@ end
 
 local function Star(button, id)
     local favorite = Favorite(id)
-    button.icon:SetTexCoord(0, 0.5, favorite and 0 or 0.5, favorite and 0.5 or 1)
-    button.icon:SetDesaturated(true)
-    button.icon:SetVertexColor(1, 0.85, 0.52)
-    button.icon:SetAlpha(favorite and 1 or 0.85)
-    Tip(button, L[Favorite(id) and "Remove from favorites" or "Add to favorites"])
+    local atlas = favorite and "auctionhouse-icon-favorite" or "auctionhouse-icon-favorite-off"
+    button.icon:SetAtlas(atlas)
+    button:GetHighlightTexture():SetAtlas(atlas)
+    button:GetHighlightTexture():SetAlpha(favorite and 0.2 or 0.4)
+    Tip(button, L[favorite and "Remove from favorites" or "Add to favorites"])
 end
 
 local function StarButton(parent, x, y, callback)
     local button = CreateFrame("Button", nil, parent)
     button:SetPoint("TOPLEFT", x, -y)
     button:SetSize(32, 32)
-    button.icon = Icon(button, "Interface\\COMMON\\ReputationStar", 4, 4, 24)
+    -- Native favorite atlases retain their 20:18 proportions inside a larger click target.
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetPoint("CENTER")
+    button.icon:SetSize(20, 18)
+    button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
+    local highlight = button:GetHighlightTexture()
+    highlight:ClearAllPoints()
+    highlight:SetPoint("CENTER")
+    highlight:SetSize(20, 18)
     button:RegisterForClicks("LeftButtonUp")
     button:SetScript("OnClick", callback)
     return button
@@ -235,6 +250,7 @@ local function RenderList(list, entries, snapshot)
             row.label:SetWidth(own and list.width * 0.5 - 73 or list.width - 96)
             row.label:SetJustifyH("LEFT")
             if own then
+                row.usedBy = MaterialProfessionCell(row, list.width * 0.5, 15.5, list.width * 0.5 - 114)
                 row.count = Label(row, "", list.width - 100, 18, 100, 16)
                 row.count:SetJustifyH("CENTER")
             else
@@ -248,7 +264,7 @@ local function RenderList(list, entries, snapshot)
         Highlight(row, not own and entry.id == selected)
         if own then
             row.count:SetText(entry.count)
-            SetMaterialProfessions(row, catalog[entry.id], list.width)
+            SetMaterialProfessions(row.usedBy, catalog[entry.id])
             Tip(row, entry.name .. "\n" .. L["Bound"] .. ": " .. snapshot.items[entry.id].bound .. "\n"
                 .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", snapshot.observedAt)))
         else
@@ -337,19 +353,15 @@ function addon.Refresh()
         RenderList(materialList, entries)
         detailSlot:SetShown(selected ~= nil)
         detailStar:SetShown(selected ~= nil)
+        detailProfessions:SetShown(selected ~= nil)
         if selected then
-            local data, names = addon.ItemData(selected), {}
+            local data = addon.ItemData(selected)
             detailName:SetText(data.name)
             detailIcon:SetTexture(data.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            local professions = addon.Catalog()[selected]
-            for _, entry in ipairs(addon.professions) do
-                if professions[entry[1]] == true then names[#names + 1] = L[entry[1]] end
-            end
-            detailProfessions:SetText(#names > 0 and table.concat(names, " · ") or L["Profession not yet identified"])
+            SetMaterialProfessions(detailProfessions, addon.Catalog()[selected])
             Star(detailStar, selected)
         else
             detailName:SetText(L["Select a material"])
-            detailProfessions:SetText("")
         end
         emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
     elseif page == "characters" then
@@ -393,7 +405,7 @@ local function CreateWindow()
     window:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16,
         insets = {left = 4, right = 4, top = 4, bottom = 4} })
-    window:SetBackdropColor(0.15, 0.19, 0.21, 0.99)
+    window:SetBackdropColor(unpack(colors.window))
     window:SetBackdropBorderColor(unpack(gold))
     window:RegisterForDrag("LeftButton")
     window:SetScript("OnDragStart", window.StartMoving)
@@ -416,11 +428,14 @@ local function CreateWindow()
             if view == "all" then profession = nil end
             materialList.scroll.ScrollBar:SetValue(0)
             addon.Refresh()
-        end, entry[1] == "favorites" and "Interface\\COMMON\\ReputationStar" or "Interface\\Icons\\" .. entry[2])
+        end, "Interface\\Icons\\" .. entry[2])
     end
-    navigation.favorites.image:SetTexCoord(0, 0.5, 0, 0.5)
-    navigation.favorites.image:SetVertexColor(1, 0.78, 0.38)
-    Label(sidebar, L["Professions"], 15, 118, 218, 13, muted)
+    navigation.favorites.image:SetTexCoord(0, 1, 0, 1)
+    navigation.favorites.image:SetAtlas("auctionhouse-icon-favorite")
+    navigation.favorites.image:SetSize(20, 18)
+    navigation.favorites.image:ClearAllPoints()
+    navigation.favorites.image:SetPoint("LEFT", 14, 0)
+    Label(sidebar, L["Used by"], 15, 118, 218, 13, muted)
     local professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
@@ -444,13 +459,12 @@ local function CreateWindow()
     detailIcon = Icon(detailSlot, nil, 2, 2, 39)
     detailName = Label(details, "", 76, 14, 453, 16)
     detailName:SetWordWrap(false)
-    detailProfessions = Label(details, "", 76, 36, 453, 12, muted)
-    detailProfessions:SetWordWrap(false)
+    detailProfessions = MaterialProfessionCell(details, 76, 36, 453)
     detailStar = StarButton(details, 539, 17, function() if selected then addon.ToggleFavorite(selected); addon.Refresh() end end)
     local tablePanel = Panel(details, 17, 67, 554, 463)
     tablePanel:SetPoint("BOTTOMRIGHT", -16, 36)
     local tableHeader = Panel(tablePanel, 0, 0, 554, 41)
-    tableHeader:SetBackdropColor(0.25, 0.29, 0.31, 1)
+    tableHeader:SetBackdropColor(unpack(colors.header))
     for _, column in ipairs(playerColumns) do
         local heading = Label(tableHeader, L[column[1]], column[2], 13, column[3], 14)
         heading:SetWordWrap(false)
@@ -546,7 +560,7 @@ local function CreateWindow()
     slider:SetValueStep(0.05)
     slider:SetObeyStepOnDrag(true)
     slider:SetBackdrop(backdrop)
-    slider:SetBackdropColor(0.12, 0.14, 0.14, 1)
+    slider:SetBackdropColor(unpack(colors.button))
     slider:SetBackdropBorderColor(unpack(gold))
     slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
     slider:GetThumbTexture():SetSize(28, 28)

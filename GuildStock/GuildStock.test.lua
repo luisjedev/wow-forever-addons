@@ -38,6 +38,7 @@ function methods:SetScale(value) self.scale = value end
 function methods:GetScale() return self.scale or 1 end
 function methods:SetBackdropColor(...) self.background = {...} end
 function methods:SetTexture(value) self.texture = value end
+function methods:SetAtlas(value) self.atlas = value end
 function methods:SetChecked(value) self.checked = value end
 function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
@@ -327,6 +328,29 @@ local function Click(label)
     end
     error("Missing button: " .. label)
 end
+local materialInput, detailUses, detailFavorite
+for _, frame in ipairs(frames) do
+    if frame.list and frame.list.rows[1] and frame.list.rows[1].star then materialInput = frame end
+    if frame.slots and frame.unknown then detailUses = frame end
+    if frame.icon and frame.icon.atlas == "auctionhouse-icon-favorite-off" and not frame.parent.label then detailFavorite = frame end
+end
+assert(materialInput and detailUses and detailFavorite)
+assert(detailUses.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
+detailUses.slots[1].scripts.OnEnter(detailUses.slots[1])
+assert(GameTooltip:GetText() == "Cooking", "material detail uses the same profession tooltip as inventory")
+local selectedRow = materialInput.list.rows[1]
+selectedRow.star.scripts.OnClick(selectedRow.star)
+assert(saved.favorites[selectedRow.itemID] and detailFavorite.icon.atlas == "auctionhouse-icon-favorite")
+assert(selectedRow.star.icon.atlas == detailFavorite.icon.atlas, "list and detail favorites refresh together")
+detailFavorite.scripts.OnEnter(detailFavorite)
+assert(GameTooltip:GetText() == "Remove from favorites")
+detailFavorite.scripts.OnClick(detailFavorite)
+assert(not saved.favorites[selectedRow.itemID] and selectedRow.star.icon.atlas == "auctionhouse-icon-favorite-off")
+materialInput:SetText("sample")
+assert(detailUses.slots[1].icon.texture == "Interface\\Icons\\Trade_Engineering")
+materialInput:SetText("no matching material")
+assert(not detailUses:IsShown() and not detailFavorite:IsShown(), "empty searches hide material actions and uses")
+materialInput:SetText("")
 Click("My inventory")
 local bagInput
 for _, frame in ipairs(frames) do
@@ -352,6 +376,25 @@ assert(#ownUses.slots == #addon.professions, "material uses are not limited to t
 addon.db.catalog[10] = materialUses
 addon.Refresh()
 assert(not ownUses.slots[4]:IsShown(), "reused rows hide obsolete profession icons")
+Click("Materials")
+materialInput:SetText("sample")
+assert(detailUses:IsShown() and #detailUses.slots == 3 and not detailUses.unknown:IsShown())
+detailUses.slots[3].scripts.OnEnter(detailUses.slots[3])
+assert(GameTooltip:GetText() == "First Aid")
+addon.db.catalog[10] = allUses
+addon.Refresh()
+local lastDetailUse = detailUses.slots[#addon.professions]
+assert(lastDetailUse.point[2] + lastDetailUse.width <= detailUses.width, "all consuming professions fit under the material name")
+addon.db.catalog[10] = {}
+addon.Refresh()
+assert(detailUses.unknown:IsShown() and not detailUses.slots[1]:IsShown(), "unknown mappings remove stale detail icons")
+detailUses.scripts.OnEnter(detailUses)
+assert(GameTooltip:GetText() == "Profession not yet identified")
+addon.db.catalog[10] = materialUses
+materialInput:SetText("")
+materialInput.list.rows[1].scripts.OnClick(materialInput.list.rows[1])
+assert(not detailUses.slots[2]:IsShown(), "switching materials removes obsolete detail icons")
+Click("My inventory")
 local queries = 0
 C_Item.GetItemInfo = function() queries = queries + 1; return "Loaded item" end
 Event("GET_ITEM_INFO_RECEIVED", 20, false)
