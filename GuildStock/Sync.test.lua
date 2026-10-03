@@ -351,4 +351,76 @@ slow.rosterReady=true;Step(180)
 assert(Received(fast,slow) and Received(slow,fast), "late roster readiness must recover both directions")
 quiet=#log;Step(600);assert(#log==quiet)
 
+-- Complete peer history survives a fresh Lua environment without trusting old sessions.
+clients,bus,log,clock = {},{},{},0
+local historian,source=Client("History Example"),Client("Source Example")
+historian:Login();source:Login();Step(90)
+local history=historian.env.GuildStockDB.guildHistory
+local original=Copy(history)
+assert(history.version==1 and history.guildID==42)
+assert(history.characters[source.name].receivedAt==Received(historian,source).receivedAt)
+assert(not history.characters[source.name].session and not history.characters[source.name].revision)
+local accepted=Received(historian,source)
+Receive(historian,source,"1|O|"..accepted.session.."|"..(accepted.revision+1))
+Receive(historian,source,"1|S|"..accepted.session.."|"..(accepted.revision+1).."|1|2|"..historian.env.time().."|0,0|2589,99,0")
+assert(history.characters[source.name].receivedAt==original.characters[source.name].receivedAt
+    and not history.characters[source.name].snapshot.items[2589], "partial transfers cannot replace saved history or its age")
+local function Reload(client, saved)
+    local index
+    for i,value in ipairs(clients) do if value==client then index=i end end
+    local replacement=Client(client.name)
+    clients[#clients]=nil;clients[index]=replacement
+    replacement.env.GuildStockDB=Copy(saved or client.env.GuildStockDB)
+    replacement.guild=client.guild
+    replacement:Login();replacement.addon.SyncTick()
+    return replacement
+end
+source.online=false
+historian=Reload(historian)
+assert(Received(historian,source) and historian.addon.sync.received==0)
+assert(#historian.addon.GuildCharacters()==1 and #historian.addon.MaterialOwners(2770,true)==1)
+assert(#historian.addon.MaterialOwners(2770,false)==0, "history cannot invent online presence")
+assert(not Received(historian,source).session)
+local receipt=Received(historian,source).receivedAt
+Step(90);assert(Received(historian,source).receivedAt==receipt, "idle history never becomes fresh by itself")
+historian.rosterReady=false;historian:Event("CLUB_MEMBERS_UPDATED",42)
+assert(#historian.addon.GuildCharacters()==0 and Received(historian,source))
+historian=Reload(historian)
+assert(Received(historian,source).receivedAt==receipt, "temporary roster gaps preserve saved history")
+source.online=true;historian:Event("CLUB_MEMBERS_UPDATED",42);Step(180)
+assert(historian.addon.sync.received>0 and Received(historian,source).session)
+assert(Received(historian,source).receivedAt>receipt, "unchanged remote sessions are revalidated after reload")
+source.inventory={};source.addon.Observe();Step(380)
+historian=Reload(historian)
+assert(next(Received(historian,source).snapshot.items)==nil, "empty replacement also persists")
+historian:Event("CLUB_MEMBER_REMOVED",42,2)
+assert(not historian.env.GuildStockDB.guildHistory.characters[source.name])
+source.online=false;historian=Reload(historian)
+assert(not Received(historian,source), "confirmed departures cannot reappear from disk")
+local saved=Copy(historian.env.GuildStockDB);saved.guildHistory=original
+historian.guild=43;historian=Reload(historian,saved)
+assert(next(historian.addon.guildData.characters)==nil and historian.env.GuildStockDB.guildHistory.guildID==43)
+historian.env.IsInGuild=function() return false end -- Club ID can still be stale during departure.
+historian:Event("PLAYER_GUILD_UPDATE")
+assert(not historian.addon.guildData and not historian.env.GuildStockDB.guildHistory)
+-- Future schemas and malformed records remain on disk, without being displayed or trusted.
+historian.guild=42
+saved.guildHistory=Copy(original);saved.guildHistory.version=99
+historian=Reload(historian,saved)
+assert(next(historian.addon.guildData.characters)==nil and historian.env.GuildStockDB.guildHistory.version==99)
+source.online=true;Step(180)
+assert(historian.env.GuildStockDB.guildHistory.version==99)
+saved.guildHistory=Copy(original);saved.guildHistory.characters[source.name].snapshot.items[2770].count=-1
+historian=Reload(historian,saved)
+assert(not Received(historian,source) and historian.env.GuildStockDB.guildHistory.characters[source.name].snapshot.items[2770].count==-1)
+saved.guildHistory=Copy(original);saved.guildHistory.characters[source.name].receivedAt=epoch-864000
+saved.guildHistory.characters[source.name].snapshot.observedAt=epoch-864000
+historian=Reload(historian,saved)
+assert(Received(historian,source), "dated local history can outlive network packet timestamp bounds")
+historian.addon.guildData.characters[source.name].memberID=99
+assert(#historian.addon.GuildCharacters()==0, "saved names cannot impersonate a different current member")
+historian=Reload(historian,{version=99,guildHistory=original})
+assert(historian.addon.temporary and historian.env.GuildStockDB.version==99)
+assert(not historian.env.GuildStockDB.guildHistory.characters[source.name].session)
+
 print("GuildStock sync: automatic exchange, fixed batching, privacy, zero, repair, sessions, transitions, restrictions and bounded traffic OK")

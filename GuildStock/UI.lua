@@ -21,7 +21,7 @@ local colors = {
 local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
 local viewLabels = { all = "All materials", favorites = "Favorites" }
 local playerColumns = {
-    {"Player", 15, 144}, {"Skills", 176, 64}, {"Bags", 259, 44},
+    {"Player", 15, 144}, {"Skills", 176, 64}, {"Units", 251, 68},
     {"Last online", 321, 113}, {"Whisper", 449, 89},
 }
 
@@ -136,13 +136,50 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+local function SeenTip(frame, entry)
+    local receivedAt = entry.receivedAt or entry.snapshot.observedAt
+    local function Update()
+        local age = math.max(0, time() - receivedAt)
+        local count, key
+        if age >= 3600 then
+            count = math.floor(age / 3600)
+            key = count == 1 and "Seen %s hour ago" or "Seen %s hours ago"
+        elseif age >= 60 then
+            count = math.floor(age / 60)
+            key = count == 1 and "Seen %s minute ago" or "Seen %s minutes ago"
+        else
+            count = math.floor(age)
+            key = count == 1 and "Seen %s second ago" or "Seen %s seconds ago"
+        end
+        GameTooltip:SetText(entry.name .. "\n" .. string.format(L[key], count), 1, 1, 1, 1, true)
+    end
+    local function Hide(self)
+        self:SetScript("OnUpdate", nil)
+        if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+    end
+    Hide(frame) -- A recycled row must not keep the previous character's tooltip.
+    frame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+        Update()
+        GameTooltip:Show()
+        local elapsed = 0
+        self:SetScript("OnUpdate", function(_, delta)
+            if not GameTooltip:IsOwned(self) then Hide(self); return end
+            elapsed = elapsed + delta
+            if elapsed >= 1 then elapsed = 0; Update() end
+        end)
+    end)
+    frame:SetScript("OnLeave", Hide)
+    frame:SetScript("OnHide", Hide)
+end
+
 local function InventoryHeader(parent, x, y, width, sharing)
     local header = Panel(parent, x, y, width, 39)
     header:SetBackdropColor(unpack(colors.header))
     local contentWidth = width - 24 - (sharing and 92 or 0) -- same scrollbar/action space as the rows
     Label(header, L["Material"], 19, 11, contentWidth * 0.5 - 33, 15)
     Label(header, L["Used by"], contentWidth * 0.5, 11, contentWidth * 0.5 - 114, 15)
-    Label(header, L["Bags"], contentWidth - 100, 11, 100, 15):SetJustifyH("CENTER")
+    Label(header, L["Units"], contentWidth - 100, 11, 100, 15):SetJustifyH("CENTER")
 end
 
 local function MaterialProfessionCell(parent, x, y, width)
@@ -519,7 +556,7 @@ local function RefreshCharacters()
         addon.SetPlayerRace(row, entry.race, 10)
         row.separator:SetShown(i < #entries)
         row.label:SetText(entry.name)
-        Tip(row, entry.name)
+        SeenTip(row, entry)
         Highlight(row, entry.id == selectedCharacter)
         row:Show()
     end
@@ -560,9 +597,13 @@ function addon.RenderOwners()
             row = CreateFrame("Frame", nil, details.owners.content)
             row:SetSize(554, 46)
             RowSeparator(row)
-            row.name = Label(row, "", 51, 14, 108, 13)
+            row.nameArea = CreateFrame("Frame", nil, row)
+            row.nameArea:SetPoint("TOPLEFT", 15, 0)
+            row.nameArea:SetSize(144, 46)
+            row.nameArea:EnableMouse(true)
+            row.name = Label(row.nameArea, "", 36, 14, 108, 13)
             row.name:SetWordWrap(false)
-            row.count = Label(row, "", 259, 14, 44, 14)
+            row.count = Label(row, "", 251, 14, 68, 14)
             row.presence = Label(row, "", 321, 14, 113, 13)
             row.whisper = Button(row, L["Whisper"], 449, 8, 79, 30, function(self)
                 addon.WhisperCharacter(self.characterID)
@@ -579,8 +620,7 @@ function addon.RenderOwners()
         row.whisper.characterID = entry.id
         row.whisper:SetEnabled(entry.online == true)
         Tip(row.whisper, L[entry.online and "Whisper" or "Whisper requires confirmed online presence."])
-        row:EnableMouse(true)
-        Tip(row, entry.name .. "\n" .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", entry.snapshot.observedAt)))
+        SeenTip(row.nameArea, entry)
         row:SetAlpha(entry.online and 1 or 0.65)
         addon.SetPlayerSkills(row, entry.skills)
         row:Show()

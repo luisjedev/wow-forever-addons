@@ -122,7 +122,7 @@ UIParent, Minimap, GameTooltip = Frame(), Frame(), Frame()
 UIParent:SetSize(1920, 1080)
 STANDARD_TEXT_FONT = "Fonts/example.ttf"
 methods.AddLine = function() end
-function methods:SetOwner(owner) self.owner = owner end
+function methods:SetOwner(owner, anchor) self.owner, self.anchor = owner, anchor end
 function methods:IsOwned(owner) return self.owner == owner end
 GetCursorPosition = function() return 150, 100 end
 GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
@@ -1210,6 +1210,27 @@ peerRace = nil; addon.Refresh()
 assert(characterRow.raceIcon.atlas == nil, "missing roster race clears the previous character badge")
 Click("Materials")
 assert(owner.raceIcon.atlas == nil, "missing roster race also clears the owner badge")
+-- Age reflects the last complete receipt, updates while hovered and follows the cursor.
+local seen=owner.nameArea
+local record=addon.guildData.characters["Peer Fullname"]
+assert(not owner.scripts.OnEnter, "only the player cell owns the observation tooltip")
+for _,case in ipairs({{0,"0 seconds"},{1,"1 second"},{59,"59 seconds"},{60,"1 minute"},
+    {3599,"59 minutes"},{3600,"1 hour"},{7200,"2 hours"}}) do
+    record.receivedAt=epoch-case[1]
+    addon.Refresh();seen.scripts.OnEnter(seen)
+    assert(GameTooltip.anchor=="ANCHOR_CURSOR" and GameTooltip:IsOwned(seen))
+    assert(GameTooltip:GetText()=="Peer Fullname\nSeen "..case[2].." ago")
+    seen.scripts.OnLeave(seen)
+    assert(not GameTooltip:IsShown() and not seen.scripts.OnUpdate)
+end
+record.receivedAt=epoch-59;addon.Refresh();seen.scripts.OnEnter(seen)
+epoch=epoch+1;seen.scripts.OnUpdate(seen,1)
+assert(GameTooltip:GetText()=="Peer Fullname\nSeen 1 minute ago")
+seen.scripts.OnHide(seen);assert(not GameTooltip:IsShown() and not seen.scripts.OnUpdate)
+addon.ApplyLanguage("esES");seen.scripts.OnEnter(seen)
+assert(GameTooltip:GetText()=="Peer Fullname\nVisto hace 1 minuto")
+addon.ApplyLanguage("enUS");seen.scripts.OnLeave(seen)
+
 local draft
 ChatFrameUtil = {SendTell = function(name) draft = name end}
 owner.whisper.scripts.OnClick(owner.whisper); assert(draft == "Peer Fullname")

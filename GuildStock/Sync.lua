@@ -22,12 +22,65 @@ local function ClearTransport()
     readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot = nil, nil, nil, nil, nil, nil
     retries, retryAt = 0, 0
 end
+local function SavedID(value)
+    return (type(value) == "string" and #value > 0 and #value <= 200)
+        or addon.Integer(value, 0, 9007199254740991)
+end
+local function History()
+    if not addon.db or addon.temporary then return end
+    local history = addon.db.guildHistory
+    if type(history) == "table" and history.version == 1 and SavedID(history.guildID)
+        and type(history.characters) == "table" then return history end
+end
+local function HistoricalCopy(name, character)
+    if type(name) ~= "string" or #name == 0 or #name > 200 or type(character) ~= "table"
+        or character.name ~= name or not SavedID(character.memberID)
+        or not addon.Integer(character.receivedAt, 0, time())
+        or not addon.ValidSnapshot(character.snapshot) or type(character.skills) ~= "table" then return end
+    local skills, items, count = {}, {}, 0
+    for i = 1, 2 do
+        local key = character.skills[i]
+        if key ~= nil then
+            local valid
+            for index, profession in ipairs(addon.professions) do
+                if index ~= 7 and index ~= 8 and index ~= 9 and key == profession[1] then valid = true end
+            end
+            if not valid then return end
+            skills[i] = key
+        end
+    end
+    for id, item in pairs(character.snapshot.items) do
+        count = count + 1
+        if count > MAX_ITEMS then return end
+        items[id] = {count = item.count, bound = item.bound}
+    end
+    -- Transport sessions and revisions must be negotiated again after login.
+    return {name = name, memberID = character.memberID, skills = skills, receivedAt = character.receivedAt,
+        snapshot = {observedAt = character.snapshot.observedAt, items = items}}
+end
+local function RestoreHistory()
+    local history = History()
+    if not addon.db or addon.temporary then return end
+    if addon.db.guildHistory ~= nil and not history then return end -- Preserve unsupported saved data.
+    if not guild then addon.db.guildHistory = nil; return end
+    if not history or history.guildID ~= guild then
+        if SavedID(guild) then addon.db.guildHistory = {version = 1, guildID = guild, characters = {}} end
+        return
+    end
+    local count = 0
+    for name, character in pairs(history.characters) do
+        count = count + 1
+        if count > 2000 then break end
+        addon.guildData.characters[name] = HistoricalCopy(name, character)
+    end
+end
 local function Scope()
     local current = addon.Read(C_Club and C_Club.GetGuildClubId)
     local absent = addon.Read(IsInGuild) == false
     if (absent and guild ~= nil) or (not absent and current ~= nil and current ~= guild) then
-        guild = absent and nil or current
+        if absent then guild = nil else guild = current end
         addon.guildData = guild and {guildID = guild, characters = {}} or nil
+        RestoreHistory()
         members, memberUntil, removed = nil, nil, {}
         ClearTransport()
         if world and guild and addon.ScheduleScan then addon.ScheduleScan() end
@@ -174,8 +227,12 @@ local function Commit(name, peer)
         peer.transfer = nil; return
     end
     addon.guildData.characters[name] = {name = name, memberID = peer.memberID, session = transfer.session,
-        revision = transfer.revision, skills = transfer.skills,
+        revision = transfer.revision, skills = transfer.skills, receivedAt = time(),
         snapshot = {items = transfer.items, observedAt = math.min(time(), transfer.observedAt)}}
+    local history = History()
+    if history and history.guildID == guild then
+        history.characters[name] = HistoricalCopy(name, addon.guildData.characters[name])
+    end
     peer.transfer, peer.timeout, peer.token, peer.due, peer.attempts = nil, nil, nil, nil, 0
     state.received = state.received + 1
     Refresh()
@@ -391,6 +448,12 @@ events:SetScript("OnEvent", function(_, event, a, b, c, d)
         members, memberUntil = nil, nil
         if event == "CLUB_MEMBER_REMOVED" and addon.Accessible(a) and addon.Accessible(b) and b ~= nil and a == guild then
             removed[b] = true
+            local history = History()
+            if history and history.guildID == guild then
+                for name, character in pairs(history.characters) do
+                    if type(character) == "table" and character.memberID == b then history.characters[name] = nil end
+                end
+            end
             if addon.guildData then
                 for name, character in pairs(addon.guildData.characters) do
                     if character.memberID == b then addon.guildData.characters[name], peers[name] = nil, nil end

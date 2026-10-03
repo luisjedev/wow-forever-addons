@@ -1,4 +1,4 @@
-GuildStock 0.3.2 - automatic synchronization testing build
+GuildStock 0.3.3 - automatic synchronization testing build
 WoW Forever beta 1.60.1, build 70205, interface 16001
 
 Install the same version on every participating client.
@@ -22,7 +22,10 @@ All addon traffic uses GUILD. Settings reports messaging restrictions or waiting
 If the beta blocks addon messages, local inventory remains available and the
 addon does not bypass that restriction. Local peer reception has been observed;
 remote display and cross-shard delivery still need independent verification.
-Peer inventories are kept in memory and reacquired from online peers after reload.
+Complete peer inventories are saved per character and restored after guild membership
+can be verified. New synchronization refreshes the dated history in the background.
+Hover a player name for the age of its last complete update above the cursor.
+Quantity columns now read Units. Login timing and five-minute change batches are unchanged.
 
 Includes the dark interface and animated profession-section dividers.
 FILES.sha256 identifies the exact packaged source files and Git commit.

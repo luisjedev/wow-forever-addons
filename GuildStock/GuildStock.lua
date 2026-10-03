@@ -27,6 +27,7 @@ local function ValidSnapshot(snapshot)
     end
     return true
 end
+addon.ValidSnapshot = ValidSnapshot
 
 function addon.Initialize()
     if addon.db then return end
@@ -71,7 +72,7 @@ function addon.ShareableSnapshot()
     return result
 end
 
--- Complete runtime observations only; membership and presence are rechecked for display.
+-- Complete observations only; saved history never authorizes membership or presence.
 function addon.GuildCharacters(search)
     local result, data = {}, addon.guildData
     local guild = addon.Read(C_Club and C_Club.GetGuildClubId)
@@ -81,11 +82,12 @@ function addon.GuildCharacters(search)
         local member = addon.SyncMember and addon.SyncMember(id)
         if type(id) == "string" and type(character) == "table" and addon.Accessible(character.name)
             and type(character.name) == "string" and character.name ~= "" and ValidSnapshot(character.snapshot)
-            and (not addon.SyncMember or (member and not member.isSelf))
+            and (not addon.SyncMember or (member and not member.isSelf
+                and (character.memberID == nil or character.memberID == member.id)))
             and character.name:lower():find(search, 1, true) then
             result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot,
                 skills = character.skills, online = member and member.online, offline = member and member.offline,
-                race = member and member.race}
+                race = member and member.race, receivedAt = character.receivedAt}
         end
     end
     table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
