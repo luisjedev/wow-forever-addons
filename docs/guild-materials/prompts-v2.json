@@ -1,5 +1,6 @@
 {
   "tool": "Built-in image_gen",
+  "settings_edit_prompt": "Edit the supplied GuildStock Settings UI concept. Remove the entire left sidebar, including all navigation entries, profession labels, icons, vertical border and divider. Expand the Settings content pane leftwards to occupy the entire interior width below the top header. Keep comfortable equal left/right margins and make its three existing groups span the available width. Keep every setting, label, checkbox state, dropdown, slider and synchronization description exactly as in the original. Keep the top GuildStock header, neutral crate emblem, three top tabs with Ajustes active, close button, bottom status footer and small concept caption. Preserve the dark modern WoW aesthetic, restrained gold border, typography, aspect ratio and visual quality. There must be no sidebar or empty reserved sidebar space; just one full-width Settings content area. Do not add any controls, bank references, manual sync or publication functions. Spanish text remains unchanged.",
   "reference": "material-browser.png (visual style only; earlier functionality superseded)",
   "screens": [
   {
