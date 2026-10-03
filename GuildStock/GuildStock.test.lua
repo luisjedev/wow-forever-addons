@@ -88,6 +88,16 @@ function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
 methods.CreateTexture, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame
+methods.CreateAnimationGroup, methods.CreateAnimation = Frame, Frame
+function methods:SetOrigin(...) self.origin = {...} end
+function methods:SetScaleFrom(x, y) self.scaleFrom = {x, y} end
+function methods:SetScaleTo(x, y) self.scaleTo = {x, y} end
+function methods:SetDuration(value) self.duration = value end
+function methods:SetSmoothing(value) self.smoothing = value end
+function methods:GetSmoothProgress() return self.progress or 0 end
+function methods:IsPlaying() return self.playing == true end
+function methods:Play() self.playing = true; self.playCount = (self.playCount or 0) + 1 end
+function methods:Stop() self.playing = false end
 function methods:CreateFontString()
     local label = Frame()
     fontStrings[#fontStrings + 1] = label
@@ -446,20 +456,53 @@ for _, frame in ipairs(frames) do
 end
 assert(materialInput and detailUses and detailFavorite)
 do
-    local buttons, mine, other = {}
+    local buttons, mine, other, all = {}
     for _, frame in ipairs(frames) do
         if frame.label and frame.image then buttons[frame.label:GetText()] = frame end
     end
     for _, frame in ipairs(fontStrings) do
         if frame:GetText() == "My professions" then mine = frame end
         if frame:GetText() == "Other professions" then other = frame end
+        if frame:GetText() == "Used by" and frame.separator then all = frame end
+    end
+    local function ActiveSection(title)
+        for _, heading in ipairs({all, mine, other}) do
+            local active = heading == title
+            assert(heading.separator.width == heading:GetWidth() * (active and 0.8 or 0.6)
+                and heading.separator.height == (active and 2 or 1), "only the selected section has an extended, thicker divider")
+        end
     end
     local content = buttons["All professions"].parent
     local scroll = content.parent
     assert(mine:IsShown() and other:IsShown() and buttons["All professions"].point[3] == 0)
     assert(buttons.Engineering.point[3] == -76 and buttons.Cooking.point[3] == -116)
     assert(buttons.Alchemy.point[3] < other.point[3] and other.point[3] < buttons.Cooking.point[3])
+    ActiveSection(all)
+    for _, heading in ipairs({all, mine, other}) do
+        assert(not heading.animation:IsPlaying(), "opening shows the correct section without an entrance animation")
+        assert(heading.stretch.duration == 0.5 and heading.stretch.smoothing == "OUT")
+        assert(heading.stretch.origin[1] == "LEFT" and heading.stretch.scaleTo[1] == 1 and heading.stretch.scaleTo[2] == 1)
+    end
+    Click("Cooking")
+    ActiveSection(mine)
+    assert(mine.animation:IsPlaying() and all.animation:IsPlaying(), "entering and leaving sections both animate")
+    assert(math.abs(mine.stretch.scaleFrom[1] - 0.75) < 0.0001 and mine.stretch.scaleFrom[2] == 1)
+    local plays = mine.animation.playCount
     Click("Engineering")
+    addon.Refresh()
+    assert(mine.animation.playCount == plays, "refreshing or choosing another profession in the same section does not restart the animation")
+    mine.stretch.progress = 0.5
+    Click("Mining")
+    ActiveSection(other)
+    assert(math.abs(mine.stretch.scaleFrom[1] * mine.targetWidth - mine:GetWidth() * 0.7) < 0.0001,
+        "a rapid reversal begins at the current animated width")
+    other.stretch.progress = secret
+    Click("All professions")
+    ActiveSection(all)
+    assert(other.fromWidth == other:GetWidth() * 0.8, "inaccessible animation progress falls back to the known layout")
+    other.stretch.progress = nil
+    Click("Engineering")
+    ActiveSection(mine)
     local getProfessions, allocated, packetCount = GetProfessions, #frames, #sent
     GetProfessions = function() return 1, nil, 3, 4, 5 end
     Event("SKILL_LINES_CHANGED")
@@ -467,6 +510,7 @@ do
         and buttons.Fishing.point[3] == -156 and buttons["First Aid"].point[3] == -196)
     assert(buttons.Engineering.point[3] < other.point[3] and buttons.Engineering.selection:IsShown(),
         "an unlearned profession moves to Other without changing the selected filter")
+    ActiveSection(other)
     assert(materialInput.list.rows[1].itemID == 10, "the selected profession still filters materials")
     local positions = {}
     for _, entry in ipairs(addon.professions) do
@@ -477,6 +521,7 @@ do
     GetProfessions = function() return secret end
     Event("SKILL_LINES_CHANGED")
     assert(buttons.Mining.point[3] == -76 and mine:IsShown(), "inaccessible reads retain the previous grouping")
+    ActiveSection(other)
     scroll.ScrollBar:SetValue(content:GetHeight() - scroll:GetHeight())
     GetProfessions = function() end
     Event("SKILL_LINES_CHANGED")
@@ -487,6 +532,7 @@ do
     Event("SKILL_LINES_CHANGED")
     SlashCmdList.GUILDSTOCK("")
     assert(mine:IsShown() and buttons.Engineering.point[3] == -76, "reopening discovers changes made while hidden")
+    ActiveSection(all)
     assert(#frames == allocated and #sent == packetCount, "regrouping reuses buttons and sends no messages")
 end
 -- Fishing is a secondary profession filter and shares the material-use renderer.

@@ -273,10 +273,41 @@ local function LayoutProfessions()
     for _, entry in ipairs(addon.professions) do
         if not seen[entry[1]] then Place(entry[1]) end
     end
+    professionList.learned = seen
     professionList.content:SetHeight(y)
     professionList.scroll:UpdateScrollChildRect()
     local maximum = math.max(0, y - professionList.scroll:GetHeight())
     professionList.scroll.ScrollBar:SetValue(math.min(professionList.scroll:GetVerticalScroll(), maximum))
+end
+
+local function HighlightProfessionSections()
+    local activeTitle = professionList.usedByTitle
+    if profession then
+        activeTitle = professionList.learned and professionList.learned[profession]
+            and professionList.myTitle or professionList.otherTitle
+    end
+    for _, title in ipairs({professionList.usedByTitle, professionList.myTitle, professionList.otherTitle}) do
+        local active = title == activeTitle
+        if title.active ~= active then
+            local width = title:GetWidth() * (active and 0.8 or 0.6)
+            local from = title.targetWidth
+            if from and addon.Read(title.animation.IsPlaying, title.animation) == true then
+                local progress = addon.Read(title.stretch.GetSmoothProgress, title.stretch)
+                if type(progress) == "number" and progress >= 0 and progress <= 1 then
+                    from = title.fromWidth + (from - title.fromWidth) * progress
+                end
+            end
+            title.animation:Stop()
+            title.separator:SetSize(width, active and 2 or 1)
+            title.separator:SetVertexColor(unpack(active and colors.accent or gold))
+            title.active, title.fromWidth, title.targetWidth = active, from, width
+            if from and title:IsShown() then
+                -- Set the final layout first; animate only its horizontal visual scale.
+                title.stretch:SetScaleFrom(from / width, 1)
+                title.animation:Play()
+            end
+        end
+    end
 end
 
 local function Favorite(id)
@@ -491,6 +522,7 @@ function addon.Refresh()
     settings:SetShown(page == "settings")
     if page == "materials" then
         LayoutProfessions()
+        HighlightProfessionSections()
         for key, button in pairs(navigation) do Highlight(button, key == view) end
         for key, button in pairs(professionButtons) do Highlight(button, key == (profession or "all")) end
         local entries = addon.Materials(view, profession, (search.appliedText or ""))
@@ -585,6 +617,7 @@ local function CreateWindow()
     navigation.favorites.image:SetPoint("LEFT", 14, 0)
     local usedByTitle = Label(sidebar, L["Used by"], 15, 118, 202, 13, muted)
     professionList = Scroll(sidebar, 7, 145, 234, 404)
+    professionList.usedByTitle = usedByTitle
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
         if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
@@ -612,6 +645,12 @@ local function CreateWindow()
         title.separator:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
         title.separator:SetSize(title:GetWidth() * 0.6, 1)
         title.separator:SetShown(title:IsShown())
+        title.animation = title.separator:CreateAnimationGroup()
+        title.stretch = title.animation:CreateAnimation("Scale")
+        title.stretch:SetOrigin("LEFT", 0, 0)
+        title.stretch:SetScaleTo(1, 1)
+        title.stretch:SetDuration(0.5)
+        title.stretch:SetSmoothing("OUT")
     end
     local middle = Panel(browser, 258, 77, 324, 566)
     search = Search(middle, "Search materials...", 11, 13, 301)
