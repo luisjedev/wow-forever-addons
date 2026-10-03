@@ -289,6 +289,8 @@ GuildStock creates one child using that template, anchored at the bottom-right w
 
 **Section-divider follow-up:** Used by, My professions and Other professions now have matching thin gold lines below their headings. Group dividers move and hide with their headings, using the existing texture APIs and palette. Syntax and all repository regression checks pass. **Reproduced in the game:** after another `/reload` and opening GuildStock, all three dividers were visible, aligned and clear of the text and profession rows. Other scales and translated rendering remain pending.
 
+**Divider-width follow-up:** the three gold lines now span 60% of their heading width. They enable native pixel rounding to keep their shared one-unit height visually consistent; the earlier Used by line appeared thicker at the observed scale. The matching-build [PixelUtil source](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SharedXML/PixelUtil.lua#L34) recommends `SetRoundLayoutToNearestPixel` for automatic layout adjustment. **Reproduced in the game:** after reload, all three shortened lines appeared equally thin. Syntax and all repository regression checks pass. Other scales remain pending.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

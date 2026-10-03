@@ -23,6 +23,7 @@ for _, method in ipairs({ "SetSize", "SetFrameLevel", "SetFrameStrata", "SetClam
     "SetThumbTexture", "SetDesaturated", "SetAlpha" }) do
     methods[method] = function() end
 end
+function methods:SetRoundLayoutToNearestPixel() end
 function methods:SetScript(event, fn) self.scripts[event] = fn end
 function methods:HookScript(event, fn)
     local previous = self.scripts[event]
