@@ -9,11 +9,11 @@ It is extended for each version and build that affects our addons. It does not a
 | Field | Value |
 | --- | --- |
 | Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on September 27, 2026 | `1.60.1.70009` |
+| Installed client observed on October 3, 2026 | `1.60.1.70205` |
 | Interface declared by TDL and Revenge | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Source revision consulted | [`bd2470a` · 1.60.1 (70009), September 24, 2026](https://github.com/Gethe/wow-ui-source/commit/bd2470aed543f72697a044e989285b6c83e63f73) |
-| Last review of this log | September 27, 2026 |
+| Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
+| Last review of this log | October 3, 2026; guild materials planning only |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The interface value comes from our `.toc` files; it is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
@@ -25,6 +25,24 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 | --- | --- | --- |
 | Forever beta · 1.60.1 · 69913 | Earlier note included in [TDL/README.txt](../TDL/README.txt) | A failure to restore SavedVariables after reload or exit was documented. This is a historical project record, not official confirmation or a new reproduction. |
 | Forever beta · 1.60.1 · 70009 | Local installation and source review at `bd2470a` | Identity restrictions and signatures reviewed in source. Persistence, combat, and nameplates still require validation in this build. The earlier failure is not considered fixed. |
+| Forever beta · 1.60.1 · 70205 | Local installation and source review at `e3ecc27` | Guild addon messaging, inventory, bank, and profession APIs reviewed for a proposed addon. No new in-game validation; previous addon limitations remain unresolved. |
+
+## Guild materials feasibility review October 3 2026
+
+Product `wow_classic_beta`, installed version `1.60.1.70205`, matches source revision `e3ecc27`. Existing addons declare interface `16001`; the running client's interface value still needs `GetBuildInfo()` verification. This review supports the [guild materials implementation plan](GUILD_MATERIALS_PLAN.md); it does not revalidate TDL or Revenge.
+
+| Area | Documented in source | Consequence and pending verification |
+| --- | --- | --- |
+| Addon transport | `C_ChatInfo.RegisterAddonMessagePrefix`, `SendAddonMessage`, and `CHAT_MSG_ADDON` expose prefix registration, payload transport, and sender/channel metadata. Registration and sending return result enums, not success booleans. | Proposed transport uses `GUILD` with a dedicated prefix. Prove bidirectional delivery between two guild members on this realm before implementing distributed inventory. A successful send result alone does not prove receipt. |
+| Messaging restrictions | `AreOutgoingAddonChatMessagesRestricted()` documents realm-dependent restrictions and independent control of receiving. `SendAddonMessage` rejects secret arguments. Result enums include `AddOnMessageLockdown`, `AddonMessageThrottle`, `ChannelThrottle`, `NotInGuild`, and `TargetOffline`. | Respect restrictions, handle the actual enums, and stop rather than switching to visible chat to evade a restriction. Exact byte/rate limits and `GUILD`/`WHISPER` behavior remain runtime tests; no Retail or Classic limit is certified here. |
+| Bags | `C_Container.GetContainerNumSlots` and `GetContainerItemInfo` expose slots, `itemID`, `stackCount`, and `isBound`; `BAG_UPDATE_DELAYED` is documented. | Scan only accessible values on the local character. Verify event coverage for looting, crafting, selling, and trading. Inaccessible or incomplete reads must not replace known counts with zero. |
+| Bank | Camelot's `BankFrame.lua` uses `C_Bank.FetchPurchasedBankTabData`, `CanViewBank`, and container reads using returned tab IDs. `BagIndex` distinguishes character and account bank tabs. `BANKFRAME_OPENED`, `BANKFRAME_CLOSED`, and bank update events are documented. | Do not copy Classic bank bag IDs. Initial scope is the character bank. Capture complete readable snapshots while visiting the bank, retain the observation date outside it, and test transfers between bags and bank without double counting. Account and guild banks need separate ownership models and are deferred. |
+| Bank counts | `C_Item.GetItemCount` has bank inclusion parameters. | A signature does not establish closed-bank freshness or tradeability. Prefer a verified slot scan for the proposed exchangeable inventory; compare behavior during the feasibility test. |
+| Professions and materials | Camelot's profession book uses `GetProfessions()` and `GetProfessionInfo()`. `C_TradeSkillUI.GetRecipeSchematic` exposes recipe data; item data APIs support asynchronous loading. | Verify learned professions and recipe access in the client. The reviewed sources do not establish an exhaustive accessible catalog of all Forever materials. Catalog completeness and material-to-profession mappings require matching-build data and an audit. |
+
+Permanent sources for build 70205: [chat API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua), [chat result enums](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatConstantsDocumentation.lua), [containers](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua), [bank API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/BankDocumentation.lua), [Camelot bank implementation](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_UIPanels_Game/Camelot/BankFrame.lua), [bag indices](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/BagIndexConstantsDocumentation.lua), [items](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ItemDocumentation.lua), [Camelot profession book](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBook.lua), and [recipe API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/TradeSkillUIDocumentation.lua).
+
+**Affected addon:** proposed guild materials addon, working name GuildStock. **Reproduced in the game:** nothing in this review. **Pending:** two-client communications and realm restrictions; exact identity/addressing semantics with Forever surnames; roster membership checks; complete and partial bank reads; bound materials; profession/catalog coverage; combat; localized item loading; SavedVariables after reload and restart. The historic persistence problem remains open.
 
 ## Forever 1.60.1 · build 70009
 
