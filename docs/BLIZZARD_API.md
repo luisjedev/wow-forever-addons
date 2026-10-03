@@ -23,6 +23,12 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 
 **Reference:** Forever beta `wow_classic_beta`, installed version `1.60.1.70205`, interface `16001` from the existing client reference. All materials now uses the native `INV_Misc_Bag_10` pouch texture to distinguish navigation from GuildStock's crate logo. **Validation:** Lua syntax and all six repository suites pass. After `/reload`, native observation confirmed the pouch beside All materials and the crate in the window header. Other scales remain untested. No API, saved-data or communication behavior changes; no screenshots or player records are published.
 
+### GuildStock supply-chest branding · October 4, 2026
+
+**Reference:** Forever beta `wow_classic_beta`, version `1.60.1.70205`, interface `16001`. The user-selected first logo prototype now supplies the header, minimap button, profession tab and recipe-material shortcuts. `Assets/Icon.tga` is a 256×256 uncompressed 32-bit texture with alpha; `Assets/Logo.png` preserves the original generated PNG for documentation. Header and recipe icons use the full texture coordinates to retain the silhouette. All materials keeps its distinct pouch icon.
+
+**Documented in matching-build source:** the [native addon list](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_AddOnList/AddonList.lua#L364) reads `IconTexture` metadata; GuildStock now declares the same bundled icon there. **Validation:** Lua syntax and all six repository suites pass; the texture's dimensions, alpha and uncompressed encoding were checked offline. Native keyboard input did not reliably enter the reload command, and a clipboard attempt timed out. No successful reload or rendering check is claimed. Header, minimap, profession/recipe shortcuts, addon-list metadata and other scales remain pending after reload or a client restart if the new asset/metadata is not detected. Saved data and synchronization are unchanged. No screenshots or player records are published.
+
 ## History
 
 | Product / version / build | Evidence | Limitations and status |

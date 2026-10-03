@@ -1,5 +1,6 @@
 ## Interface: 16001
 ## Title: GuildStock
+## IconTexture: Interface\AddOns\GuildStock\Assets\Icon
 ## Notes: Browse profession materials and automatically share bag inventories with your guild.
 ## Version: 0.3.3
 ## SavedVariablesPerCharacter: GuildStockDB

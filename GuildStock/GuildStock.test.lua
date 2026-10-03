@@ -1232,7 +1232,7 @@ assert(shortcut and shortcut.parent == ProfessionsFrame and shortcut.template ==
 assert(shortcut.point[1] == "BOTTOMLEFT" and shortcut.point[2] == ProfessionsFrame
     and shortcut.point[3] == "BOTTOMRIGHT" and shortcut.point[4] == 0 and shortcut.point[5] == 4,
     "shortcut stays at the foot of the right-hand tabs instead of following the last profession")
-assert(shortcut.Icon.texture == "Interface\\Icons\\INV_Crate_01" and shortcut.fillToInterior)
+assert(shortcut.Icon.texture == "Interface\\AddOns\\GuildStock\\Assets\\Icon" and shortcut.fillToInterior)
 assert(not shortcut:GetChecked() and shortcut.tooltipText == "GuildStock")
 assert(ProfessionsFrame.rightProfessionTabs == nativeTabs and #nativeTabs == 2, "native tabs stay untouched")
 GuildStockFrame:Hide()
