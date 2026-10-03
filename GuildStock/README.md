@@ -2,7 +2,7 @@
 
 An in-development implementation of the [GuildStock design](PLAN.md), targeting **WoW Forever beta 1.60.1, build 70205, interface 16001**. The interface uses near-black bronze surfaces, ivory text, four top tabs, and a three-column material browser. All tabs share borderless content panels, table headings, rows and item icons. A yellow underline identifies the active tab; a narrow side marker and soft background identify selected filters, materials and characters. Search fields, the opening-view menu and small profession slots retain subtle outlines. Its palette and native favorite stars refine the earlier mockups. The catalog is partial and guild inventory sharing is not active yet.
 
-Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock`, its crate minimap button, or the crate shortcut at the bottom-right of the native Professions window, separated from the profession tabs. Click the shortcut again to close GuildStock. Left-drag the minimap button to reposition it. English and Spanish (`esES` and `esMX`) are supported; other languages fall back to English.
+Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock`, its crate minimap button, or the crate shortcut at the bottom-right of the native Professions window, separated from the profession tabs. Click the shortcut again to close GuildStock. Left-drag the minimap button to reposition it. The interface follows the client language: English, Spanish (`esES`/`esMX`), French, German, Italian, Brazilian Portuguese, Russian, Korean, Simplified Chinese and Traditional Chinese. Unsupported languages and missing translations fall back to English. Item names come from the client.
 
 ## Available now
 
@@ -42,6 +42,8 @@ All planned inventory synchronization also uses GUILD exclusively, including ini
 Probes expire and are cancelled on guild or world transitions. Replies are limited to five peers, once per sender, at least two seconds apart. Unknown senders, mobile/offline presence, malformed packets, duplicates, unsupported versions, and unsolicited acknowledgements are rejected. A throttle or lockdown is reported without retries or ordinary-chat fallback. These conservative prototype limits are not claims about Blizzard's rate limits. This is not the production inventory protocol or a roster-completeness guarantee.
 
 ## Remaining local checks
+
+Check translated tabs, profession filters, sharing controls, tooltips and status messages in each supported client language. Verify long labels fit at different window scales and that Cyrillic, Korean and Chinese glyphs render correctly. Automated locale checks cover key completeness, format markers, command spelling, Spanish aliases and English fallback; they do not validate native font rendering.
 
 Compare several bag stacks, including bound and unbound copies, against the window. Loot, craft, trade, sell and remove the final stack; check reagent bags if available. Verify item names finish loading, a missing read retains its dated snapshot, combat recovery, scrolling, Escape and minimap dragging. Uncheck Share for an item, check its row indicator and right-panel entry after `/reload`, then restore sharing; repeat with zero stock and a scrolling list of excluded items. Confirm data, exclusions and minimap position survive `/reload` and a full restart without editing personal SavedVariables files.
 

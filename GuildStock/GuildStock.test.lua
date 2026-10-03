@@ -660,17 +660,59 @@ GuildStockMinimapButton.scripts.OnUpdate(GuildStockMinimapButton)
 assert(saved.minimapAngle == 0)
 GuildStockMinimapButton:Hide()
 assert(not GuildStockMinimapButton:GetScript("OnUpdate"))
-for _, locale in ipairs({ "esES", "esMX" }) do
-    GetLocale = function() return locale end
-    local localized = {}
-    assert(loadfile("GuildStock/Locales.lua"))("GuildStock", localized)
-    assert(localized.L["My inventory"] == "Mi inventario" and localized.L["unknown"] == "unknown")
-    assert(localized.L["Skills"] == "Profesiones")
-    assert(localized.L["Characters"] == "Personajes")
-    assert(localized.L["Used by"] == "Usado por")
-    assert(localized.L["Fishing"] == "Pesca")
-    assert(localized.L["Not shared with guild"] == "No se comparte" and localized.L["Share"] == "Compartir")
-    assert(localized.L["Not shared"] == "No compartidos")
+-- Missing translations must not silently pass through the English fallback.
+do
+    local previousLocale, locales, keys = GetLocale, {}, {}
+    local loadLocales = assert(loadfile("GuildStock/Locales.lua"))
+    for _, locale in ipairs({"esES", "esMX", "frFR", "deDE", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW",
+        "enUS", "enGB", "unknown"}) do
+        GetLocale = function() return locale end
+        local localized = {}
+        loadLocales("GuildStock", localized)
+        locales[locale] = localized.L
+        for key in pairs(localized.L) do keys[key] = true end
+    end
+    GetLocale = previousLocale
+    -- Include literal lookups so a new untranslated label fails even if absent from every table.
+    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "UI"}) do
+        local sourceFile = assert(io.open("GuildStock/" .. file .. ".lua", "r"))
+        local source = sourceFile:read("*a")
+        sourceFile:close()
+        for key in source:gmatch('L%["(.-)"%]') do keys[key] = true end
+    end
+    local function Placeholders(text)
+        local tokens = {}
+        for token in text:gmatch("%%.") do tokens[#tokens + 1] = token end
+        return table.concat(tokens)
+    end
+    for locale, L in pairs(locales) do
+        local english = locale == "enUS" or locale == "enGB" or locale == "unknown"
+        for key in pairs(keys) do
+            local text = L[key]
+            if english then
+                assert(text == (key == "FirstAid" and "First Aid" or key), locale .. ": incorrect fallback for " .. key)
+            else
+                assert(type(rawget(L, key)) == "string" and text:find("%S"), locale .. ": missing " .. key)
+            end
+            assert(Placeholders(text) == Placeholders(key), locale .. ": format mismatch for " .. key)
+            assert(pcall(string.format, text, "2026-10-03 12:34:56"), locale .. ": invalid format for " .. key)
+            for command in key:gmatch("(/guildstock %a+)") do
+                assert(text:find(command, 1, true), locale .. ": changed command " .. command)
+            end
+            if locale == "esMX" then assert(text == locales.esES[key], "Spanish variants must match") end
+        end
+        assert(L["Missing translation"] == "Missing translation", locale .. ": missing English fallback")
+    end
+    for locale, settingsLabel in pairs({esES = "Ajustes", esMX = "Ajustes", frFR = "Paramètres",
+        deDE = "Einstellungen", itIT = "Impostazioni", ptBR = "Configurações", ruRU = "Настройки",
+        koKR = "설정", zhCN = "设置", zhTW = "設定"}) do
+        assert(locales[locale]["Settings"] == settingsLabel, locale .. ": wrong language selected")
+    end
+    assert(locales.esES["My inventory"] == "Mi inventario")
+    assert(locales.esES["Skills"] == "Profesiones" and locales.esES["Characters"] == "Personajes")
+    assert(locales.esES["Used by"] == "Usado por" and locales.esES["Fishing"] == "Pesca")
+    assert(locales.esES["Not shared with guild"] == "No se comparte" and locales.esES["Share"] == "Compartir")
+    assert(locales.esES["Not shared"] == "No compartidos")
 end
 
 -- Large catalogs exercise bounded UI work, recycled actions and cache invalidation.

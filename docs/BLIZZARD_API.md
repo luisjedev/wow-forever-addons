@@ -273,6 +273,12 @@ GuildStock creates one child using that template, anchored at the bottom-right w
 
 **Automated:** syntax and all repository regression checks pass. **Pending native verification:** computer control interrupted the `/reload` attempt after detecting user activity; the observed window still showed the previous text glyphs. Verify native textures, hover/pressed states, window closing and clearing each search after reload. This visual change affects GuildStock only and does not change SavedVariables or transport. No screenshots or player records are published.
 
+### GuildStock language coverage · October 3, 2026
+
+**Reference:** Forever beta `1.60.1.70205`, interface `16001`, as recorded above. **Affected addon:** GuildStock. Its locale table now covers French, German, Italian, Brazilian Portuguese, Russian, Korean, Simplified Chinese and Traditional Chinese alongside English and the shared `esES`/`esMX` translation. Selection follows `GetLocale()` with English fallback, including the internal `FirstAid` key's display name. Item names still come from the client; existing locale-aware font selection is unchanged. No SavedVariables or communication behavior changes.
+
+**Automated:** syntax and all repository regression checks pass. Locale checks require all 100 translation keys in every translated locale, include literal lookups from addon sources, preserve format markers and slash commands, compare both Spanish variants and exercise English/unknown-locale fallback. **Reproduced in the game:** `/reload` completed and a subsequent native observation showed GuildStock's Materials page in English, including the First Aid label. Concurrent user activity interrupted the opening action; no further input was attempted. **Pending:** native rendering in each translated client language, long-label fit, Cyrillic/Korean/Chinese glyphs, tooltips and other window scales. Offline assertions do not establish these visual results or change earlier persistence and synchronization limitations. No screenshots or player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
