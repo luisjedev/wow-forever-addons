@@ -413,7 +413,7 @@ function addon.SyncTick()
     Flush()
 end
 function addon.SyncStatus()
-    local titles = {waiting = "Waiting for guild, bags or messaging permissions", ready = "Automatic guild synchronization",
+    local titles = {waiting = "Waiting for guild, inventory or messaging permissions", ready = "Automatic guild synchronization",
         failed = "Guild synchronization interrupted", limited = "Guild synchronization limit reached"}
     return L[titles[state.status] or titles.waiting], L["Changes are grouped for five minutes. Received inventories show their observation time."]
 end

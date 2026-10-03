@@ -10,7 +10,7 @@ No commands, profession scans or remote access to another PC are needed.
 The base catalog includes 589 materials and 1083 associations across 12 professions.
 Names and icons use each client's game data. The catalog is not exhaustive.
 
-Guild inventory discovery starts automatically after guild and bags are ready.
+Guild inventory discovery starts automatically after guild and inventory are ready.
 Open GuildStock to see received Characters and material-owner rows.
 Discovery replies wait for the offer cooldown instead of being discarded.
 Later changes are grouped for five minutes from the first pending change.

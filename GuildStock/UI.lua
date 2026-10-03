@@ -505,7 +505,7 @@ local function RenderVisibleRows(list)
             local sharing = addon.IsSharingEnabled()
             row.sharing:SetEnabled(sharing)
             if row.shareLabel then row.shareLabel:SetTextColor(unpack(sharing and cream or disabledText)) end
-            Tip(row.sharing, not sharing and L["Enable Share bag items with guild in Settings to configure sharing for individual items."]
+            Tip(row.sharing, not sharing and L["Enable Share items with guild in Settings to configure sharing for individual items."]
                 or (list.sharing and L["Share this item with your guild. Uncheck to stop sharing."] or L["Share this item again."]))
         end
         if list.sharing then
@@ -712,18 +712,18 @@ function addon.Refresh()
         local entries = addon.Materials("all", nil, (bagSearch.appliedText or ""), true)
         RenderList(bagList, entries, addon.snapshot)
         bagList.empty:SetShown(#entries == 0)
-        bagList.empty:SetText(L[addon.snapshot and "No matching materials." or "No complete bag observation yet."])
+        bagList.empty:SetText(L[addon.snapshot and "No matching materials." or "No complete inventory observation yet."])
         local hidden = addon.HiddenItems()
         RenderList(hiddenList, hidden)
         hiddenList.empty:SetShown(#hidden == 0)
-        inventoryNote:SetText(addon.incomplete and L["Incomplete bag read; retaining the previous observation."] or L["Quantities for your current character."])
+        inventoryNote:SetText(addon.incomplete and L["Incomplete inventory read; retaining the previous observation."] or L["Quantities for your current character."])
     else
         if addon.SyncStatus then
             local title, description = addon.SyncStatus()
             syncStatus:SetText(title); syncDescription:SetText(description)
         else
             syncStatus:SetText(L["Awaiting communication validation"])
-            syncDescription:SetText(L["Guild inventory sharing is not active yet. Your bag inventory remains available."])
+            syncDescription:SetText(L["Guild inventory sharing is not active yet. Your inventory remains available."])
         end
         settings.offline:SetChecked(preferences.showOffline ~= false)
         settings.minimap:SetChecked(preferences.showMinimap ~= false)
@@ -883,7 +883,7 @@ local function CreateWindow(colors)
     local characterDetail = Panel(characters, 311, 77, 862, 566)
     characterName = Label(characterDetail, "", 22, 18, 818, 25, cream, true)
     characterName:SetWordWrap(false)
-    Label(characterDetail, L["Last known bag inventory"], 22, 53, 818, 15, muted)
+    Label(characterDetail, L["Last known inventory"], 22, 53, 818, 15, muted)
     characterItemSearch = Search(characterDetail, "Search character items...", 20, 82, 820)
     InventoryHeader(characterDetail, 20, 130, 820)
     characterItems = Scroll(characterDetail, 20, 169, 820, 351)
@@ -894,9 +894,9 @@ local function CreateWindow(colors)
 
     inventory = Panel(window, 7, 77, 1166, 566)
     Label(inventory, L["My inventory"], 25, 20, 1050, 29, cream, true)
-    Label(inventory, L["Profession materials in your bags"], 26, 63, 1050, 17, muted)
+    Label(inventory, L["Profession materials in your inventory"], 26, 63, 1050, 17, muted)
     local bagWidth, hiddenWidth = 1100 * 0.7, 1100 * 0.3 -- 18-pixel gutter
-    bagSearch = Search(inventory, "Search my bags...", 23, 98, bagWidth)
+    bagSearch = Search(inventory, "Search my inventory...", 23, 98, bagWidth)
     InventoryHeader(inventory, 23, 148, bagWidth, true)
     bagList = Scroll(inventory, 23, 187, bagWidth, 325)
     bagList.sharing = true
@@ -932,12 +932,12 @@ local function CreateWindow(colors)
     settings.minimap = Check(display, "showMinimap", "Show minimap button", 102, function()
         if minimapButton then minimapButton:SetShown(Preferences().showMinimap ~= false) end
     end)
-    settings.sharing = Check(display, "shareInventory", "Share bag items with guild", 137)
+    settings.sharing = Check(display, "shareInventory", "Share items with guild", 137)
     settings.sharing:SetScript("OnClick", function(self)
         addon.SetSharingEnabled(self:GetChecked() == true)
         addon.Refresh()
     end)
-    Tip(settings.sharing, L["Turn off to stop sharing all bag items. Your individual item choices are preserved."])
+    Tip(settings.sharing, L["Turn off to stop sharing all items. Your individual item choices are preserved."])
     Label(display, L["Opening view"], 19, 186, 160, 16)
     settings.initial = Button(display, "", 181, 175, 271, 34, function()
         settings.languages:Hide()
