@@ -71,6 +71,12 @@ Combat and chat messaging lockdown are checked before sending; unavailable lockd
 
 The older `/guildstock probe` remains an optional separate protocol-2 diagnostic with a 60-second window on each participating test client; it does not start normal synchronization and is not part of the installation workflow. No diagnostic command is needed by your friend.
 
+## Recipe material shortcuts
+
+The native Professions window shows a GuildStock crate button to the right of each fixed material name. Click it to open Materials with that exact item selected and its recorded guild owners and quantities. This also works for materials missing from your bags or the partial catalog. Previous material searches, Favorites and profession filters are cleared; the offline-members preference still applies. Repeated clicks keep GuildStock open. Clear or edit the search, or select a sidebar filter, to resume normal browsing.
+
+Buttons follow recipe changes and do not craft or change allocations. Combat defers attachment and prevents activation. Currency, optional and multiple-choice reagent slots are not supported by this shortcut. Results still depend on participating guildmates' shared inventories; an empty result is not proof that nobody owns the material.
+
 ## Remaining local checks
 
 Check multilingual searches for discovered materials in Materials, My inventory and Characters, including new or renamed items without aliases. Check translated tabs, profession filters, sharing controls, tooltips and status messages in each supported language, including a manual override that differs from the client language. Verify the choice after `/reload` and a full restart, then return to Automatic. Verify long labels fit at different window scales and that Cyrillic, Korean and Chinese glyphs render correctly. Automated locale checks cover key completeness, format markers, command spelling, Spanish aliases and English fallback; they do not validate native font rendering.

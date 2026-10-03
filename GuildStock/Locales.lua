@@ -1,6 +1,7 @@
 local _, addon = ...
 local translations = {
     esES = {
+        ["Find this material in GuildStock"] = "Buscar este material en GuildStock",
         ["Online"] = "Conectado",
         ["Unknown"] = "Desconocido",
         ["Whisper requires confirmed online presence."] = "Susurrar requiere confirmar que está conectado.",
@@ -122,6 +123,7 @@ local translations = {
         ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
+        ["Find this material in GuildStock"] = "Rechercher ce composant dans GuildStock",
         ["Online"] = "En ligne",
         ["Unknown"] = "Inconnu",
         ["Whisper requires confirmed online presence."] = "La présence en ligne doit être confirmée pour chuchoter.",
@@ -243,6 +245,7 @@ local translations = {
         ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
+        ["Find this material in GuildStock"] = "Dieses Material in GuildStock suchen",
         ["Online"] = "Online",
         ["Unknown"] = "Unbekannt",
         ["Whisper requires confirmed online presence."] = "Flüstern erfordert einen bestätigten Onlinestatus.",
@@ -364,6 +367,7 @@ local translations = {
         ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
+        ["Find this material in GuildStock"] = "Cerca questo materiale in GuildStock",
         ["Online"] = "Online",
         ["Unknown"] = "Sconosciuto",
         ["Whisper requires confirmed online presence."] = "Per sussurrare serve la presenza online confermata.",
@@ -485,6 +489,7 @@ local translations = {
         ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
+        ["Find this material in GuildStock"] = "Buscar este material no GuildStock",
         ["Online"] = "Online",
         ["Unknown"] = "Desconhecido",
         ["Whisper requires confirmed online presence."] = "Sussurrar exige presença online confirmada.",
@@ -606,6 +611,7 @@ local translations = {
         ["Drag: Move"] = "Arrastar: mover",
     },
     ruRU = {
+        ["Find this material in GuildStock"] = "Найти этот материал в GuildStock",
         ["Online"] = "В сети",
         ["Unknown"] = "Неизвестно",
         ["Whisper requires confirmed online presence."] = "Для шёпота требуется подтверждённое присутствие в сети.",
@@ -727,6 +733,7 @@ local translations = {
         ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
+        ["Find this material in GuildStock"] = "GuildStock에서 이 재료 찾기",
         ["Online"] = "온라인",
         ["Unknown"] = "알 수 없음",
         ["Whisper requires confirmed online presence."] = "귓속말을 하려면 온라인 상태가 확인되어야 합니다.",
@@ -848,6 +855,7 @@ local translations = {
         ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
+        ["Find this material in GuildStock"] = "在GuildStock中查找此材料",
         ["Online"] = "在线",
         ["Unknown"] = "未知",
         ["Whisper requires confirmed online presence."] = "悄悄话需要确认对方在线。",
@@ -969,6 +977,7 @@ local translations = {
         ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
+        ["Find this material in GuildStock"] = "在GuildStock中尋找此材料",
         ["Online"] = "在線",
         ["Unknown"] = "未知",
         ["Whisper requires confirmed online presence."] = "悄悄話需要確認對方在線。",

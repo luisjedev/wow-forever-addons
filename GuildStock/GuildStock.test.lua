@@ -33,6 +33,13 @@ function methods:HookScript(event, fn)
     end
 end
 function methods:GetScript(event) return self.scripts[event] end
+hooksecurefunc = function(object, key, callback)
+    local original = object[key]
+    object[key] = function(...)
+        original(...)
+        callback(...)
+    end
+end
 function methods:RegisterEvent(event) self.events[event] = true end
 function methods:UnregisterAllEvents() self.events = {} end
 function methods:SetPoint(...) self.point = {...} end
@@ -129,6 +136,7 @@ GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
 UISpecialFrames, SlashCmdList = {}, {}
 Constants = { InventoryConstants = { NumBagSlots = 4, NumReagentBagSlots = 1 } }
 Enum = {
+    CraftingReagentType = {Basic = 1, Modifying = 2},
     Profession = {Mining = 1, Engineering = 2, FirstAid = 3, Cooking = 4, Fishing = 5},
     BagIndex = { Backpack = 0, ReagentBag = 5 },
     RegisterAddonMessagePrefixResult = { Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2 },
@@ -1185,7 +1193,133 @@ GameTooltip:Hide()
 local frameCount = #frames
 Event("ADDON_LOADED", "Blizzard_Professions")
 Event("PLAYER_REGEN_ENABLED")
-assert(#frames == frameCount and GuildStockProfessionsButton == shortcut, "attachment stops listening after creation")
+assert(#frames == frameCount and GuildStockProfessionsButton == shortcut, "later events do not duplicate the shortcut")
+
+-- Recipe shortcuts follow pooled native rows and select exact IDs, including zero-stock discoveries.
+do
+    local form, first, second = Frame(), Frame(), Frame()
+    ProfessionsFrame.CraftingPage = {SchematicForm = form}
+    first.Button, second.Button = Frame(), Frame()
+    first.Name, second.Name = Frame(), Frame()
+    first.Name:SetWidth(108); second.Name:SetWidth(108)
+    first.schematic = {reagentType = 1, reagents = {{itemID = 10}}}
+    second.schematic = {reagentType = 1, reagents = {{itemID = 20}}}
+    first.GetReagentSlotSchematic = function(self) return self.schematic end
+    second.GetReagentSlotSchematic = first.GetReagentSlotSchematic
+    local active = {first, second}
+    form.reagentSlotPool = {EnumerateActive = function()
+        local index = 0
+        return function() index = index + 1; return active[index] end
+    end}
+    form.Init = function(self, recipe)
+        self.currentRecipeInfo = recipe
+        self.reagentSlots = {[1] = active}
+        self.nativeCalls = (self.nativeCalls or 0) + 1
+    end
+    form:Init({recipeID = 1})
+    local function Badge(slot)
+        for _, frame in ipairs(frames) do
+            if frame.parent == slot and frame.scripts.OnClick then return frame end
+        end
+    end
+    combat = true; Event("ADDON_LOADED", "Blizzard_Professions")
+    assert(not Badge(first), "recipe attachment waits for combat to end")
+    combat = false; Event("PLAYER_REGEN_ENABLED")
+    local a, b = Badge(first), Badge(second)
+    assert(a and b and a:IsShown() and b:IsShown())
+    assert(a.point[1] == "LEFT" and a.point[2] == first.Name and a.point[3] == "RIGHT" and a.width == 24,
+        "buttons sit to the right of the material text, clear of the item icon")
+    assert(first.Name:GetWidth() == 108, "single-column recipes retain the full native name width")
+    local allocated = #frames
+    Event("ADDON_LOADED", "Blizzard_Professions"); Event("PLAYER_REGEN_ENABLED")
+    form:Init({recipeID = 2})
+    assert(#frames == allocated and form.nativeCalls == 2, "native initialization survives; badges are reused")
+    for i = 3, 5 do
+        local slot = Frame()
+        slot.Name = Frame(); slot.Name:SetWidth(108)
+        slot.schematic = {reagentType = 1, reagents = {{itemID = 10}}}
+        slot.GetReagentSlotSchematic = first.GetReagentSlotSchematic
+        active[i] = slot
+    end
+    form:Init({recipeID = 2})
+    assert(first.Name:GetWidth() == 78 and active[5].Name:GetWidth() == 78,
+        "two columns reserve button space inside both native rows")
+    a.scripts.OnEnter(a)
+    assert(GameTooltip:GetText() == "Find this material in GuildStock")
+    active = {first}; form:Init({recipeID = 3})
+    assert(not b:IsShown() and not GameTooltip:IsShown(), "released slots and their tooltips are cleared")
+    assert(second.Name:GetWidth() == 108 and first.Name:GetWidth() == 108, "fewer materials restore full native label widths")
+
+    local originalGuild = addon.guildData
+    local unknownID = 987650
+    addon.itemData[unknownID] = {name = addon.ItemData(10).name}
+    first.schematic.reagents[1].itemID = unknownID
+    form:Init({recipeID = 4})
+    addon.guildData = {guildID = club, characters = {example = {name = "Example Crafter",
+        snapshot = {observedAt = epoch, items = {[unknownID] = {count = 12, bound = 0}}}}}}
+    Click("Materials"); Click("Favorites"); Click("Cooking")
+    materialInput.text = "old pending query"
+    materialInput.scripts.OnTextChanged(materialInput, true)
+    Click("Settings"); GuildStockFrame:Hide()
+    a.scripts.OnClick(a)
+    assert(GuildStockFrame:IsShown() and ProfessionsFrame:IsShown())
+    assert(materialInput:GetText() == addon.ItemData(unknownID).name)
+    assert(#materialInput.list.entries == 1 and materialInput.list.entries[1].id == unknownID,
+        "an uncatalogued zero-stock reagent opens by exact ID despite namesakes and previous filters")
+    assert(addon.Catalog()[unknownID] == nil and not addon.snapshot.items[unknownID], "opening does not invent catalog or stock")
+    local owner
+    for _, frame in ipairs(frames) do
+        if frame.whisper and frame.whisper.characterID == "example" then owner = frame end
+    end
+    assert(owner and owner:IsShown() and owner.count:GetText() == 12, "owners use the exact selected ID")
+    Drain()
+    assert(#materialInput.list.entries == 1 and materialInput.list.entries[1].id == unknownID,
+        "pending text callbacks cannot replace the recipe target")
+    a.scripts.OnClick(a)
+    assert(GuildStockFrame:IsShown(), "repeated clicks open instead of toggling closed")
+    addon.itemData[unknownID] = false
+    a.scripts.OnClick(a)
+    assert(materialInput.list.rows[1].label:GetText() == "Item #" .. unknownID)
+    local getInfo = C_Item.GetItemInfo
+    C_Item.GetItemInfo = function(id) if id == unknownID then return "Loaded recipe material" else return getInfo(id) end end
+    Event("GET_ITEM_INFO_RECEIVED", unknownID, true); Drain()
+    assert(#materialInput.list.entries == 1 and materialInput.list.rows[1].label:GetText() == "Loaded recipe material"
+        and owner.count:GetText() == 12, "delayed names preserve exact selection and owner counts")
+    C_Item.GetItemInfo = getInfo
+    second.schematic.reagents[1].itemID = 20
+    active = {second}; form:Init({recipeID = 5}); b.scripts.OnClick(b)
+    assert(#materialInput.list.entries == 1 and materialInput.list.entries[1].id == 20 and not owner:IsShown(),
+        "another reagent replaces the selected item and owner rows")
+    materialInput:SetText("")
+    assert(#materialInput.list.entries > 1, "clearing restores normal material browsing")
+    b.scripts.OnClick(b); Click("All materials")
+    assert(materialInput:GetText() == "" and #materialInput.list.entries > 1, "navigation clears the exact target")
+    b.scripts.OnClick(b); materialInput:SetText("no matching material")
+    assert(#materialInput.list.entries == 0, "editing returns to ordinary name search")
+    GuildStockFrame:Hide()
+    for _, schematic in ipairs({secret, {reagentType = secret}, {reagentType = 2, reagents = {{itemID = 20}}},
+        {reagentType = 1, reagents = secret}, {reagentType = 1, reagents = {secret}},
+        {reagentType = 1, reagents = {{itemID = secret}}}, {reagentType = 1, reagents = {{currencyID = 2}}},
+        {reagentType = 1, reagents = {{itemID = 10}, {itemID = 20}}}}) do
+        second.schematic = schematic; form:Init({recipeID = 6})
+        assert(not b:IsShown(), "unsupported, ambiguous or inaccessible reagents have no button")
+        b.scripts.OnClick(b)
+        assert(not GuildStockFrame:IsShown(), "click rechecks the current reagent")
+    end
+    second.schematic = {reagentType = 1, reagents = {{itemID = 20}}}
+    combat = true; form:Init({recipeID = 7}); b.scripts.OnClick(b)
+    assert(not b:IsShown() and not GuildStockFrame:IsShown(), "combat defers attachment and prevents activation")
+    combat = false; Event("PLAYER_REGEN_ENABLED")
+    assert(b:IsShown(), "combat recovery updates the current recipe")
+    form:Init(nil)
+    assert(not a:IsShown() and not b:IsShown(), "empty recipe selection hides every badge")
+    assert(first.Name:GetWidth() == 108 and second.Name:GetWidth() == 108, "empty selection restores native label widths")
+    for _, invalid in ipairs({secret, -1, 0, 1.5, "20"}) do addon.OpenMaterial(invalid) end
+    assert(not GuildStockFrame:IsShown(), "invalid targets do not open the browser")
+    addon.guildData = originalGuild
+    addon.itemData[unknownID] = nil
+    materialInput:SetText("")
+end
 
 -- Received inventory populates the material owner table with real counts and dated presence.
 GuildStockFrame:Show()

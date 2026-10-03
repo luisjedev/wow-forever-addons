@@ -300,6 +300,7 @@ local function Search(parent, placeholder, x, y, width)
     field:SetMaxLetters(80)
     local hint = Label(shell, L[placeholder], 12, 9, width - 48, 14, muted)
     field:SetScript("OnTextChanged", function(self, userInput)
+        self.exactItemID = nil
         local text = self:GetText()
         hint:SetShown(text == "")
         self.searchRevision = (self.searchRevision or 0) + 1
@@ -666,7 +667,14 @@ function addon.Refresh()
         HighlightProfessionSections()
         for key, button in pairs(navigation) do Highlight(button, key == view) end
         for key, button in pairs(professionButtons) do Highlight(button, key == (profession or "all")) end
-        local entries = addon.Materials(view, profession, (search.appliedText or ""))
+        local entries
+        if search.exactItemID then
+            -- A recipe can reference an item absent from our partial catalog.
+            local data = addon.ItemData(search.exactItemID)
+            entries = {{id = search.exactItemID, name = data.name, icon = data.icon}}
+        else
+            entries = addon.Materials(view, profession, (search.appliedText or ""))
+        end
         local found = false
         for _, entry in ipairs(entries) do if entry.id == selected then found = true; break end end
         if not found then selected = entries[1] and entries[1].id end
@@ -717,7 +725,8 @@ local function SelectPage(value)
     addon.Refresh()
 end
 
-local function CreateWindow()
+-- Passing the palette keeps this builder below Lua 5.1's 60-upvalue limit.
+local function CreateWindow(colors)
     window = CreateFrame("Frame", "GuildStockFrame", UIParent, "BackdropTemplate")
     window:Hide()
     window:SetSize(1180, 650)
@@ -748,6 +757,7 @@ local function CreateWindow()
     sidebar = Panel(browser, 7, 77, 247, 566)
     for i, entry in ipairs({{"all", "INV_Crate_01"}, {"favorites", "INV_Misc_Note_01"}}) do
         navigation[entry[1]] = Button(sidebar, L[viewLabels[entry[1]]], 7, 13 + (i - 1) * 47, 233, 44, function()
+            if search.exactItemID then search:SetText("") end
             if view == entry[1] and (view ~= "all" or profession == nil) then return end
             view = entry[1]
             if view == "all" then profession = nil end
@@ -764,12 +774,14 @@ local function CreateWindow()
     professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionList.usedByTitle = usedByTitle
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
+        if search.exactItemID then search:SetText("") end
         if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
     end, "Interface\\Icons\\Trade_Mining", true)
     professionButtons.all.separator:Hide()
     for i, entry in ipairs(addon.professions) do
         professionButtons[entry[1]] = Button(professionList.content, L[entry[1]], 0, i * 40, 210, 40, function()
+            if search.exactItemID then search:SetText("") end
             if profession == entry[1] then return end
             profession = entry[1]; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
         end, "Interface\\Icons\\" .. entry[2], true)
@@ -979,9 +991,23 @@ local function CreateWindow()
     ApplyScale()
 end
 
+function addon.OpenMaterial(itemID)
+    if not addon.db or not addon.Integer(itemID, 1, 2147483647)
+        or addon.Read(InCombatLockdown) ~= false then return end
+    if not window then CreateWindow(colors) end
+    page, view, profession = "materials", "all", nil
+    -- Setting text also cancels any pending debounced query from an earlier search.
+    search:SetText(addon.ItemData(itemID).name)
+    search.exactItemID, selected = itemID, itemID
+    materialList.scroll.ScrollBar:SetValue(0)
+    details.owners.scroll.ScrollBar:SetValue(0)
+    search:ClearFocus()
+    if window:IsShown() then addon.Refresh() else window:Show() end
+end
+
 local function Toggle()
     if not addon.db then return end
-    if not window then CreateWindow() end
+    if not window then CreateWindow(colors) end
     if not window:IsShown() then view = InitialView(); page = "materials"; profession = nil end
     window:SetShown(not window:IsShown())
 end
@@ -989,9 +1015,80 @@ end
 -- Forever loads its profession window on demand. Keep this shortcut outside
 -- rightProfessionTabs so native profession selection never treats it as a skill.
 local professionEvents = CreateFrame("Frame")
+local professionShortcut, reagentForm
+local reagentButtons = {}
+
+local function RecipeMaterialID(slot)
+    local schematic = addon.Read(slot.GetReagentSlotSchematic, slot)
+    if type(schematic) ~= "table" or not addon.Accessible(schematic.reagentType)
+        or not Enum or not Enum.CraftingReagentType
+        or schematic.reagentType ~= Enum.CraftingReagentType.Basic
+        or not addon.Accessible(schematic.reagents) or type(schematic.reagents) ~= "table"
+        or #schematic.reagents ~= 1 then return end
+    local reagent = schematic.reagents[1]
+    if addon.Accessible(reagent) and type(reagent) == "table"
+        and addon.Integer(reagent.itemID, 1, 2147483647) then return reagent.itemID end
+end
+
+local function RefreshRecipeButtons()
+    if not reagentForm or addon.Read(InCombatLockdown) ~= false then return end
+    for slot, button in pairs(reagentButtons) do
+        button:Hide()
+        slot.Name:SetWidth(button.nameWidth)
+    end
+    if not reagentForm.currentRecipeInfo then return end
+    local basicSlots = reagentForm.reagentSlots and reagentForm.reagentSlots[Enum.CraftingReagentType.Basic]
+    local twoColumns = basicSlots and #basicSlots > (reagentForm.isRecraft and 3 or 4)
+    for slot in reagentForm.reagentSlotPool:EnumerateActive() do
+        local itemID = RecipeMaterialID(slot)
+        local nameWidth = slot.Name and addon.Read(slot.Name.GetWidth, slot.Name)
+        if itemID and slot.Name and type(nameWidth) == "number" and nameWidth > 30 then
+            local button = reagentButtons[slot]
+            if not button then
+                button = CreateFrame("Button", nil, slot, "BackdropTemplate")
+                button.nameWidth = nameWidth
+                button:SetSize(24, 24)
+                -- Keep the material icon clear; reserve text space only when columns are adjacent.
+                button:SetPoint("LEFT", slot.Name, "RIGHT", 6, 0)
+                button:SetBackdrop(backdrop)
+                button:SetBackdropColor(unpack(colors.window))
+                button:SetBackdropBorderColor(unpack(gold))
+                Icon(button, "Interface\\Icons\\INV_Crate_01", 2, 2, 20)
+                button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+                button:RegisterForClicks("LeftButtonUp")
+                Tip(button, L["Find this material in GuildStock"])
+                button:SetScript("OnHide", function(self)
+                    if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+                end)
+                button:SetScript("OnClick", function()
+                    -- Re-read the pooled slot; never act on a previous recipe's cached ID.
+                    if addon.Read(InCombatLockdown) ~= false then return end
+                    local id = RecipeMaterialID(slot)
+                    if id then GameTooltip:Hide(); addon.OpenMaterial(id) end
+                end)
+                reagentButtons[slot] = button
+            end
+            slot.Name:SetWidth(button.nameWidth - (twoColumns and 30 or 0))
+            button:Show()
+        end
+    end
+end
+
+local function AttachRecipeButtons()
+    local parent = ProfessionsFrame
+    local form = parent and parent.CraftingPage and parent.CraftingPage.SchematicForm
+    if not form or addon.Read(InCombatLockdown) ~= false then return end
+    if not reagentForm and type(form.Init) == "function" and form.reagentSlotPool then
+        reagentForm = form
+        hooksecurefunc(form, "Init", RefreshRecipeButtons)
+        form:HookScript("OnShow", RefreshRecipeButtons)
+    end
+    RefreshRecipeButtons()
+end
+
 local function CreateProfessionsShortcut()
     local parent = ProfessionsFrame
-    if not parent or not parent.ProfessionsOverviewTab or InCombatLockdown() then return end
+    if professionShortcut or not parent or not parent.ProfessionsOverviewTab or InCombatLockdown() then return end
     local button = CreateFrame("Frame", "GuildStockProfessionsButton", parent, "LargeSideTabButtonTemplate")
     button:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 0, 4)
     button:EnableMouse(true)
@@ -1008,7 +1105,7 @@ local function CreateProfessionsShortcut()
     button:SetScript("OnHide", function(self)
         if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
     end)
-    professionEvents:UnregisterAllEvents()
+    professionShortcut = button
 end
 for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED"}) do
     professionEvents:RegisterEvent(event)
@@ -1016,6 +1113,7 @@ end
 professionEvents:SetScript("OnEvent", function(_, event, loadedName)
     if event ~= "ADDON_LOADED" or loadedName == "Blizzard_Professions" then
         CreateProfessionsShortcut()
+        AttachRecipeButtons()
     end
 end)
 
