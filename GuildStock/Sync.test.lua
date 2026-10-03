@@ -321,4 +321,24 @@ quiet=#log;Step(600);assert(#log==quiet)
 group[1].unreadable=4;group[1]:Event("CLUB_MEMBERS_UPDATED",42)
 assert(#group[1].addon.GuildCharacters()==2 and Received(group[1],group[4]),
     "one unavailable member is hidden and retained without blocking other verified members")
+-- A new client can arrive inside an existing participant's offer cooldown.
+clients,bus,log,clock = {},{},{},0
+local early=Client("Early Example")
+early:Login();Step(90)
+early.addon.SyncDiscover();Step(1)
+local late=Client("Late Example")
+late:Login();Step(180)
+assert(Received(early,late) and Received(late,early), "a cooldown must defer, not discard, discovery replies")
+quiet=#log;Step(600);assert(#log==quiet,"deferred discovery must settle without a heartbeat")
+
+-- A slow native roster can miss every initial announcement from the other client.
+clients,bus,log,clock = {},{},{},0
+local fast=Client("Fast Example")
+local slow=Client("Slow Example")
+slow.rosterReady=false
+fast:Login();slow:Login();Step(15)
+slow.rosterReady=true;Step(180)
+assert(Received(fast,slow) and Received(slow,fast), "late roster readiness must recover both directions")
+quiet=#log;Step(600);assert(#log==quiet)
+
 print("GuildStock sync: automatic exchange, fixed batching, privacy, zero, repair, sessions, transitions, restrictions and bounded traffic OK")

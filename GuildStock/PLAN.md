@@ -8,11 +8,15 @@ The user selected bags only, automatic synchronization between guild members, an
 
 The user requested automatic synchronization ready for a multi-client trial before the earlier phase-0 delivery gate can be completed. This request supersedes the proposal's implementation order, 10–15-second updates and five-minute network heartbeat. Version 0.3.0 includes the common 589-material discovery seed, automatic login discovery, full atomic inventory replacements after a fixed five-minute change batch, GUILD-only bounded transfers/repair, current-membership validation and populated character/material-owner views. There is no periodic network heartbeat. Counts include bound materials and are not promises of tradeability. Peer observations remain in memory; online peers are reacquired after reload rather than migrating SavedVariables or persisting unverified guild records. Explicit removal events discard departed members; temporary missing roster entries do not authorize deletion. Last-online time remains Unknown when not supplied by verified data.
 
-The [current README](README.md#automatic-guild-synchronization) defines the implemented packet limits, recovery triggers, loss-detection tradeoff, local privacy behavior and test workflow. The remaining sections preserve the earlier product proposal; unimplemented history persistence, exhaustive catalog coverage and stronger roster guarantees are not release claims. Two-client delivery and platform rendering remain pending native verification.
+The [current README](README.md#automatic-guild-synchronization) defines the implemented packet limits, recovery triggers, loss-detection tradeoff, local privacy behavior and test workflow. The remaining sections preserve the earlier product proposal; unimplemented history persistence, exhaustive catalog coverage and stronger roster guarantees are not release claims. Complete peer inventory reception and populated local rows were later observed; independent remote-display, cross-shard and broader platform verification remain pending.
 
 ### 0.3.1 transport correction
 
 A native build-70205 GUILD diagnostic returned `Success` despite the outgoing restriction flag being true. The flag alone is therefore not a reliable send veto in this build. Version 0.3.1 consults native send results while retaining combat/lockdown gates, privacy and membership checks, and bounded retries. Diagnostics show the raw flags separately. This supersedes the earlier restriction-based feasibility conclusion; actual peer inventory delivery remains a separate test.
+
+### 0.3.2 discovery reply correction
+
+A reproducible startup race discarded a new participant's discovery reply when another offer had been scheduled in the preceding 30 seconds. The existing client could receive the newcomer while the newcomer stayed empty. The reply now waits for that cooldown, coalescing repeated requests without a heartbeat. Regression cases cover staggered login and delayed roster readiness. Local native reception worked before the patch as well; this is a confirmed code defect, not a conclusive reconstruction of the original reported outage. See the [investigation log](../docs/BLIZZARD_API.md#guildstock-032-discovery-investigation--october-3-2026).
 
 ## Player experience
 

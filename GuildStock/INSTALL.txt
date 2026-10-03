@@ -1,4 +1,4 @@
-GuildStock 0.3.0 - automatic synchronization testing build
+GuildStock 0.3.2 - automatic synchronization testing build
 WoW Forever beta 1.60.1, build 70205, interface 16001
 
 Install the same version on every participating client.
@@ -12,6 +12,7 @@ Names and icons use each client's game data. The catalog is not exhaustive.
 
 Guild inventory discovery starts automatically after guild and bags are ready.
 Open GuildStock to see received Characters and material-owner rows.
+Discovery replies wait for the offer cooldown instead of being discarded.
 Later changes are grouped for five minutes from the first pending change.
 No periodic network heartbeat is sent while inventories remain unchanged.
 Uncheck Share to exclude an item from the next complete replacement.
@@ -19,7 +20,8 @@ Counts include owned bound items; they are not guarantees of tradeability.
 
 All addon traffic uses GUILD. Settings reports messaging restrictions or waiting.
 If the beta blocks addon messages, local inventory remains available and the
-addon does not bypass that restriction. Live delivery still needs client testing.
+addon does not bypass that restriction. Local peer reception has been observed;
+remote display and cross-shard delivery still need independent verification.
 Peer inventories are kept in memory and reacquired from online peers after reload.
 
 Includes the dark interface and animated profession-section dividers.

@@ -254,8 +254,10 @@ function addon.ReceiveSync(prefix, message, channel, sender)
                 peer.due = GetTime() + math.random(2, 12)
             end
         end
-        if kind == "H" and (not lastOffer or GetTime() - lastOffer >= 30) then
-            offerAt = offerAt or GetTime() + math.random(2, 12)
+        if kind == "H" then
+            -- A recent offer may predate this client's login. Defer its reply rather than
+            -- dropping it: otherwise the newcomer can remain without peer inventories while idle.
+            offerAt = offerAt or math.max(GetTime() + math.random(2, 12), (lastOffer or -30) + 30)
         end
     elseif kind == "Q" then
         if #fields ~= 5 or remote ~= session or not ValidToken(fields[4]) or not ValidToken(fields[5])
