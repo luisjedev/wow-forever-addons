@@ -55,7 +55,7 @@ local function Client(name)
         GetMemberInfo = function(_, id)
             local peer = clients[id]
             if client.unreadable == id then return {isSelf = false, presence = 4} end
-            return {name = peer.name, isSelf = peer == client, presence = peer.online and 1 or 4}
+            return {name = peer.name, isSelf = peer == client, presence = peer.online and 1 or 4, race = peer.race}
         end,
     }
     local addon = {}
@@ -100,6 +100,7 @@ local function Receive(client, sender, message, channel)
     client:Event("CHAT_MSG_ADDON", "GuildStockS1", message, channel or "GUILD", sender.name)
 end
 local a, b = Client("Alpha Example"), Client("Beta Example")
+a.race, b.race = 1, 7
 a.restricted, b.restricted = true, true -- Reported flag can disagree with native send permission.
 b.inventory = {[2589] = {count = 4, bound = 0}, [2835] = {count = 2, bound = 0}, [999999] = {count = 99, bound = 0}}
 a:Login(); b:Login(); Step(90)
@@ -110,6 +111,15 @@ assert(Received(a,b).skills[1] == "Alchemy" and Received(a,b).skills[2] == "Mini
 assert(a.addon.SyncStatus() == "Automatic guild synchronization")
 assert(#a.addon.GuildCharacters() == 1 and #a.addon.MaterialOwners(2589, true) == 1)
 local quiet = #log; Step(600); assert(#log == quiet, "unchanged inventories must not emit heartbeats")
+assert(a.addon.GuildCharacters()[1].race == 7 and a.addon.MaterialOwners(2589, true)[1].race == 7)
+for _, race in ipairs({secret, "7", 0, 1.5}) do
+    b.race = race; a:Event("CLUB_MEMBER_UPDATED", 42, 2)
+    assert(a.addon.GuildCharacters()[1].race == nil, "invalid roster race does not discard the member or expose restricted data")
+end
+b.race = nil; a:Event("CLUB_MEMBER_UPDATED", 42, 2)
+assert(a.addon.GuildCharacters()[1].race == nil, "optional race may be absent")
+b.race = 5; a:Event("CLUB_MEMBER_UPDATED", 42, 2)
+assert(a.addon.GuildCharacters()[1].race == 5 and #log == quiet, "roster changes update badges without new traffic")
 
 -- Fixed five-minute batch; multiple loots do not reset its deadline.
 a.inventory[2770].count = 8; a.addon.Observe(); local changedAt = clock

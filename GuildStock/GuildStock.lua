@@ -84,7 +84,8 @@ function addon.GuildCharacters(search)
             and (not addon.SyncMember or (member and not member.isSelf))
             and character.name:lower():find(search, 1, true) then
             result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot,
-                skills = character.skills, online = member and member.online, offline = member and member.offline}
+                skills = character.skills, online = member and member.online, offline = member and member.offline,
+                race = member and member.race}
         end
     end
     table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)

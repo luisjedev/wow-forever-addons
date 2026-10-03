@@ -54,7 +54,8 @@ local function Roster()
             and type(info.isSelf) == "boolean" and addon.Accessible(info.presence) and not removed[id] then
             local online = info.presence == presence.Online or info.presence == presence.Away or info.presence == presence.Busy
             found[info.name] = {id = id, isSelf = info.isSelf, online = online,
-                offline = info.presence == presence.Offline}
+                offline = info.presence == presence.Offline,
+                race = addon.Integer(info.race, 1, 2147483647) and info.race or nil}
             if info.isSelf then own = info.name end
         end
     end

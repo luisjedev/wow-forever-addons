@@ -47,7 +47,9 @@ function methods:SetScale(value) self.scale = value end
 function methods:GetScale() return self.scale or 1 end
 function methods:SetBackdropColor(...) self.background = {...} end
 function methods:SetBackdropBorderColor(...) self.border = {...} end
-function methods:SetTexture(value) self.texture = value end
+function methods:SetTexture(value) self.texture, self.atlas = value, nil end
+function methods:AddMaskTexture(mask) self.mask = mask end
+function methods:SetTexCoord(...) self.coords = {...} end
 function methods:SetFont(path, size) self.fontPath, self.fontSize = path, size end
 function methods:SetFontObject(value) self.fontObject = value end
 function methods:SetFontHeight(value) self.fontSize = value end
@@ -89,6 +91,7 @@ function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
 methods.CreateTexture, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame
+methods.CreateMaskTexture = Frame
 methods.CreateAnimationGroup, methods.CreateAnimation = Frame, Frame
 function methods:SetOrigin(...) self.origin = {...} end
 function methods:SetScaleFrom(x, y) self.scaleFrom = {x, y} end
@@ -453,6 +456,35 @@ end
 addon.SetPlayerSkills(playerRow, nil)
 assert(not skillSlots[1].icon:IsShown() and not skillSlots[2].icon:IsShown())
 
+-- Racial badges replace recycled portraits and tolerate inaccessible/missing native data.
+do
+    local races = {[1] = {clientFileString = "Human"}, [7] = {clientFileString = "Gnome"},
+        [5] = {clientFileString = "Scourge"}, [99] = {clientFileString = secret}}
+    C_CreatureInfo = {GetRaceInfo = function(id) return races[id] end}
+    GetRaceAtlas = function(token, gender, highResolution)
+        assert(gender == "male" and highResolution)
+        return "raceicon128-" .. (token == "scourge" and "undead" or token) .. "-male"
+    end
+    C_Texture = {GetAtlasInfo = function() return {} end}
+    addon.SetPlayerRace(playerRow, 1, 10)
+    local icon = playerRow.raceIcon
+    assert(icon.atlas == "raceicon128-human-male" and icon.mask, "race icons have a circular mask")
+    addon.SetPlayerRace(playerRow, 7, 10)
+    assert(playerRow.raceIcon == icon and icon.atlas == "raceicon128-gnome-male", "reuse updates the race")
+    addon.SetPlayerRace(playerRow, 5, 10)
+    assert(icon.atlas == "raceicon128-undead-male", "native race aliases are used")
+    for _, race in ipairs({secret, false, 0, -1, 1.5, "7", 99, 999}) do
+        addon.SetPlayerRace(playerRow, race, 10)
+        assert(icon.atlas == nil and icon.texture == "Interface\\Icons\\INV_Misc_QuestionMark", "unknown race clears stale portraits")
+    end
+    addon.SetPlayerRace(playerRow, nil, 10)
+    assert(icon.atlas == nil)
+    C_Texture.GetAtlasInfo = function() return nil end
+    addon.SetPlayerRace(playerRow, 1, 10)
+    assert(icon.atlas == nil and icon.coords[2] == 1, "missing artwork resets atlas cropping")
+    C_Texture.GetAtlasInfo = function() return {} end
+end
+
 -- Exercise recipe discovery, real filters and native interface handlers with synthetic items.
 bags[0] = {Item(10, 5, false), Item(20, 2, true)}
 addon.Observe()
@@ -504,6 +536,11 @@ do
         end
     end
     local content = buttons["All professions"].parent
+    assert(not buttons["All professions"].separator:IsShown())
+    for _, entry in ipairs(addon.professions) do
+        assert(not buttons[addon.L[entry[1]]].separator:IsShown(), "profession entries have no separators")
+    end
+    assert(buttons.Favorites.separator:IsShown(), "other navigation separators remain")
     local scroll = content.parent
     assert(mine:IsShown() and other:IsShown() and buttons["All professions"].point[3] == 0)
     assert(buttons.Engineering.point[3] == -76 and buttons.Cooking.point[3] == -116)
@@ -1156,8 +1193,8 @@ Click("Materials"); Click("All materials"); Click("All professions")
 materialInput:SetText("")
 local materialRow = materialInput.list.rows[1]
 local materialID = materialRow.itemID
-local peerOnline = true
-addon.SyncMember = function(id) if id == "Peer Fullname" then return {online = peerOnline, offline = not peerOnline, isSelf = false} end end
+local peerOnline, peerRace = true, 7
+addon.SyncMember = function(id) if id == "Peer Fullname" then return {online = peerOnline, offline = not peerOnline, isSelf = false, race = peerRace} end end
 addon.guildData = {guildID = club, characters = {["Peer Fullname"] = {name = "Peer Fullname",
     skills = {"Alchemy", "Mining"}, snapshot = {observedAt = epoch - 30, items = {[materialID] = {count = 17, bound = 2}}}}}}
 materialRow.scripts.OnClick(materialRow); addon.Refresh()
@@ -1165,6 +1202,14 @@ local owner
 for _, frame in ipairs(frames) do if frame.whisper and frame.whisper.characterID == "Peer Fullname" then owner = frame end end
 assert(owner and owner:IsShown() and owner.count:GetText() == 17 and owner.presence:GetText() == "Online")
 assert(owner.whisper.enabled and owner.skillSlots[1].icon:IsShown())
+assert(owner.raceIcon.atlas == "raceicon128-gnome-male", "material owners use the roster race")
+Click("Characters")
+local characterRow = characterInput.list.rows[1]
+assert(characterRow.raceIcon.atlas == owner.raceIcon.atlas, "both player lists use the same race")
+peerRace = nil; addon.Refresh()
+assert(characterRow.raceIcon.atlas == nil, "missing roster race clears the previous character badge")
+Click("Materials")
+assert(owner.raceIcon.atlas == nil, "missing roster race also clears the owner badge")
 local draft
 ChatFrameUtil = {SendTell = function(name) draft = name end}
 owner.whisper.scripts.OnClick(owner.whisper); assert(draft == "Peer Fullname")

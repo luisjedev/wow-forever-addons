@@ -73,7 +73,34 @@ local function Icon(parent, texture, x, y, size)
     return icon
 end
 
--- Character rows will supply validated primary-profession keys from guild data.
+function addon.SetPlayerRace(row, raceID, x)
+    if not row.raceIcon then
+        row.raceIcon = row:CreateTexture(nil, "ARTWORK")
+        row.raceIcon:SetSize(28, 28)
+        row.raceIcon:SetPoint("LEFT", x, 0)
+        local mask = row:CreateMaskTexture()
+        mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetAllPoints(row.raceIcon)
+        row.raceIcon:AddMaskTexture(mask)
+    end
+    local atlas
+    if addon.Integer(raceID, 1, 2147483647) then
+        local info = addon.Read(C_CreatureInfo and C_CreatureInfo.GetRaceInfo, raceID)
+        if type(info) == "table" and addon.Accessible(info.clientFileString)
+            and type(info.clientFileString) == "string" and info.clientFileString ~= "" then
+            -- The roster has no body-type field; use one standard icon per race.
+            atlas = addon.Read(GetRaceAtlas, info.clientFileString:lower(), "male", true)
+        end
+    end
+    if type(atlas) == "string" and addon.Read(C_Texture and C_Texture.GetAtlasInfo, atlas) then
+        row.raceIcon:SetAtlas(atlas)
+    else
+        row.raceIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        row.raceIcon:SetTexCoord(0, 1, 0, 1)
+    end
+end
+
+-- Character rows use validated primary-profession keys from guild data.
 function addon.SetPlayerSkills(row, skills)
     if not row.skillSlots then
         row.skillSlots = {}
@@ -483,9 +510,13 @@ local function RefreshCharacters()
                 addon.Refresh()
             end, nil, true)
             row.label:SetJustifyH("LEFT")
+            row.label:ClearAllPoints()
+            row.label:SetPoint("LEFT", 46, 0)
+            row.label:SetWidth(characterList.width - 56)
             characterList.rows[i] = row
         end
         row.characterID = entry.id
+        addon.SetPlayerRace(row, entry.race, 10)
         row.separator:SetShown(i < #entries)
         row.label:SetText(entry.name)
         Tip(row, entry.name)
@@ -529,7 +560,7 @@ function addon.RenderOwners()
             row = CreateFrame("Frame", nil, details.owners.content)
             row:SetSize(554, 46)
             RowSeparator(row)
-            row.name = Label(row, "", 15, 14, 144, 13)
+            row.name = Label(row, "", 51, 14, 108, 13)
             row.name:SetWordWrap(false)
             row.count = Label(row, "", 259, 14, 44, 14)
             row.presence = Label(row, "", 321, 14, 113, 13)
@@ -542,13 +573,14 @@ function addon.RenderOwners()
         row:SetPoint("TOPLEFT", 0, -(first + i - 2) * 46)
         row.separator:SetShown(first + i - 1 < #entries)
         row.name:SetText(entry.name)
+        addon.SetPlayerRace(row, entry.race, 15)
         row.count:SetText(entry.snapshot.items[selected].count)
         row.presence:SetText(L[entry.online and "Online" or "Unknown"])
         row.whisper.characterID = entry.id
         row.whisper:SetEnabled(entry.online == true)
         Tip(row.whisper, L[entry.online and "Whisper" or "Whisper requires confirmed online presence."])
         row:EnableMouse(true)
-        Tip(row, string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", entry.snapshot.observedAt)))
+        Tip(row, entry.name .. "\n" .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", entry.snapshot.observedAt)))
         row:SetAlpha(entry.online and 1 or 0.65)
         addon.SetPlayerSkills(row, entry.skills)
         row:Show()
@@ -692,11 +724,13 @@ local function CreateWindow()
         if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
     end, "Interface\\Icons\\Trade_Mining", true)
+    professionButtons.all.separator:Hide()
     for i, entry in ipairs(addon.professions) do
         professionButtons[entry[1]] = Button(professionList.content, L[entry[1]], 0, i * 40, 210, 40, function()
             if profession == entry[1] then return end
             profession = entry[1]; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
         end, "Interface\\Icons\\" .. entry[2], true)
+        professionButtons[entry[1]].separator:Hide()
     end
     professionList.content:SetHeight((#addon.professions + 1) * 40)
     professionList.myTitle = Label(professionList.content, L["My professions"], 8, 0, 202, 13, muted)
