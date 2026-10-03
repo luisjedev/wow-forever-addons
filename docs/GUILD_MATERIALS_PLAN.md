@@ -2,7 +2,7 @@
 
 Draft for discussion, October 3, 2026. Working name: **GuildStock**, not yet selected as the final addon name. The addon will help guild members find profession materials held by other participating characters. It will share inventory counts automatically; holding an item does not imply offering it for sale.
 
-The user selected automatic bag and bank sharing and a modern, clean interface with WoW styling. This document proposes the remaining behavior. No addon code has been implemented. Feasibility depends first on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
+The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. No addon code has been implemented. Feasibility depends first on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
 
 ## Player experience
 
@@ -10,10 +10,11 @@ One movable window, opened through a minimap button or slash command, with three
 
 - The left navigation offers For my professions, All materials, Favorites, and profession filters. Materials used by several professions appear under each relevant filter without duplicating inventory.
 - Search matches localized material names across the catalog. An active profession filter remains visible and easy to clear. A material stays searchable even when no participant reports stock.
-- The middle list shows material icons and names. Selecting one displays one row per character with positive known exchangeable stock: character, bags, bank, connection state, and observation ages. Sorting favors reachable participants with recent bag data; historical records are separate.
-- Bank age and bag age are independent. Use an em dash for unknown counts and zero only for a successful complete observation. A recent heartbeat never makes an old bank observation appear fresh.
-- A Whisper action opens a draft addressed to the selected character, with the material link. The player sends it. There are no automatic orders, reservations, payments, or trades in the initial scope.
-- My inventory explains exactly what is shared, distinguishes bags from the last bank visit, and offers a pause control. Pausing announces withdrawal when permitted and removes active listings on receiving clients; it cannot erase data already copied by others.
+- The middle list shows material icons and names. Selecting one displays one row per character with positive known exchangeable stock. The exact columns are Player, Bags, Last online, and Whisper (Spanish: Jugador, Bolsas, Última conexión, Susurrar). Online rows come first; offline rows remain in the same table with muted styling and their last known bag counts.
+- Last online shows Online for connected characters and the last known connection age for offline characters. Resolve that information from permitted guild-roster data and observed presence transitions; if unavailable, show Unknown rather than inventing a time. Last online is distinct from inventory observation age, which belongs in the quantity tooltip. Use zero only for a successful complete inventory observation; missing data never means zero.
+- Every character row contains its own Whisper button. It opens a draft addressed to that row’s character, with the material link; the player sends it. Disable the button for offline or unconfirmed connection states, explain why in a tooltip, and recheck connection state when clicked. There is no shared Whisper action beneath the table. There are no automatic orders, reservations, payments, or trades in the initial scope.
+- My inventory is a read-only view of profession materials in the player’s bags. Synchronization runs automatically while the addon is enabled and the character belongs to the guild, subject to client restrictions. There are no publish, offer, pause-publication, or manual synchronization buttons.
+- Settings are limited to showing offline members, minimap-button visibility, the initial view, and window scale. Show synchronization as a read-only status and save settings automatically. These presentation choices do not switch inventory synchronization on or off.
 
 For my professions means materials used by the player's learned professions. It is a relevance filter, not a claim that the player is missing those materials. Favorites are manual. Recipe-specific shortages require a selected recipe and target quantity and can follow later.
 
@@ -21,13 +22,15 @@ For my professions means materials used by the player's learned professions. It 
 
 These images explore appearance and layout, not tested game functionality. Material names, quantities, timing, and characters are illustrative; their presence does not certify Forever catalog coverage. Use the player's guild emblem or a neutral materials icon in production, rather than a fixed faction crest.
 
-Created with the built-in image generation tool. The [final prompt set](guild-materials/prompts.json) is retained with the concepts.
+Created with the built-in image generation tool. The [current prompt set](guild-materials/prompts-v2.json) is retained with the three updated concepts.
 
-![Material browser concept](guild-materials/material-browser.png)
+![All materials with automatic bag synchronization](guild-materials/all-materials.png)
 
-![Own inventory concept](guild-materials/my-inventory.png)
+![Favorites with a Whisper button on each character row](guild-materials/favorites.png)
 
-Production refinements beyond the concept art: give offline records their own section and show separate bag and bank timestamps in row details/tooltips. Never present cached bank quantities as immediately accessible bag stock. Settings should stay small: sharing status, bank inclusion, and historical-record visibility.
+![Display settings and automatic synchronization status](guild-materials/settings.png)
+
+The earlier [material browser](guild-materials/material-browser.png), [own inventory](guild-materials/my-inventory.png), and [original prompts](guild-materials/prompts.json) are superseded historical drafts. Their bank columns, shared Whisper action, and publication controls are not part of the current design. The new All materials screen defines the revised row layout for every material view, including For my professions.
 
 ## Scope and inventory meaning
 
@@ -35,7 +38,7 @@ The catalog target is every profession material available in the supported Forev
 
 Reading inventories or the local character's recipes alone does not establish catalog completeness. First identify a usable matching-build dataset and its redistribution terms, then audit against the client's professions and recipes. Record source revision and coverage. A prototype may use a clearly labeled subset; a release must not advertise all materials until coverage has been verified. Do not import a Retail or Classic material list without checking every included mapping against Forever.
 
-Proposed initial sharing scope is exchangeable profession materials in the current character's bags and personal bank. Keep bound materials out of guild availability, while allowing the local view to explain excluded items. Bank of account, guild bank, mail, auction listings, equipped items, and consolidated alternate characters are outside this first scope. Account-bank stock must eventually have shared ownership semantics to avoid counting it once per character.
+The confirmed inventory scope is profession materials in the current character's bags only. Proposed exchangeable-only filtering keeps bound materials out of guild availability, while allowing the local view to explain excluded items. All bank storage, mail, auction listings, equipped items, and consolidated alternate characters are outside this first scope. No bank scan, bank event handling, bank count field, or bank setting is needed.
 
 Only clients running a compatible addon can report inventory. The addon reads its own character's inventory and receives self-reported counts from peers; it cannot inspect a guild member's bags remotely. A missing participant means no data, not zero materials.
 
@@ -51,11 +54,9 @@ Proposed timing, subject to user preference and measurements:
 | --- | --- | --- |
 | Login or UI reload | Restore validated saved data, wait for inventory and guild readiness, scan bags | Announce protocol/session/revision after a random 2–8 second delay; ask online peers for their own snapshots if needed |
 | Bag changes | Coalesce `BAG_UPDATE_DELAYED` bursts and rescan affected readable containers | Send final absolute counts for changed item IDs, at most one change batch every 10–15 seconds; continuous activity must not postpone forever |
-| Bank visit and changes while open | Read purchased character-bank tabs from the API, scan accessible complete contents | Send verified changes with a new bank observation time; retain old data if the scan is incomplete |
-| Bank closing | Preserve the last complete snapshot | Flush already observed changes; do not depend on reading slots after closure |
 | Every five minutes | Check current state | Send a small presence/session/revision heartbeat with random timing; request a snapshot only on mismatch |
-| Window opening or Refresh | Render cache immediately | Request stale or missing records, subject to a 30 second request cooldown |
-| Leaving or changing guild | Stop old-guild publication and hide old-guild records | Cancel queued old-guild packets; begin discovery only when new membership is established |
+| Window opening | Render cache immediately | Automatically request stale or missing records, subject to a 30 second request cooldown |
+| Leaving or changing guild | Stop old-guild synchronization and hide old-guild records | Cancel queued old-guild packets; begin discovery only when new membership is established |
 
 These are proposed product timings, not Blizzard rate limits. Queue packets under a conservative measured byte budget, handle throttle/lockdown results with bounded retry, and stagger responses when several people log in together. Do not broadcast full inventories every five minutes or send every search keystroke to the guild.
 
@@ -65,7 +66,7 @@ Treat heartbeat presence, guild online status, and data freshness as separate fa
 
 Keep one independent addon folder and SavedVariables namespace. A minimal initial layout is the manifest, locale table, catalog table, core inventory/communication logic, UI, and a small Lua test file. Split further only when an actual implementation needs it. Reuse the repository's minimap and locale conventions without extracting a shared dependency.
 
-Store schema version, user preferences, own validated snapshots, and guild-scoped peer observations. Each observation has material item ID, separate bag and bank counts, and separate observation timestamps. Resolve the guild identity and character addressing using verified Forever APIs; do not assume surname equals realm. Do not publish local diagnostics containing real player lists or identifiers.
+Store schema version, user preferences, own validated snapshots, and guild-scoped peer observations. Each inventory observation has material item ID, bag count, and observation timestamp. Store guild presence and last known connection time separately; neither receiving a packet nor reading a cached inventory establishes a precise last logout time. Resolve the guild identity and character addressing using verified Forever APIs; do not assume surname equals realm. Do not publish local diagnostics containing real player lists or identifiers.
 
 Use a small versioned protocol with four logical message types: presence, snapshot request, snapshot, and changes. Include session ID and revision, with base revision for changes. Changes carry absolute counts, including explicit zero/removal records; never sum repeated deltas. Assign ownership from the event sender and verified current guild membership, not an owner name supplied in the payload. WHISPER responses must match an outstanding request to a verified guild member.
 
@@ -77,14 +78,14 @@ On initialization, validate saved tables without overwriting valid data. Preserv
 
 ## Implementation stages and completion checks
 
-1. **Prove the APIs in build 70205.** Record `GetBuildInfo()`, restriction state, prefix result, sending results, and actual round-trip receipt for two guild clients. Verify surname/addressing and roster membership. Visit the personal bank and identify its real container IDs. Verify bound-item visibility and profession enumeration. Completion: documented two-client communication plus correct bag/bank sample counts; if transport fails, stop the network implementation and revisit feasibility.
-2. **Establish the catalog and local inventory.** Source and audit the full build-specific material set and profession relationships. Implement complete bag/bank snapshots, asynchronous item names, and persistence validation. Completion: a material held by nobody remains searchable; depositing, withdrawing, crafting, selling, and reaching zero give correct counts; an inaccessible bank preserves its last complete record. Keep a small runnable Lua check for these state transitions.
-3. **Implement synchronization.** Build registration, discovery, bounded packet queue, full snapshot/absolute changes, revision repair, presence, withdrawal, and guild isolation. Completion: two clients converge after changes and reconnects. Offline tests cover duplicate/reordered/missing packets, explicit zero, incomplete snapshots, bad input, guild changes, and throttle/lockdown behavior. These tests do not replace real delivery tests.
-4. **Build the agreed interface.** Add the material browser, search, profession filter, favorites, player rows, own inventory, and compact settings. Use native frames and item icons with modern restrained styling. Completion: long localized names, empty results, unknown bank data, offline history, and large lists remain readable; keyboard focus, Escape, dragging, scrolling, and UI scale work in-game. Whisper only prepares a draft.
+1. **Prove the APIs in build 70205.** Record `GetBuildInfo()`, restriction state, prefix result, sending results, and actual round-trip receipt for two guild clients. Verify surname/addressing, roster membership, connection status, and availability of last-online information. Verify bound-item visibility and profession enumeration. Completion: documented two-client communication plus correct bag sample counts; if transport fails, stop the network implementation and revisit feasibility.
+2. **Establish the catalog and local inventory.** Source and audit the full build-specific material set and profession relationships. Implement complete bag snapshots, asynchronous item names, and persistence validation. Completion: a material held by nobody remains searchable; looting, trading, crafting, selling, moving items out of bags, and reaching zero give correct counts; an incomplete bag scan preserves the last valid observation. Keep a small runnable Lua check for these state transitions.
+3. **Implement synchronization.** Build registration, discovery, bounded packet queue, full snapshot/absolute changes, revision repair, presence, and guild isolation. Completion: two clients converge after changes and reconnects. Offline tests cover duplicate/reordered/missing packets, explicit zero, incomplete snapshots, bad input, guild changes, and throttle/lockdown behavior. These tests do not replace real delivery tests.
+4. **Build the agreed interface.** Add the material browser, search, profession filter, favorites, player rows, own inventory, and compact settings. Use native frames and item icons with modern restrained styling. Completion: long localized names, empty results, missing bag data, offline history, and large lists remain readable; every row has its own Whisper action, disabled immediately when its character goes offline; keyboard focus, Escape, dragging, scrolling, and UI scale work in-game. Whisper only prepares a draft.
 5. **Pilot and release.** Test with several consenting guild participants, then a larger group for traffic and responsiveness. Check simultaneous logins, disconnects, absent addon users, mixed protocol versions, combat, and no-guild state. Run Lua syntax and repository regression checks, verify reload/full restart persistence, and record build-specific results in the API log. Publish reviewed files to GitHub. Prepare a CurseForge release only when requested, using the repository publishing skill.
 
 ## Decisions still open
 
-The working name, final visual adjustments, timing policy, and offline-history policy remain open until the user selects them. Bank sharing and automatic inventory publication are confirmed requirements, conditional on technical access. The proposed exchangeable-only scope, personal-bank-only first release, seven-day history, and profession relevance rules can be refined before implementation.
+Confirmed: bags only, automatic guild synchronization without publications, and a Whisper button on every character row, disabled when offline. Offline character rows and Last online are part of the requested design. The working name, final visual adjustments, timing policy, historical retention period, exchangeable-only filtering, and profession relevance rules remain open. Seven-day retention is a proposal, not a confirmed requirement.
 
-Pricing, purchase orders, reservations, automatic transactions, account-bank aggregation, and exact recipe shortage calculations can be added when the guild has a concrete need. They are not required to answer the first useful question: who has this material, how much was observed, and how old is that information?
+Bank support, pricing, purchase orders, reservations, automatic transactions, and exact recipe shortage calculations can be added when the guild has a concrete need. They are not required to answer the first useful question: who has this material, how much was observed, and how old is that information?
