@@ -287,6 +287,8 @@ GuildStock creates one child using that template, anchored at the bottom-right w
 
 **Automated:** syntax and all repository regression checks pass. New fixtures cover sparse/secondary-only/empty lists, ordering, duplicate returns, localized names, missing or inaccessible API results, skill changes, hidden-window changes, selection retention, scroll clamping and button reuse. **Reproduced in the game:** after `/reload`, English headings and all five learned professions appeared in the expected groups; a later observation showed an active secondary filter and material results. Concurrent user activity interrupted automated selection, so remaining filter clicks and scrolling, actual learning/unlearning, translated rendering and other scales remain **pending native verification**. Existing persistence and communication limitations remain open. No screenshots or player records are published.
 
+**Section-divider follow-up:** Used by, My professions and Other professions now have matching thin gold lines below their headings. Group dividers move and hide with their headings, using the existing texture APIs and palette. Syntax and all repository regression checks pass. **Reproduced in the game:** after another `/reload` and opening GuildStock, all three dividers were visible, aligned and clear of the text and profession rows. Other scales and translated rendering remain pending.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

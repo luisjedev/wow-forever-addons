@@ -251,6 +251,7 @@ local function LayoutProfessions()
     local y, seen = 40, {}
     local function Heading(label, shown)
         label:SetShown(shown)
+        label.separator:SetShown(shown)
         if shown then
             label:ClearAllPoints()
             label:SetPoint("TOPLEFT", 8, -y - 12)
@@ -576,7 +577,7 @@ local function CreateWindow()
     navigation.favorites.image:SetSize(20, 18)
     navigation.favorites.image:ClearAllPoints()
     navigation.favorites.image:SetPoint("LEFT", 14, 0)
-    Label(sidebar, L["Used by"], 15, 118, 218, 13, muted)
+    local usedByTitle = Label(sidebar, L["Used by"], 15, 118, 202, 13, muted)
     professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
         if profession == nil then return end
@@ -595,6 +596,16 @@ local function CreateWindow()
     professionList.otherTitle:SetWordWrap(false)
     professionList.myTitle:Hide()
     professionList.otherTitle:Hide()
+    for _, entry in ipairs({{sidebar, usedByTitle}, {professionList.content, professionList.myTitle},
+        {professionList.content, professionList.otherTitle}}) do
+        local title = entry[2]
+        title.separator = entry[1]:CreateTexture(nil, "ARTWORK")
+        title.separator:SetTexture("Interface\\Buttons\\WHITE8X8")
+        title.separator:SetVertexColor(unpack(gold))
+        title.separator:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+        title.separator:SetSize(title:GetWidth(), 1)
+        title.separator:SetShown(title:IsShown())
+    end
     local middle = Panel(browser, 258, 77, 324, 566)
     search = Search(middle, "Search materials...", 11, 13, 301)
     listTitle = Label(middle, "", 14, 64, 295, 19)
