@@ -52,6 +52,7 @@ function methods:SetFont(path, size) self.fontPath, self.fontSize = path, size e
 function methods:SetFontObject(value) self.fontObject = value end
 function methods:SetFontHeight(value) self.fontSize = value end
 function methods:SetAtlas(value) self.atlas = value end
+function methods:SetEnabled(value) self.enabled = value end
 function methods:SetChecked(value) self.checked = value end
 function methods:SetFillToInterior(value) self.fillToInterior = value end
 function methods:SetCustomOnMouseUpHandler(handler) self.customMouseUpHandler = handler end
@@ -838,7 +839,7 @@ do
     end
     GetLocale = previousLocale
     -- Include literal lookups so a new untranslated label fails even if absent from every table.
-    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "UI"}) do
+    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "Sync", "UI"}) do
         local sourceFile = assert(io.open("GuildStock/" .. file .. ".lua", "r"))
         local source = sourceFile:read("*a")
         sourceFile:close()
@@ -1113,6 +1114,33 @@ local frameCount = #frames
 Event("ADDON_LOADED", "Blizzard_Professions")
 Event("PLAYER_REGEN_ENABLED")
 assert(#frames == frameCount and GuildStockProfessionsButton == shortcut, "attachment stops listening after creation")
+
+-- Received inventory populates the material owner table with real counts and dated presence.
+GuildStockFrame:Show()
+Click("Materials"); Click("All materials"); Click("All professions")
+materialInput:SetText("")
+local materialRow = materialInput.list.rows[1]
+local materialID = materialRow.itemID
+local peerOnline = true
+addon.SyncMember = function(id) if id == "Peer Fullname" then return {online = peerOnline, offline = not peerOnline, isSelf = false} end end
+addon.guildData = {guildID = club, characters = {["Peer Fullname"] = {name = "Peer Fullname",
+    skills = {"Alchemy", "Mining"}, snapshot = {observedAt = epoch - 30, items = {[materialID] = {count = 17, bound = 2}}}}}}
+materialRow.scripts.OnClick(materialRow); addon.Refresh()
+local owner
+for _, frame in ipairs(frames) do if frame.whisper and frame.whisper.characterID == "Peer Fullname" then owner = frame end end
+assert(owner and owner:IsShown() and owner.count:GetText() == 17 and owner.presence:GetText() == "Online")
+assert(owner.whisper.enabled and owner.skillSlots[1].icon:IsShown())
+local draft
+ChatFrameUtil = {SendTell = function(name) draft = name end}
+owner.whisper.scripts.OnClick(owner.whisper); assert(draft == "Peer Fullname")
+peerOnline, draft = false, nil
+owner.whisper.scripts.OnClick(owner.whisper); assert(draft == nil, "click rechecks current presence")
+addon.Refresh(); assert(owner.presence:GetText() == "Unknown" and not owner.whisper.enabled)
+saved.settings.showOffline = false; addon.Refresh(); assert(not owner:IsShown())
+saved.settings.showOffline = true
+addon.guildData.characters["Peer Fullname"].snapshot.items = {}; addon.Refresh()
+assert(not owner:IsShown(), "complete empty replacements remove old owner quantities")
+addon.SyncMember, addon.guildData, ChatFrameUtil = nil, nil, nil
 
 -- A separate UI load covers Blizzard_Professions already being present at login.
 GuildStockProfessionsButton = nil

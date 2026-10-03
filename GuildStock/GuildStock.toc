@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: GuildStock
-## Notes: Browse profession materials and your bags. Guild synchronization is under development.
-## Version: 0.2.2
+## Notes: Browse profession materials and automatically share bag inventories with your guild.
+## Version: 0.3.0
 ## SavedVariablesPerCharacter: GuildStockDB
 
 Locales.lua
@@ -10,4 +10,5 @@ Probe.lua
 ItemNames.lua
 CatalogSeed.lua
 Catalog.lua
+Sync.lua
 UI.lua

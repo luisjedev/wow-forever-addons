@@ -496,6 +496,42 @@ local function ApplyScale()
     window:SetScale(scale)
 end
 
+function addon.RenderOwners()
+    local entries = details.owners.entries or {}
+    local first = math.max(1, math.floor(details.owners.scroll:GetVerticalScroll() / 46) + 1)
+    local count = math.max(0, math.min(math.ceil(details.owners.scroll:GetHeight() / 46) + 1, #entries - first + 1))
+    for i = 1, count do
+        local entry = entries[first + i - 1]
+        local row = details.owners.rows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, details.owners.content)
+            row:SetSize(554, 46)
+            row.name = Label(row, "", 15, 14, 144, 13)
+            row.name:SetWordWrap(false)
+            row.count = Label(row, "", 259, 14, 44, 14)
+            row.presence = Label(row, "", 321, 14, 113, 13)
+            row.whisper = Button(row, L["Whisper"], 449, 8, 79, 30, function(self)
+                addon.WhisperCharacter(self.characterID)
+            end)
+            row.whisper.label:SetFontHeight(12)
+            details.owners.rows[i] = row
+        end
+        row:SetPoint("TOPLEFT", 0, -(first + i - 2) * 46)
+        row.name:SetText(entry.name)
+        row.count:SetText(entry.snapshot.items[selected].count)
+        row.presence:SetText(L[entry.online and "Online" or "Unknown"])
+        row.whisper.characterID = entry.id
+        row.whisper:SetEnabled(entry.online == true)
+        Tip(row.whisper, L[entry.online and "Whisper" or "Whisper requires confirmed online presence."])
+        row:EnableMouse(true)
+        Tip(row, string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", entry.snapshot.observedAt)))
+        row:SetAlpha(entry.online and 1 or 0.65)
+        addon.SetPlayerSkills(row, entry.skills)
+        row:Show()
+    end
+    for i = count + 1, #details.owners.rows do details.owners.rows[i]:Hide() end
+end
+
 RefreshMaterialDetail = function()
     detailSlot:SetShown(selected ~= nil)
     detailStar:SetShown(selected ~= nil)
@@ -509,6 +545,12 @@ RefreshMaterialDetail = function()
     else
         detailName:SetText(L["Select a material"])
     end
+    details.owners.entries = selected and addon.MaterialOwners(selected, Preferences().showOffline ~= false) or {}
+    details.owners.content:SetHeight(math.max(1, #details.owners.entries * 46))
+    details.owners.scroll:UpdateScrollChildRect()
+    details.owners.scroll.ScrollBar:SetValue(math.min(details.owners.scroll.ScrollBar:GetValue(), details.owners.scroll:GetVerticalScrollRange()))
+    addon.RenderOwners()
+    emptyOwners:SetShown(#details.owners.entries == 0)
     emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
 end
 
@@ -549,9 +591,13 @@ function addon.Refresh()
         hiddenList.empty:SetShown(#hidden == 0)
         inventoryNote:SetText(addon.incomplete and L["Incomplete bag read; retaining the previous observation."] or L["Quantities for your current character."])
     else
-        local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
-        syncStatus:SetText(L[restricted == true and "Addon messages restricted" or "Awaiting communication validation"])
-        syncDescription:SetText(L[restricted == true and "Outgoing addon messages are restricted. Your bag inventory remains available." or "Guild inventory sharing is not active yet. Your bag inventory remains available."])
+        if addon.SyncStatus then
+            local title, description = addon.SyncStatus()
+            syncStatus:SetText(title); syncDescription:SetText(description)
+        else
+            syncStatus:SetText(L["Awaiting communication validation"])
+            syncDescription:SetText(L["Guild inventory sharing is not active yet. Your bag inventory remains available."])
+        end
         settings.offline:SetChecked(preferences.showOffline ~= false)
         settings.minimap:SetChecked(preferences.showMinimap ~= false)
         settings.initial.label:SetText(L[viewLabels[InitialView()]])
@@ -676,6 +722,8 @@ local function CreateWindow()
         heading:SetWordWrap(false)
         if column[1] == "Skills" then heading:SetJustifyH("CENTER") end
     end
+    details.owners = Scroll(tablePanel, 0, 41, 554, 420)
+    details.owners.scroll:HookScript("OnVerticalScroll", addon.RenderOwners)
     emptyOwners = Label(tablePanel, "", 35, 0, 484, 18, muted)
     emptyOwners:ClearAllPoints()
     emptyOwners:SetPoint("CENTER", 0, -20)
@@ -818,7 +866,10 @@ local function CreateWindow()
     syncDescription = Label(sync, "", 21, 83, 1050, 15, muted)
     settings.saveNotice = Label(settings, "", 26, 536, 1114, 13, muted)
     settings.saveNotice:SetJustifyH("RIGHT")
-    window:SetScript("OnShow", addon.Refresh)
+    window:SetScript("OnShow", function()
+        addon.Refresh()
+        if addon.SyncDiscover then addon.SyncDiscover() end
+    end)
     window:SetScript("OnHide", function()
         search:ClearFocus(); bagSearch:ClearFocus(); characterSearch:ClearFocus(); characterItemSearch:ClearFocus()
         settings.choices:Hide()
@@ -938,6 +989,11 @@ SlashCmdList.GUILDSTOCK = function(command)
             print(key .. ": " .. tostring(addon.probe[key] or L["Not tested"]))
         end
         print(L["Professions"] .. ": " .. addon.ProfessionNames())
+        if addon.sync then
+            for _, key in ipairs({"status", "registration", "result", "sent", "received"}) do
+                print("sync " .. key .. ": " .. tostring(addon.sync[key] or L["Not tested"]))
+            end
+        end
     else
         Toggle()
     end

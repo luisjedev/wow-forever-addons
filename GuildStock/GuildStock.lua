@@ -51,9 +51,10 @@ function addon.SetItemHidden(id, hidden)
     if addon.db.hiddenItems == nil then addon.db.hiddenItems = {} end
     if type(addon.db.hiddenItems) ~= "table" then return end -- Preserve unsupported saved data.
     addon.db.hiddenItems[id] = hidden or nil
+    if addon.SyncChanged then addon.SyncChanged() end
 end
 
--- The future GUILD inventory sender must build from this copy at send time, never db.own.
+-- GUILD inventory senders build from this copy at send time, never db.own.
 -- Local observations retain all bag contents; hidden IDs and quantities never enter this copy.
 function addon.ShareableSnapshot()
     if not addon.db or not addon.snapshot or addon.temporary
@@ -70,23 +71,45 @@ function addon.ShareableSnapshot()
     return result
 end
 
--- Runtime view of complete observations; the future GUILD receiver must verify membership
--- before populating guildData = { guildID = ..., characters = { [id] = { name, snapshot } } }.
--- No network producer or persisted peer cache is enabled by this interface prototype.
+-- Complete runtime observations only; membership and presence are rechecked for display.
 function addon.GuildCharacters(search)
     local result, data = {}, addon.guildData
     local guild = addon.Read(C_Club and C_Club.GetGuildClubId)
     if not guild or type(data) ~= "table" or data.guildID ~= guild or type(data.characters) ~= "table" then return result end
     search = (search or ""):lower()
     for id, character in pairs(data.characters) do
+        local member = addon.SyncMember and addon.SyncMember(id)
         if type(id) == "string" and type(character) == "table" and addon.Accessible(character.name)
             and type(character.name) == "string" and character.name ~= "" and ValidSnapshot(character.snapshot)
+            and (not addon.SyncMember or (member and not member.isSelf))
             and character.name:lower():find(search, 1, true) then
-            result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot}
+            result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot,
+                skills = character.skills, online = member and member.online, offline = member and member.offline}
         end
     end
     table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
     return result
+end
+
+function addon.MaterialOwners(id, showOffline)
+    local result = {}
+    for _, character in ipairs(addon.GuildCharacters("")) do
+        if character.snapshot.items[id] and (showOffline or character.online) then
+            result[#result + 1] = character
+        end
+    end
+    table.sort(result, function(a, b)
+        if a.online ~= b.online then return a.online == true end
+        return a.name < b.name
+    end)
+    return result
+end
+
+function addon.WhisperCharacter(id)
+    local member = addon.SyncMember and addon.SyncMember(id)
+    if member and not member.isSelf and member.online and ChatFrameUtil and ChatFrameUtil.SendTell then
+        ChatFrameUtil.SendTell(id) -- Native draft only; no ordinary or addon message is submitted.
+    end
 end
 
 function addon.ScanBags()
@@ -142,6 +165,7 @@ function addon.Observe()
         addon.snapshot = snapshot
         addon.db.own = snapshot
     end
+    if addon.SyncChanged then addon.SyncChanged() end
     if addon.Refresh then addon.Refresh() end
 end
 

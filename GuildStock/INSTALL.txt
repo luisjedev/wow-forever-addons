@@ -1,0 +1,26 @@
+GuildStock 0.3.0 - automatic synchronization testing build
+WoW Forever beta 1.60.1, build 70205, interface 16001
+
+Install the same version on every participating client.
+Extract this ZIP inside World of Warcraft/_classic_beta_/Interface/AddOns/.
+The resulting path must be Interface/AddOns/GuildStock/GuildStock.toc.
+Restart the game after installing this version, then enable GuildStock and log in.
+No commands, profession scans or remote access to another PC are needed.
+
+The base catalog includes 589 materials and 1083 associations across 12 professions.
+Names and icons use each client's game data. The catalog is not exhaustive.
+
+Guild inventory discovery starts automatically after guild and bags are ready.
+Open GuildStock to see received Characters and material-owner rows.
+Later changes are grouped for five minutes from the first pending change.
+No periodic network heartbeat is sent while inventories remain unchanged.
+Uncheck Share to exclude an item from the next complete replacement.
+Counts include owned bound items; they are not guarantees of tradeability.
+
+All addon traffic uses GUILD. Settings reports messaging restrictions or waiting.
+If the beta blocks addon messages, local inventory remains available and the
+addon does not bypass that restriction. Live delivery still needs client testing.
+Peer inventories are kept in memory and reacquired from online peers after reload.
+
+Includes the dark interface and animated profession-section dividers.
+FILES.sha256 identifies the exact packaged source files and Git commit.
