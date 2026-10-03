@@ -148,6 +148,12 @@ Permanent sources for build 70205: [chat API](https://github.com/Gethe/wow-ui-so
 
 **Affected addon:** GuildStock only. No personal screenshots, roster records or SavedVariables content are included in the repository.
 
+### GuildStock compact material detail · October 3, 2026
+
+Reference remains Forever beta `1.60.1.70205`, interface `16001`. The detail icon now matches the material list's 39-pixel icon inside a 43-pixel border, and the name uses the same 16-pixel font. The character table expands from 284 to 463 pixels high; the two footer notes share one line at opposite edges. No inventory, transport or saved-data behavior changes.
+
+Syntax and all repository regression checks pass. A native `/reload` completed, but computer control detected user activity before the revised GuildStock window could be opened. Visual verification of the new layout, long names and English/Spanish footer fit remains pending; frame stubs do not verify rendering.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
