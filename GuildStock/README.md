@@ -23,6 +23,8 @@ Open each learned profession's crafting window at least once with GuildStock ena
 
 All materials is the default opening view. The removed For my professions preference is migrated to All materials; existing favorites and other preferences are preserved.
 
+Material and inventory lists reuse only the visible rows plus one buffer row. Materials keeps its sorted catalog and latest search per filter in memory, updating them when discoveries, item names, favorites or bag observations change. Item-loading notifications are grouped, and typed searches apply after a short pause. Selecting a material updates its detail without rebuilding the list.
+
 `/guildstock diagnostics` prints the build/interface, prefix and send results, probe counts and learned professions locally. It does not print character names, GUIDs or the roster.
 
 ## Two-client communication check

@@ -163,6 +163,16 @@ function addon.ProfessionNames()
     return #names > 0 and table.concat(names, ", ") or "—"
 end
 
+local refreshScheduled = false
+function addon.ScheduleRefresh()
+    if refreshScheduled then return end
+    refreshScheduled = true
+    C_Timer.After(0.05, function()
+        refreshScheduled = false
+        if addon.Refresh then addon.Refresh() end
+    end)
+end
+
 local scheduled = false
 function addon.ScheduleScan()
     if scheduled then return end
@@ -187,9 +197,11 @@ events:SetScript("OnEvent", function(_, event, loadedName, success)
         addon.CreateMinimapButton()
         addon.ScheduleScan()
     elseif event == "GET_ITEM_INFO_RECEIVED" then
-        if addon.Integer(loadedName, 1, 2147483647) and addon.Accessible(success) and success == true then
+        if addon.Integer(loadedName, 1, 2147483647) and addon.Accessible(success) and success == true
+            and addon.itemData[loadedName] ~= nil then
             addon.itemData[loadedName] = nil
-            if addon.Refresh then addon.Refresh() end
+            addon.InvalidateMaterials()
+            addon.ScheduleRefresh()
         end
     elseif event == "SKILL_LINES_CHANGED" or event == "PLAYER_GUILD_UPDATE" then
         if addon.Refresh then addon.Refresh() end

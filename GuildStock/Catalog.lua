@@ -35,12 +35,21 @@ function addon.ItemData(id)
 end
 
 local runtimeCatalog = {}
+local sortedMaterials, sortedCatalog, filteredMaterials = nil, nil, {}
+local filterSnapshot, filterFavorites
+function addon.InvalidateMaterials()
+    sortedMaterials, filteredMaterials = nil, {}
+end
+
 function addon.Catalog()
     if addon.db.catalog == nil then addon.db.catalog = {} end
     local catalog = type(addon.db.catalog) == "table" and addon.db.catalog or runtimeCatalog
     if addon.snapshot then
         for id in pairs(addon.snapshot.items) do
-            if addon.ItemData(id).reagent and catalog[id] == nil then catalog[id] = {} end
+            if addon.ItemData(id).reagent and catalog[id] == nil then
+                catalog[id] = {}
+                addon.InvalidateMaterials()
+            end
         end
     end
     return catalog
@@ -64,7 +73,10 @@ function addon.DiscoverRecipes()
                             if Table(reagent) and addon.Integer(reagent.itemID, 1, 2147483647) then
                                 local itemID = reagent.itemID
                                 if catalog[itemID] == nil then catalog[itemID] = {} end
-                                if type(catalog[itemID]) == "table" then catalog[itemID][key] = true end
+                                if type(catalog[itemID]) == "table" and catalog[itemID][key] ~= true then
+                                    catalog[itemID][key] = true
+                                    addon.InvalidateMaterials()
+                                end
                             end
                         end
                     end
@@ -75,21 +87,39 @@ function addon.DiscoverRecipes()
 end
 
 function addon.Materials(view, profession, search, inventory)
-    local result = {}
-    local favorites = type(addon.db.favorites) == "table" and addon.db.favorites or {}
-    search = (search or ""):lower()
-    for id, professions in pairs(addon.Catalog()) do
-        if addon.Integer(id, 1, 2147483647) and type(professions) == "table" then
-            local own = addon.snapshot and addon.snapshot.items[id]
-            local data = addon.ItemData(id)
-            if (not profession or professions[profession] == true)
-                and (view ~= "favorites" or favorites[id] == true)
-                and (not inventory or own) and data.name:lower():find(search, 1, true) then
-                result[#result + 1] = { id = id, name = data.name, icon = data.icon, count = own and own.count }
+    local catalog = addon.Catalog()
+    if sortedCatalog ~= catalog then addon.InvalidateMaterials(); sortedCatalog = catalog end
+    if not sortedMaterials then
+        sortedMaterials = {}
+        for id, professions in pairs(catalog) do
+            if addon.Integer(id, 1, 2147483647) and type(professions) == "table" then
+                local data = addon.ItemData(id)
+                sortedMaterials[#sortedMaterials + 1] = {id = id, name = data.name, icon = data.icon, search = data.name:lower()}
             end
         end
+        table.sort(sortedMaterials, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
     end
-    table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
+    if filterSnapshot ~= addon.snapshot or filterFavorites ~= addon.db.favorites then
+        filteredMaterials = {}
+        filterSnapshot, filterFavorites = addon.snapshot, addon.db.favorites
+    end
+    local favorites = type(addon.db.favorites) == "table" and addon.db.favorites or {}
+    search = (search or ""):lower()
+    -- Keep only the last query per navigation filter, not an unbounded search history.
+    local key = (view or "all") .. ":" .. (profession or "all") .. (inventory and ":bags" or "")
+    local cached = filteredMaterials[key]
+    if cached and cached.search == search then return cached.entries end
+    local result = {}
+    for _, data in ipairs(sortedMaterials) do
+        local id = data.id
+        local own = addon.snapshot and addon.snapshot.items[id]
+        if (not profession or catalog[id][profession] == true)
+            and (view ~= "favorites" or favorites[id] == true)
+            and (not inventory or own) and data.search:find(search, 1, true) then
+            result[#result + 1] = {id = id, name = data.name, icon = data.icon, count = own and own.count}
+        end
+    end
+    filteredMaterials[key] = {search = search, entries = result}
     return result
 end
 
@@ -110,6 +140,7 @@ function addon.ToggleFavorite(id)
     if addon.db.favorites == nil then addon.db.favorites = {} end
     if type(addon.db.favorites) ~= "table" then return end
     addon.db.favorites[id] = not addon.db.favorites[id] or nil
+    filteredMaterials = {}
 end
 
 function addon.CharacterItems(character, search)

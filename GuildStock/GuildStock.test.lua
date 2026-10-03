@@ -24,6 +24,13 @@ for _, method in ipairs({ "SetSize", "SetFrameLevel", "SetFrameStrata", "SetClam
     methods[method] = function() end
 end
 function methods:SetScript(event, fn) self.scripts[event] = fn end
+function methods:HookScript(event, fn)
+    local previous = self.scripts[event]
+    self.scripts[event] = function(...)
+        if previous then previous(...) end
+        fn(...)
+    end
+end
 function methods:GetScript(event) return self.scripts[event] end
 function methods:RegisterEvent(event) self.events[event] = true end
 function methods:SetPoint(...) self.point = {...} end
@@ -51,8 +58,19 @@ function methods:GetHeight() return self.height or 160 end
 function methods:GetEffectiveScale() return 1 end
 function methods:GetCenter() return 100, 100 end
 function methods:GetValue() return self.value or 0 end
-function methods:SetValue(value) self.value = value end
-function methods:GetVerticalScrollRange() return 10000 end
+function methods:SetValue(value)
+    if self.scroll then value = math.max(0, math.min(value, self.scroll:GetVerticalScrollRange())) end
+    if self.value == value then return end
+    self.value = value
+    if self.scroll then self.scroll:SetVerticalScroll(value) end
+end
+function methods:SetScrollChild(child) self.child = child end
+function methods:GetVerticalScrollRange() return self.child and math.max(0, self.child:GetHeight() - self:GetHeight()) or 0 end
+function methods:GetVerticalScroll() return self.verticalScroll or 0 end
+function methods:SetVerticalScroll(value)
+    self.verticalScroll = value
+    if self.scripts.OnVerticalScroll then self.scripts.OnVerticalScroll(self, value) end
+end
 function methods:IsShown() return self.shown end
 function methods:SetShown(value)
     self.shown = value
@@ -68,6 +86,7 @@ CreateFrame = function(_, name, parent, template)
     f.parent = parent
     f.template = template
     f.TitleText, f.ScrollBar = Frame(), Frame()
+    f.ScrollBar.scroll = f
     frames[#frames + 1] = f
     if name then _G[name] = f end
     return f
@@ -379,6 +398,7 @@ local fishingButton = Click("Fishing")
 assert(fishingButton.image.texture == "Interface\\Icons\\Trade_Fishing")
 assert(not materialInput.list.rows[1]:IsShown(), "Fishing without observed associations has no matches")
 addon.Catalog()[20].Fishing = true
+addon.InvalidateMaterials() -- fixture mutation bypasses recipe discovery
 addon.Refresh()
 assert(materialInput.list.rows[1].itemID == 20 and materialInput.list.rows[1]:IsShown())
 assert(not materialInput.list.rows[2]:IsShown(), "Fishing filters out unrelated materials")
@@ -386,6 +406,7 @@ assert(detailUses.slots[2].icon.texture == "Interface\\Icons\\Trade_Fishing")
 detailUses.slots[2].scripts.OnEnter(detailUses.slots[2])
 assert(GameTooltip:GetText() == "Fishing")
 addon.Catalog()[20].Fishing = nil
+addon.InvalidateMaterials()
 Click("All professions")
 assert(detailUses.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
 detailUses.slots[1].scripts.OnEnter(detailUses.slots[1])
@@ -513,6 +534,7 @@ Event("GET_ITEM_INFO_RECEIVED", 20, false)
 addon.Refresh()
 assert(queries == 0, "failed item loads are not requested in a refresh loop")
 Event("GET_ITEM_INFO_RECEIVED", 20, true)
+Drain()
 assert(queries == 1 and addon.itemData[20].name == "Loaded item", "async names replace item-ID placeholders")
 local charactersTab = Click("Characters")
 local ownBefore = addon.snapshot
@@ -642,4 +664,109 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     assert(localized.L["Not shared with guild"] == "No se comparte" and localized.L["Share"] == "Compartir")
     assert(localized.L["Not shared"] == "No compartidos")
 end
+
+-- Large catalogs exercise bounded UI work, recycled actions and cache invalidation.
+do
+    local previousCatalog, previousSnapshot, previousFavorites = addon.db.catalog, addon.snapshot, addon.db.favorites
+    addon.db.catalog, addon.db.favorites = {}, {}
+    local items = {}
+    for id = 1001, 6000 do
+        addon.db.catalog[id] = {Mining = id % 2 == 0}
+        addon.itemData[id] = {name = string.format("Material %06d", id), icon = id}
+        items[id] = {count = id, bound = 0}
+    end
+    addon.snapshot = {items = items, observedAt = epoch}
+    GuildStockFrame:Show()
+    Click("Materials")
+    Click("All materials")
+    materialInput:SetText("")
+    local list = materialInput.list
+    assert(#list.entries == 5000 and #list.rows == 9, "only viewport rows plus one buffer are allocated")
+    local allocated = #frames
+    local firstRow = list.rows[1]
+    list.scroll.ScrollBar:SetValue(5500)
+    assert(list.rows[1] == firstRow and firstRow.itemID == 1101 and firstRow.point[3] == -5500)
+    assert(#frames == allocated and #list.rows == 9, "scrolling reuses frames")
+    list.scroll.ScrollBar:SetValue(5527)
+    assert(firstRow.itemID == 1101, "partial-row scrolling keeps the correct first entry")
+    local refreshes, queries = 0, 0
+    local refresh, materials = addon.Refresh, addon.Materials
+    addon.Refresh = function(...) refreshes = refreshes + 1; return refresh(...) end
+    addon.Materials = function(...) queries = queries + 1; return materials(...) end
+    firstRow.scripts.OnClick(firstRow)
+    assert(refreshes == 0 and queries == 0, "selection updates detail without rebuilding the list")
+    firstRow.star.scripts.OnClick(firstRow.star)
+    assert(addon.db.favorites[1101] and not addon.db.favorites[1001], "recycled favorite targets its displayed item")
+    local stable = addon.Materials("all")
+    assert(stable == addon.Materials("all"), "unchanged views reuse filtered results")
+    local mining = addon.Materials("all", "Mining")
+    assert(#mining == 2500 and mining == addon.Materials("all", "Mining"))
+    refreshes, queries = 0, 0
+    Click("All materials")
+    assert(refreshes == 0 and queries == 0, "repeating the selected filter does no work")
+    Click("Mining")
+    assert(list.entries == mining and list.scroll:GetVerticalScroll() == 0)
+    Click("All materials")
+    assert(list.entries == stable, "returning to All materials reuses its results")
+    list.scroll.ScrollBar:SetValue(list.scroll:GetVerticalScrollRange())
+    assert(list.rows[8].itemID == 6000 and list.rows[8]:IsShown() and not list.rows[9]:IsShown(), "final row remains reachable")
+    materialInput:SetText("Material 001001")
+    assert(list.scroll:GetVerticalScroll() == 0 and #list.entries == 1 and not list.rows[2]:IsShown())
+    materialInput:SetText("missing")
+    assert(list.empty:IsShown() and not list.rows[1]:IsShown() and list.scroll:GetVerticalScrollRange() == 0)
+    materialInput:SetText("")
+    Drain()
+    refreshes = 0
+    for id = 200001, 200100 do Event("GET_ITEM_INFO_RECEIVED", id, true) end
+    Drain()
+    assert(refreshes == 0, "unrelated item events cause no refresh")
+    local itemAPI = C_Item.GetItemInfo
+    C_Item.GetItemInfo = function(id) return "AAA loaded " .. id end
+    for id = 1001, 1100 do Event("GET_ITEM_INFO_RECEIVED", id, true) end
+    assert(refreshes == 0 and #timers == 1, "relevant item-event bursts queue one refresh")
+    Drain()
+    assert(refreshes == 1 and list.rows[1].label:GetText():match("^AAA loaded"), "resolved names invalidate ordering and filters")
+    assert(addon.Materials("all", nil, "AAA loaded")[100], "search sees newly loaded names")
+    C_Item.GetItemInfo = itemAPI
+    refreshes = 0
+    for _, text in ipairs({"Mat", "Material 006", "Material 006000"}) do
+        materialInput.text = text
+        materialInput.scripts.OnTextChanged(materialInput, true)
+    end
+    addon.Refresh() -- unrelated events must not apply an unfinished query
+    assert(#list.entries == 5000)
+    refreshes = 0
+    Drain()
+    assert(refreshes == 1 and #list.entries == 1 and list.rows[1].itemID == 6000, "only the latest typed search runs")
+    materialInput.text = "stale query"
+    materialInput.scripts.OnTextChanged(materialInput, true)
+    materialInput:SetText("")
+    Drain()
+    assert(#list.entries == 5000, "clearing search cancels its pending query")
+    local beforeDiscovery = addon.Materials("all", "Cooking")
+    addon.DiscoverRecipes()
+    assert(addon.Materials("all", "Cooking") ~= beforeDiscovery and #addon.Materials("all", "Cooking") > 0, "new recipe associations invalidate filters")
+    local beforeBags = addon.Materials("all", nil, "", true)
+    addon.snapshot = {items = {[6000] = {count = 42, bound = 0}}, observedAt = epoch}
+    local afterBags = addon.Materials("all", nil, "", true)
+    assert(afterBags ~= beforeBags and #afterBags == 1 and afterBags[1].count == 42, "new observations replace cached quantities")
+    addon.snapshot = {items = {}, observedAt = epoch}
+    assert(#addon.Materials("all", nil, "", true) == 0, "confirmed empty bags clear the inventory view")
+    addon.snapshot = {items = items, observedAt = epoch}
+    Click("My inventory")
+    assert(#bagInput.list.rows == 7, "inventory shares the bounded renderer")
+    bagInput.list.scroll.ScrollBar:SetValue(5500)
+    local recycled = bagInput.list.rows[1]
+    local target = recycled.itemID
+    recycled.sharing:SetChecked(false)
+    recycled.sharing.scripts.OnClick(recycled.sharing)
+    assert(addon.IsItemHidden(target) and recycled.privateNote:IsShown(), "recycled sharing control uses the current item")
+    recycled.sharing:SetChecked(true)
+    recycled.sharing.scripts.OnClick(recycled.sharing)
+    addon.Refresh, addon.Materials = refresh, materials
+    addon.db.catalog, addon.snapshot, addon.db.favorites = previousCatalog, previousSnapshot, previousFavorites
+    addon.InvalidateMaterials()
+    GuildStockFrame:Hide()
+end
+
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

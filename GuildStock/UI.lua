@@ -189,10 +189,18 @@ local function Search(parent, placeholder, x, y, width)
     field:SetAutoFocus(false)
     field:SetMaxLetters(80)
     local hint = Label(shell, L[placeholder], 12, 9, width - 48, 14, muted)
-    field:SetScript("OnTextChanged", function(self)
-        hint:SetShown(self:GetText() == "")
-        if self.list then self.list.scroll.ScrollBar:SetValue(0) end
-        addon.Refresh()
+    field:SetScript("OnTextChanged", function(self, userInput)
+        local text = self:GetText()
+        hint:SetShown(text == "")
+        self.searchRevision = (self.searchRevision or 0) + 1
+        local revision = self.searchRevision
+        local function ApplySearch()
+            if revision ~= self.searchRevision then return end
+            self.appliedText = text
+            if self.list then self.list.scroll.ScrollBar:SetValue(0) end
+            addon.Refresh()
+        end
+        if userInput and text ~= "" then C_Timer.After(0.15, ApplySearch) else ApplySearch() end
     end)
     field:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     field:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -242,17 +250,26 @@ local function StarButton(parent, x, y, callback)
     return button
 end
 
-local function RenderList(list, entries, snapshot)
-    local own = snapshot ~= nil
+local RefreshMaterialDetail
+local function RenderVisibleRows(list)
+    local entries = list.entries
+    local own = list.snapshot ~= nil
     local hidden = list.hidden
     local contentWidth = list.width - (list.sharing and 92 or 0)
     local catalog = own and addon.Catalog()
-    -- ponytail: one reused row per discovered material; virtualize if large catalogs make refresh slow.
-    for i, entry in ipairs(entries) do
+    local first = math.max(1, math.floor(list.scroll:GetVerticalScroll() / 55) + 1)
+    local count = math.max(0, math.min(math.ceil(list.scroll:GetHeight() / 55) + 1, #entries - first + 1))
+    for i = 1, count do
+        local index = first + i - 1
+        local entry = entries[index]
         local row = list.rows[i]
         if not row then
             row = Button(list.content, "", 0, (i - 1) * 55, list.width, 55, function(self)
-                if not own and not hidden then selected = self.itemID; addon.Refresh() end
+                if not own and not hidden and selected ~= self.itemID then
+                    selected = self.itemID
+                    for _, visible in ipairs(list.rows) do Highlight(visible, visible.itemID == selected) end
+                    RefreshMaterialDetail()
+                end
             end)
             local slot = Panel(row, 7, 6, 43, 43, gold)
             if list.sharing or hidden then slot:SetBackdropBorderColor(0, 0, 0, 0) end
@@ -295,6 +312,11 @@ local function RenderList(list, entries, snapshot)
             end
             list.rows[i] = row
         end
+        if row.itemID ~= entry.id then
+            -- A recycled row must not leave a tooltip describing its previous item.
+            GameTooltip:Hide()
+        end
+        row:SetPoint("TOPLEFT", 0, -(index - 1) * 55)
         row.itemID = entry.id
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -315,14 +337,27 @@ local function RenderList(list, entries, snapshot)
         end
         row:Show()
     end
-    for i = #entries + 1, #list.rows do list.rows[i]:Hide() end
+    for i = count + 1, #list.rows do list.rows[i]:Hide() end
+end
+
+local function RenderList(list, entries, snapshot)
+    list.entries, list.snapshot = entries, snapshot
+    if not list.virtualized then
+        list.virtualized = true
+        list.scroll:HookScript("OnVerticalScroll", function()
+            if not list.updating then RenderVisibleRows(list) end
+        end)
+    end
+    list.updating = true
     list.content:SetHeight(math.max(1, #entries * 55))
     list.scroll:UpdateScrollChildRect()
     list.scroll.ScrollBar:SetValue(math.min(list.scroll.ScrollBar:GetValue(), list.scroll:GetVerticalScrollRange()))
+    list.updating = false
+    RenderVisibleRows(list)
 end
 
 local function RefreshCharacters()
-    local entries = addon.GuildCharacters(characterSearch:GetText())
+    local entries = addon.GuildCharacters((characterSearch.appliedText or ""))
     local current
     for _, entry in ipairs(entries) do if entry.id == selectedCharacter then current = entry end end
     current = current or entries[1]
@@ -351,14 +386,14 @@ local function RefreshCharacters()
     characterList.scroll:UpdateScrollChildRect()
     characterList.scroll.ScrollBar:SetValue(math.min(characterList.scroll.ScrollBar:GetValue(), characterList.scroll:GetVerticalScrollRange()))
     characterList.empty:SetShown(#entries == 0)
-    characterList.empty:SetText(L[characterSearch:GetText() == "" and "No character data yet." or "No matching characters."])
+    characterList.empty:SetText(L[(characterSearch.appliedText or "") == "" and "No character data yet." or "No matching characters."])
     characterName:SetText(current and current.name or L["Select a character"])
     characterNote:SetText(current and string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", current.snapshot.observedAt)) or "")
-    local items = addon.CharacterItems(current, characterItemSearch:GetText())
+    local items = addon.CharacterItems(current, (characterItemSearch.appliedText or ""))
     RenderList(characterItems, items, current and current.snapshot)
     characterItems.empty:SetShown(#items == 0)
     characterItems.empty:SetText(L[not current and "Select a character to view their items."
-        or characterItemSearch:GetText() ~= "" and "No matching materials." or "No items recorded for this character."])
+        or (characterItemSearch.appliedText or "") ~= "" and "No matching materials." or "No items recorded for this character."])
 end
 
 local function ApplyScale()
@@ -372,6 +407,22 @@ local function ApplyScale()
     window:SetScale(scale)
 end
 
+RefreshMaterialDetail = function()
+    detailSlot:SetShown(selected ~= nil)
+    detailStar:SetShown(selected ~= nil)
+    detailProfessions:SetShown(selected ~= nil)
+    if selected then
+        local data = addon.ItemData(selected)
+        detailName:SetText(data.name)
+        detailIcon:SetTexture(data.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        SetMaterialProfessions(detailProfessions, addon.Catalog()[selected])
+        Star(detailStar, selected)
+    else
+        detailName:SetText(L["Select a material"])
+    end
+    emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
+end
+
 function addon.Refresh()
     if not window or not window:IsShown() then return end
     local preferences = Preferences()
@@ -383,9 +434,9 @@ function addon.Refresh()
     if page == "materials" then
         for key, button in pairs(navigation) do Highlight(button, key == view) end
         for key, button in pairs(professionButtons) do Highlight(button, key == (profession or "all")) end
-        local entries = addon.Materials(view, profession, search:GetText())
+        local entries = addon.Materials(view, profession, (search.appliedText or ""))
         local found = false
-        for _, entry in ipairs(entries) do if entry.id == selected then found = true end end
+        for _, entry in ipairs(entries) do if entry.id == selected then found = true; break end end
         if not found then selected = entries[1] and entries[1].id end
         listTitle:SetText(L[viewLabels[view]])
         listHint:SetText(L["Partial catalog · discovered materials"])
@@ -394,23 +445,11 @@ function addon.Refresh()
             and "Mark materials with a star to add them to favorites."
             or "Open your profession windows to discover recipe materials."])
         RenderList(materialList, entries)
-        detailSlot:SetShown(selected ~= nil)
-        detailStar:SetShown(selected ~= nil)
-        detailProfessions:SetShown(selected ~= nil)
-        if selected then
-            local data = addon.ItemData(selected)
-            detailName:SetText(data.name)
-            detailIcon:SetTexture(data.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            SetMaterialProfessions(detailProfessions, addon.Catalog()[selected])
-            Star(detailStar, selected)
-        else
-            detailName:SetText(L["Select a material"])
-        end
-        emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
+        RefreshMaterialDetail()
     elseif page == "characters" then
         RefreshCharacters()
     elseif page == "inventory" then
-        local entries = addon.Materials("all", nil, bagSearch:GetText(), true)
+        local entries = addon.Materials("all", nil, (bagSearch.appliedText or ""), true)
         RenderList(bagList, entries, addon.snapshot)
         bagList.empty:SetShown(#entries == 0)
         bagList.empty:SetText(L[addon.snapshot and "No matching materials." or "No complete bag observation yet."])
@@ -470,6 +509,7 @@ local function CreateWindow()
     sidebar = Panel(browser, 7, 77, 247, 566)
     for i, entry in ipairs({{"all", "INV_Crate_01"}, {"favorites", "INV_Misc_Note_01"}}) do
         navigation[entry[1]] = Button(sidebar, L[viewLabels[entry[1]]], 7, 13 + (i - 1) * 47, 233, 44, function()
+            if view == entry[1] and (view ~= "all" or profession == nil) then return end
             view = entry[1]
             if view == "all" then profession = nil end
             materialList.scroll.ScrollBar:SetValue(0)
@@ -484,10 +524,12 @@ local function CreateWindow()
     Label(sidebar, L["Used by"], 15, 118, 218, 13, muted)
     local professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
+        if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
     end, "Interface\\Icons\\Trade_Mining")
     for i, entry in ipairs(addon.professions) do
         professionButtons[entry[1]] = Button(professionList.content, L[entry[1]], 0, i * 40, 210, 40, function()
+            if profession == entry[1] then return end
             profession = entry[1]; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
         end, "Interface\\Icons\\" .. entry[2])
     end
