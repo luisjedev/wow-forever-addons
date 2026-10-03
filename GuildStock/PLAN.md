@@ -1,6 +1,6 @@
 # Guild materials addon design and implementation plan
 
-Draft for discussion, October 3, 2026. Working name: **GuildStock**, not yet selected as the final addon name. The addon will help guild members find profession materials held by other participating characters. It will share inventory counts automatically; holding an item does not imply offering it for sale.
+Design and implementation plan, October 3, 2026. Addon folder: **GuildStock**. The addon will help guild members find profession materials held by other participating characters. It will share inventory counts automatically; holding an item does not imply offering it for sale.
 
 The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. No addon code has been implemented. Feasibility depends first on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
 
@@ -24,17 +24,21 @@ For my professions means materials used by the player's learned professions. It 
 
 These images explore appearance and layout, not tested game functionality. Material names, quantities, timing, and characters are illustrative; their presence does not certify Forever catalog coverage. Use the player's guild emblem or a neutral materials icon in production, rather than a fixed faction crest.
 
-Created with the built-in image generation tool. The [current prompt set](guild-materials/prompts-v3.json) covers the revised screens and the empty-owner state. Earlier generation prompts remain in the repository as design history.
+Created with the built-in image generation tool. The [current prompt set](mockups/prompts.json) covers all current screens and the empty-owner state. Earlier generation prompts remain in the repository as design history.
 
-![All materials with automatic bag synchronization](guild-materials/all-materials.png)
+![Materials for the player’s professions](mockups/my-professions.png)
 
-![Favorites with a Whisper button on each character row](guild-materials/favorites.png)
+![All materials with automatic bag synchronization](mockups/all-materials.png)
 
-![Display settings and automatic synchronization status](guild-materials/settings.png)
+![Favorites with a Whisper button on each character row](mockups/favorites.png)
 
-![A catalog material with no matching guild inventory](guild-materials/material-empty.png)
+![Current character bag inventory](mockups/my-inventory.png)
 
-The earlier [material browser](guild-materials/material-browser.png), [own inventory](guild-materials/my-inventory.png), and [original prompts](guild-materials/prompts.json) are superseded historical drafts. Their bank columns, shared Whisper action, and publication controls are not part of the current design. The new All materials screen defines the revised row layout for every material view, including For my professions.
+![Display settings and automatic synchronization status](mockups/settings.png)
+
+![A catalog material with no matching guild inventory](mockups/material-empty.png)
+
+The earlier [material browser](../docs/guild-materials/material-browser.png), [own inventory](../docs/guild-materials/my-inventory.png), and [original prompts](../docs/guild-materials/prompts.json) are superseded historical drafts. Their bank columns, shared Whisper action, and publication controls are not part of the current design. The new All materials screen defines the revised row layout for every material view, including For my professions.
 
 ## Scope and inventory meaning
 
@@ -50,7 +54,7 @@ Only clients running a compatible addon can report inventory. The addon reads it
 
 Use the native addon-message transport: register a dedicated short prefix with `C_ChatInfo.RegisterAddonMessagePrefix`, send using `C_ChatInfo.SendAddonMessage`, and receive `CHAT_MSG_ADDON`. Proposed channels are GUILD for discovery and inventory changes, and WHISPER for requested initial snapshots or repairs. These are addon payloads, not ordinary guild chat lines or a custom channel players must join. They should be invisible in normal chat, but are not encrypted or private from other guild addons listening to the prefix.
 
-The exact build exposes realm restrictions and explicit sending result enums. Phase 0 must verify both channels and actual receipt. If transport is restricted, display the limitation and retain the local inventory view; do not fall back to chat spam or attempt a bypass. See the [build evidence and pending tests](BLIZZARD_API.md#guild-materials-feasibility-review-october-3-2026).
+The exact build exposes realm restrictions and explicit sending result enums. Phase 0 must verify both channels and actual receipt. If transport is restricted, display the limitation and retain the local inventory view; do not fall back to chat spam or attempt a bypass. See the [build evidence and pending tests](../docs/BLIZZARD_API.md#guild-materials-feasibility-review-october-3-2026).
 
 Proposed timing, subject to user preference and measurements:
 
@@ -93,6 +97,6 @@ On initialization, validate saved tables without overwriting valid data. Preserv
 
 ## Decisions still open
 
-Confirmed: bags only, automatic guild synchronization without publications or a footer indicator, the complete Forever profession-material catalog with an empty-owner notice, deletion of departed guild members from the local database, All professions as the first sidebar profession filter without a duplicate dropdown, and a Whisper button on every character row, disabled when offline. Offline character rows and Last online are part of the requested design. The working name, final visual adjustments, timing policy, historical retention period, exchangeable-only filtering, and profession relevance rules remain open. Seven-day retention is a proposal, not a confirmed requirement.
+Confirmed: bags only, automatic guild synchronization without publications or a footer indicator, the complete Forever profession-material catalog with an empty-owner notice, deletion of departed guild members from the local database, All professions as the first sidebar profession filter without a duplicate dropdown, and a Whisper button on every character row, disabled when offline. Offline character rows and Last online are part of the requested design. Final visual adjustments, timing policy, historical retention period, exchangeable-only filtering, and profession relevance rules remain open. Seven-day retention is a proposal, not a confirmed requirement.
 
 Bank support, pricing, purchase orders, reservations, automatic transactions, and exact recipe shortage calculations can be added when the guild has a concrete need. They are not required to answer the first useful question: who has this material, how much was observed, and how old is that information?

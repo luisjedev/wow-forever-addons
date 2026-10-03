@@ -29,7 +29,7 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 
 ## Guild materials feasibility review October 3 2026
 
-Product `wow_classic_beta`, installed version `1.60.1.70205`, matches source revision `e3ecc27`. Existing addons declare interface `16001`; the running client's interface value still needs `GetBuildInfo()` verification. This review supports the [guild materials implementation plan](GUILD_MATERIALS_PLAN.md); it does not revalidate TDL or Revenge.
+Product `wow_classic_beta`, installed version `1.60.1.70205`, matches source revision `e3ecc27`. Existing addons declare interface `16001`; the running client's interface value still needs `GetBuildInfo()` verification. This review supports the [guild materials implementation plan](../GuildStock/PLAN.md); it does not revalidate TDL or Revenge.
 
 | Area | Documented in source | Consequence and pending verification |
 | --- | --- | --- |
