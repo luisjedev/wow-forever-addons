@@ -13,7 +13,7 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 3, 2026; GuildStock interface and native-client tests |
+| Last review of this log | October 3, 2026; Forever rulesets, shards, identity and addon communications |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
@@ -26,6 +26,79 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 | Forever beta · 1.60.1 · 69913 | Earlier note included in [TDL/README.txt](../TDL/README.txt) | A failure to restore SavedVariables after reload or exit was documented. This is a historical project record, not official confirmation or a new reproduction. |
 | Forever beta · 1.60.1 · 70009 | Local installation and source review at `bd2470a` | Identity restrictions and signatures reviewed in source. Persistence, combat, and nameplates still require validation in this build. The earlier failure is not considered fixed. |
 | Forever beta · 1.60.1 · 70205 | Local installation and source review at `e3ecc27` | GuildStock loaded and was tested in the client: bags, recipe discovery, interface and selected reload persistence. Outgoing addon messaging reported restricted. Earlier TDL/Revenge limitations remain unresolved. |
+
+## Forever rulesets, layers and addon communications
+
+Research date: **October 3, 2026**. The installed product was rechecked as `wow_classic_beta`, version `1.60.1.70205`; the earlier live test reported interface `16001`. Code references below are pinned to Blizzard source mirrored at `e3ecc27b64d30fdc735a3f6579b866858f9f9df1`. This review adds source evidence and development rules, not a new two-client delivery result. It supersedes the traditional “same realm” assumption in earlier planning.
+
+### Player ecosystem and world placement
+
+Blizzard replaces traditional realm selection with **Normal (PvE), PvP, Roleplaying, and Hardcore**, with Hardcore planned after launch. Rulesets have separate grouping ecosystems; ordinary grouping across rulesets or factions is not supported. A preferred online language affects social placement. These statements do not establish a single worldwide population or cross-region addon delivery. Sources: [Choose Your Ruleset](https://worldofwarcraft.blizzard.com/en-us/news/24302070) and [Forever Deep Dive, Playing Together in a Realmless Azeroth](https://news.blizzard.com/en-us/article/24303313/world-of-warcraft-forever-deep-dive-panel-recap).
+
+Keep these concepts separate in every addon:
+
+| Concept | Evidence | Development consequence |
+| --- | --- | --- |
+| Region | Blizzard defines full-name uniqueness within a region. | Record the test environment/region; do not assume global name uniqueness or that beta routing proves production routing. |
+| Ruleset and faction | Official grouping boundaries above; `Enum.PhaseReason` distinguishes `RuleSet` from `Sharding`. | A ruleset is a gameplay choice, not a layer address. Do not treat `Enum.ChatChannelRuleset` as the Normal/PvP/RP/Hardcore selector; that enum describes different chat rules. |
+| Layer/shard | Build 70205 declares `SHARD_TRANSFER_IMMINENT`, `SHARD_TRANSFER`, `UnitInPartyShard(unit)` and `UnitPhaseReason(unit)`. Blizzard's social toast uses the transfer events and `GetEvictionTimeRemaining()` to display a pending move. | Treat world placement as temporary. A transfer or an absent nearby unit is not a new character, a guild departure, or proof of disconnection. |
+| Internal realm fields | `GetRealmID`, `GetNativeRealmID`, `GetRealmName` and `SelectedRealmName` remain in generated connection documentation. | Their names do not restore the old player-facing realm model. Do not invent a layer ID from them or append the viewer's realm to another character's name. Runtime meaning still needs verification. |
+
+Sources: [unit APIs and phase reasons](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua), [transfer events](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/SystemDocumentation.lua), [native transfer notice](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SocialToast/SocialToast.lua), [party phase explanations](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_FrameXMLUtil/PartyUtil.lua), [connection API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ConnectionDocumentation.lua), and [chat enums](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatConstantsDocumentation.lua).
+
+The reviewed API supplies a party-shard boolean and phase reasons, not a stable shard address for addon transport. Transfer events declare no shard-ID payload. Do not parse NPC GUIDs, assume an `instanceID` is a layer identifier, or persist layer numbers as identity. These sources do not establish placement algorithms, layer capacity, or which transitions fire which events in Forever; observe those in the matching client.
+
+### Character identity and addressing
+
+**Official behavior:** a character's first name plus surname is unique within a region; the first name alone is not. Hiding the surname above the character does not remove it from chat or identity. Source: [Create a Name of Your Own](https://news.blizzard.com/en-us/article/24304161/create-a-name-of-your-own-in-wow-forever).
+
+**Source evidence:** `RegionalUniqueNamesEnabled()` exists in build 70205. Camelot's `NameUtil` combines the two results of `UnitName` / `UnitNameUnmodified` using `Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR`, despite generic generated fields still being named `unitName` / `unitServer`. The native whisper parser supports both a space and a hyphen between first name and surname when regional names are enabled. That is evidence for ordinary chat parsing, not proof that both spellings are interchangeable in `SendAddonMessage`. Sources: [Camelot name utilities](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua) and [native whisper parsing](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua).
+
+**Repository rules:**
+
+- Keep display text, persistent identity and transport address separate. Preserve the complete accessible name and the exact sender address supplied by the event. Never strip everything after `-`, remove the surname, or manufacture `Name-GetRealmName()`.
+- Prefer a verified accessible character GUID as an opaque local identity where available; never parse it for placement. If a name is used as a key, scope the full name to the product/environment and region. Name changes and migrations need explicit handling. Do not rewrite existing SavedVariables during this research update.
+- Resolve guild scope from the initialized guild/club API, not guild name plus the local realm or layer. `C_Club.GetGuildClubId()` can return nil; `GetClubMembers` and `GetMemberInfo` require initialization and carry messaging restrictions. Member names can be Kstrings. Missing/inaccessible roster data must not trigger deletion or authorization by guesswork. Source: [club API and member fields](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ClubDocumentation.lua).
+- Validate a message sender against permitted current membership before associating it with stored inventory. A full name written inside a packet is not authoritative. GuildStock's exact-name probe may reject legitimate peers if roster and event formatting differ; `unmatched` is a diagnostic result, not evidence that they are on the wrong layer.
+
+### How addons should communicate
+
+The transport contract remains `C_ChatInfo.RegisterAddonMessagePrefix(prefix)`, `C_ChatInfo.SendAddonMessage(prefix, message, chatType, target)`, and `CHAT_MSG_ADDON`. **There is no layer parameter in that send call.** Blizzard handles routing to the selected audience; addons should not implement layer discovery or relaying to reach guildmates. Cross-layer delivery is a test requirement, not a result established by the signature. Source: [build 70205 chat API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua).
+
+| Intended audience | Repository transport design | Validation required |
+| --- | --- | --- |
+| GuildStock participants | `GUILD` exclusively, with a dedicated prefix for discovery, inventory updates, snapshots, repair requests and acknowledgements. | Both clients register; verify actual reception while together, separated, and after a shard transfer. Membership, not visible proximity, defines the audience. |
+| A GuildStock request for one participant | Still `GUILD`, with a logical recipient/request ID in the payload and a response correlated to the verified sender. | All guild participants can receive it; unrelated clients must ignore the request or acknowledgement. This is not private point-to-point delivery. |
+| Party/raid tool | `PARTY`, `RAID`, or `INSTANCE_CHAT` as appropriate to the real group. | These are separate audiences to validate for that addon; they do not provide a guild-wide substitute. GuildStock uses none of them. |
+| World/zone or custom channel | No such transport is required for GuildStock. | Do not infer regional or layer coverage from a channel's display name, local channel number, or a working ordinary chat message. |
+
+**Whisper is a player action, not GuildStock transport.** Its per-character button opens the native WoW chat editor addressed to that character; the player writes and sends the ordinary message. Build 70205's `ChatFrameUtil.SendTell(name)` prepares that editor through `SendTellWithMessage`, without submitting a message. Preserve the full accessible name and validate native addressing in the client. Neither this action nor the synchronization protocol uses addon `WHISPER`. Source: [native chat draft helpers](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua#L367). The prototype has no guild character rows yet, so this button remains planned.
+
+Register/send results are enums: compare named values, including `Success = 0`, rather than Lua truthiness. Handle throttle, offline, missing guild/group and lockdown outcomes; an accepted send or self echo proves no remote receipt. Use versioned, bounded packets with acknowledgements, timeouts and measured rate limits. Source: [transport result enums](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatConstantsDocumentation.lua).
+
+Three states must remain distinct:
+
+1. **World placement:** shard/phase events concern the world instance. Recheck readiness after a transition and repair interrupted transfers without deleting character or guild history merely because the layer changed.
+2. **Regional chat availability:** `C_ChatInfo.IsRegionalServiceAvailable()`, `IsChannelRegional(channelIndex)`, `IsChannelRegionalForChannelID(channelID)`, `CHAT_REGIONAL_STATUS_CHANGED` and `CHAT_REGIONAL_SEND_FAILED` describe regional chat service state. Blizzard's chat UI uses these to show service messages. They neither grant addon-send permission nor prove that a particular addon packet was delivered. Sources: [chat API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua) and [native regional-chat handling](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ChatFrameBase/Mainline/ChatFrameOverrides.lua).
+3. **Addon permission and delivery:** `AreOutgoingAddonChatMessagesRestricted()` documents sending restrictions separately from receiving. Respect that check and inaccessible/secret values; do not change channels, use visible chat, or switch services to evade a restriction.
+
+The earlier live session returned **true** for the outgoing restriction flag; GuildStock's guard therefore stopped the probe before sending. This is not proof of the restriction's cause, scope across all rulesets, permanence, or an actual `SendAddonMessage` failure. The API documentation still uses realm terminology internally. GuildStock 0.2.1 replaces the earlier “realm” notice with addon-message restriction wording. A realmless world does not itself remove the restriction.
+
+### Two-client verification and addon impact
+
+Use two consenting clients in the **same beta environment, ruleset, faction and guild**, recording region and exact build. Do not require the same layer as a permanent prerequisite. Start outside combat. Record only non-identifying results: prefix/send enum names, restriction and service booleans, counts, and whether identity comparisons matched.
+
+| Test | Evidence to collect |
+| --- | --- |
+| Baseline | Check prefix registration and outgoing restrictions on both. If restricted, stop sends and record “blocked before send”; do not label it a failed cross-layer test. |
+| Together | Run the [existing probe sequence](../GuildStock/README.md#two-client-communication-check) using 0.2.1 on both clients. Require the other client to receive the GUILD probe and the initiating client to receive its matching GUILD acknowledgement. Repeat in the other direction. |
+| Separated | Repeat in different zones and, separately, in a confirmed different-shard situation. Merely standing in different zones or failing to see a character is insufficient proof of different shards. Use permitted phase/party information and native notices when available; otherwise mark shard placement unknown. |
+| Transition | Repeat before and after an observed `SHARD_TRANSFER`, group join/leave, and reconnect. Check address/membership continuity and timeouts. Re-arm the current probe after world transitions, which cancel its test window. |
+| Identity | Compare exact roster and GUILD event identities locally; retain only equality/format findings in public logs. Separately test the native Whisper editor with full/accented names once character rows exist; this is not an addon delivery test. |
+
+**Affected addons:** GuildStock needs delivery, identity and roster validation before synchronization; Revenge must preserve full-name identity when nameplates disappear or move between shards; TDL's local per-character tasks need no communication or layer key. Future shared data must be scoped to the verified social audience and survive placement changes. Cross-region, cross-ruleset and cross-faction addon delivery, automatic ruleset detection, regional service outages, event behavior, payload/rate limits and full restart persistence remain unverified. No SavedVariables migration is added by this review.
+
+**GuildStock 0.2.1 scope correction:** at the user's direction, all addon traffic is GUILD-only. The developer probe now sends both requests and acknowledgements on GUILD and rejects other channels. Packet version 2 rejects the former version 1 exchange, avoiding mixed-client results; historical GUILD/WHISPER notes below describe the superseded prototype. Diagnostics no longer report a WHISPER transport. Automated assertions cover guild-only sends, matching/duplicate/unrelated acknowledgements, rejected whisper/old-version messages, restrictions, throttling and guild changes. Syntax and all repository regression checks pass. A native-client visual check was attempted but computer control interrupted the first action after detecting user activity; no reload or new rendering check was completed. Two-client exchange and cross-layer delivery remain unverified for 0.2.1; the earlier restriction observation remains the live evidence.
 
 ## Guild materials feasibility review October 3 2026
 

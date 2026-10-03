@@ -234,7 +234,7 @@ function addon.Refresh()
             detailProfessions:SetText("")
         end
         local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
-        emptyOwners:SetText(L[restricted == true and "Guild data is unavailable on this realm." or "Waiting for guild data"])
+        emptyOwners:SetText(L[restricted == true and "Guild data is unavailable while addon messages are restricted." or "Waiting for guild data"])
     elseif page == "inventory" then
         local entries = addon.Materials("all", nil, bagSearch:GetText(), true)
         RenderList(bagList, entries, true)
@@ -243,8 +243,8 @@ function addon.Refresh()
         inventoryNote:SetText(addon.incomplete and L["Incomplete bag read; retaining the previous observation."] or L["Quantities for your current character."])
     else
         local restricted = addon.Read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)
-        syncStatus:SetText(L[restricted == true and "Restricted by this realm" or "Awaiting communication validation"])
-        syncDescription:SetText(L[restricted == true and "This realm blocks outgoing addon messages. Your bag inventory remains available." or "Guild inventory sharing is not active yet. Your bag inventory remains available."])
+        syncStatus:SetText(L[restricted == true and "Addon messages restricted" or "Awaiting communication validation"])
+        syncDescription:SetText(L[restricted == true and "Outgoing addon messages are restricted. Your bag inventory remains available." or "Guild inventory sharing is not active yet. Your bag inventory remains available."])
         settings.offline:SetChecked(preferences.showOffline ~= false)
         settings.minimap:SetChecked(preferences.showMinimap ~= false)
         settings.initial.label:SetText(L[viewLabels[InitialView()]])
@@ -487,7 +487,7 @@ SlashCmdList.GUILDSTOCK = function(command)
         local version, build, _, interface = GetBuildInfo()
         print("GuildStock: " .. version .. "." .. build .. " / " .. interface)
         print(L["Prefix registration"] .. ": " .. (addon.probe.registration or L["Unavailable"]))
-        for _, key in ipairs({"GUILD", "WHISPER", "received", "confirmed", "unmatched"}) do
+        for _, key in ipairs({"GUILD", "received", "confirmed", "unmatched"}) do
             print(key .. ": " .. tostring(addon.probe[key] or L["Not tested"]))
         end
         print(L["Professions"] .. ": " .. addon.ProfessionNames())

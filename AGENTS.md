@@ -5,6 +5,8 @@ A collection of Lua addons for WoW Forever. Read `README.md`, `docs/DEVELOPMENT.
 - Each addon folder can be installed independently. Preserve folder names and `Interface\\AddOns\\...` paths.
 - Use the client API and existing patterns. Share conventions and documentation; extract a common library only when actual duplication justifies it.
 - Identify the product, version, build, and interface before assuming compatibility. Forever is neither Classic Era nor Retail.
+- For identity or communication work, follow [Forever rulesets, layers and addon communications](docs/BLIZZARD_API.md#forever-rulesets-layers-and-addon-communications). Players choose rulesets; shards are temporary world placement. Preserve full regional names, do not construct legacy name-realm keys or layer-based guild identities, and verify cross-layer delivery with two clients.
+- GuildStock synchronization uses `GUILD` only, including requests and acknowledgements. Its Whisper action opens native chat addressed to the character; it is not an addon transport.
 - Consult sources for the matching build and record discovered limitations, evidence, affected addons, and pending tests in `docs/BLIZZARD_API.md`. Do not claim a bug is fixed merely because the version changed.
 - Respect secret values, combat restrictions, and protected frames. Do not try to bypass them. A function's existence does not guarantee permission to operate on its result.
 - Preserve SavedVariables, review every initialization path, and do not overwrite valid data during recovery or migration.

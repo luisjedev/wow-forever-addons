@@ -40,6 +40,15 @@ The destinations must be unused: if folders already exist, back them up outside 
 
 Switching branches immediately changes the files that the next `/reload` will read. Each addon keeps its own `.toc`, version, and SavedVariables. Their names are preserved so WoW can still find existing data in `WTF`; that data is not part of the repository.
 
+## Forever identity and communication
+
+Read the shared [rulesets, layers and communication reference](BLIZZARD_API.md#forever-rulesets-layers-and-addon-communications) before adding multiplayer behavior or character keys. It distinguishes official product behavior, build-specific source evidence and pending client tests.
+
+- Players choose Normal/PvP/Roleplaying/Hardcore rulesets, with Hardcore planned after launch. Do not require a traditional realm name when arranging tests.
+- Full first-name/surname combinations are regionally unique. Preserve complete names and verified transport addresses; never append the local realm or use a layer as persistent identity.
+- Use the native audience-based addon transport. GuildStock uses `GUILD` exclusively for all synchronization, including requests and replies; delivery across shards still needs two-client proof. Its Whisper button only opens native chat addressed to the character. A shard move must not delete guild records or split the same character into a new key.
+- Treat shard placement, regional chat availability and addon-message restrictions separately. Source signatures, successful send results and working ordinary chat do not prove addon delivery.
+
 ## Checks
 
 From the repository root, with Lua 5.1 or LuaJIT installed:

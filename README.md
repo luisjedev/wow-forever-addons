@@ -13,7 +13,7 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 
 Hover over either minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
 
-**In development:** [GuildStock](GuildStock/README.md) will help guildmates find profession materials. Its prototype provides a material browser, favorites, a searchable bag inventory and display settings, opened with `/guildstock` or its crate minimap button. The catalog is partial. Guild sharing remains pending; Settings reports the realm restriction observed during testing.
+**In development:** [GuildStock](GuildStock/README.md) will help guildmates find profession materials. Its prototype provides a material browser, favorites, a searchable bag inventory and display settings, opened with `/guildstock` or its crate minimap button. The catalog is partial. Guild sharing remains pending; Settings reports the outgoing-addon-message restriction observed during testing.
 
 ### TDL · Remember your plans
 
@@ -39,6 +39,8 @@ Do not copy the entire repository folder into `AddOns`. You do not need developm
 ## Current status
 
 The addons are in development for **WoW Forever beta**, with interface `16001`. Compatibility with Retail, Classic Era, or other versions is not assumed.
+
+Forever replaces traditional realm selection with Normal (PvE), PvP and Roleplaying rulesets, with Hardcore planned after launch. Characters use a full first name and surname, unique within a region. For development, layers/shards are temporary world placement, not character or guild identities. See the shared [rulesets, layers and addon communication reference](docs/BLIZZARD_API.md#forever-rulesets-layers-and-addon-communications) for sources and testing requirements.
 
 Some beta builds have shown problems restoring saved data after reloading the interface or closing the game. This can affect tasks and the enemy list. Game restrictions may also prevent Revenge from identifying certain players. See the [compatibility log](docs/BLIZZARD_API.md) for the builds reviewed and the tests still pending.
 

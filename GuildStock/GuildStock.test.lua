@@ -120,6 +120,7 @@ C_ChatInfo = {
     RegisterAddonMessagePrefix = function() return registerResult end,
     AreOutgoingAddonChatMessagesRestricted = function() return restriction end,
     SendAddonMessage = function(prefix, message, channel, target)
+        assert(channel == "GUILD" and target == nil, "all addon traffic must use GUILD without a whisper target")
         sent[#sent + 1] = {prefix, message, channel, target}
         return sendResult
     end,
@@ -227,35 +228,36 @@ assert(#sent == 0)
 club = 123
 addon.StartProbe()
 assert(#sent == 1 and sent[1][3] == "GUILD" and addon.probe.GUILD == "Success")
-local token = sent[1][2]:match("^1|P|(.+)$")
+local token = sent[1][2]:match("^2|P|(.+)$")
 local function Receive(message, channel, sender)
     addon.ReceiveProbe("GuildStockP0", message, channel or "GUILD", sender or "Peer Example")
 end
-Receive("1|P|" .. token, "GUILD", "Self Example")
+Receive("2|P|" .. token, "GUILD", "Self Example")
 assert(#sent == 1, "self echo never proves delivery")
-Receive("1|P|101-20", "GUILD", "Unknown Example")
+Receive("2|P|101-20", "GUILD", "Unknown Example")
 assert(#sent == 1 and addon.probe.unmatched == 1)
 members[2].presence = 3
-Receive("1|P|101-20")
+Receive("2|P|101-20")
 assert(#sent == 1, "offline roster entries cannot trigger a reply")
 members[2].presence = secret
-Receive("1|P|101-20")
+Receive("2|P|101-20")
 assert(#sent == 1)
 members[2].presence = 1
-for _, message in ipairs({ "1|P|bad", string.rep("x", 1000), "2|P|101-20", secret }) do Receive(message) end
+for _, message in ipairs({ "2|P|bad", string.rep("x", 1000), "1|P|101-20", secret }) do Receive(message) end
 addon.ReceiveProbe("GuildStockP0", nil, "GUILD", "Peer Example")
-Receive("1|P|101-20", "PARTY")
-Receive("1|P|101-20", "WHISPER")
+Receive("2|P|101-20", "PARTY")
+Receive("2|P|101-20", "WHISPER")
 assert(#sent == 1, "malformed and wrong-channel messages cannot trigger replies")
-Receive("1|P|101-20")
-assert(#sent == 2 and sent[2][3] == "WHISPER" and sent[2][4] == "Peer Example")
-Receive("1|P|101-20")
+Receive("2|P|101-20")
+assert(#sent == 2 and sent[2][3] == "GUILD" and sent[2][2] == "2|A|101-20")
+Receive("2|P|101-20")
 assert(#sent == 2, "duplicate requests are bounded")
-Receive("1|A|0-0", "WHISPER")
+Receive("2|A|0-0", "GUILD")
+Receive("2|A|" .. token, "WHISPER")
 Receive("1|A|" .. token, "GUILD")
-assert(addon.probe.confirmed == 0)
-Receive("1|A|" .. token, "WHISPER")
-Receive("1|A|" .. token, "WHISPER")
+assert(addon.probe.confirmed == 0, "unrelated guild tokens, whispers and old protocol acknowledgements are ignored")
+Receive("2|A|" .. token, "GUILD")
+Receive("2|A|" .. token, "GUILD")
 assert(addon.probe.confirmed == 1, "matching acknowledgement counts exactly once")
 addon.StartProbe()
 assert(#sent == 2, "probe cooldown")
@@ -263,16 +265,16 @@ clock = clock + 61
 sendResult = 3
 addon.StartProbe()
 assert(addon.probe.GUILD == "AddonMessageThrottle")
-Receive("1|P|102-20")
+Receive("2|P|102-20")
 assert(#sent == 3, "failed send disarms the probe without retrying")
 clock, sendResult = clock + 61, 0
 addon.StartProbe()
 club = 456
-Receive("1|P|103-20")
+Receive("2|P|103-20")
 assert(#sent == 4, "guild changes invalidate the old probe")
 club = 123
 Event("PLAYER_GUILD_UPDATE", "player")
-Receive("1|P|103-20")
+Receive("2|P|103-20")
 assert(#sent == 4)
 
 -- Exercise recipe discovery, real filters and native interface handlers with synthetic items.

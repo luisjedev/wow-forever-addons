@@ -30,11 +30,11 @@ local function CanSend()
         and Guild() ~= nil
 end
 
-local function Send(message, channel, target)
+local function Send(message)
     if not CanSend() then return false end
-    local result = addon.Read(C_ChatInfo and C_ChatInfo.SendAddonMessage, prefix, message, channel, target)
+    local result = addon.Read(C_ChatInfo and C_ChatInfo.SendAddonMessage, prefix, message, "GUILD")
     local values = Enum and Enum.SendAddonMessageResult
-    state[channel] = addon.ResultName(values, result)
+    state.GUILD = addon.ResultName(values, result)
     return values and result == values.Success
 end
 
@@ -64,8 +64,7 @@ function addon.StartProbe()
     pending = string.format("%d-%d", time(), math.random(1, 2147483647))
     replied, lastReply = {}, nil
     state.received, state.confirmed, state.unmatched = 0, 0, 0
-    state.WHISPER = nil
-    if not Send("1|P|" .. pending, "GUILD") then
+    if not Send("2|P|" .. pending) then
         pending, expires = nil, nil
         return L["Probe unavailable: check Settings and /guildstock diagnostics."]
     end
@@ -79,18 +78,18 @@ function addon.ReceiveProbe(messagePrefix, message, channel, sender)
         if not addon.Accessible(value) or type(value) ~= "string" then return end
     end
     if messagePrefix ~= prefix or #message > 64 or #sender > 200
-        or (channel ~= "GUILD" and channel ~= "WHISPER") then return end
-    local kind, token = message:match("^1|([PA])|(%d+%-%d+)$")
+        or channel ~= "GUILD" then return end
+    local kind, token = message:match("^2|([PA])|(%d+%-%d+)$")
     if not kind then return end
     -- Own broadcast echoes cannot establish delivery to another client.
     if kind == "P" and token == pending then return end
     if not Peer(sender) then state.unmatched = state.unmatched + 1; return end
-    if kind == "P" and channel == "GUILD" and not replied[sender]
+    if kind == "P" and not replied[sender]
         and state.received < 5 and (not lastReply or GetTime() - lastReply >= 2) then
         replied[sender], lastReply = true, GetTime()
         state.received = state.received + 1
-        Send("1|A|" .. token, "WHISPER", sender)
-    elseif kind == "A" and channel == "WHISPER" and token == pending then
+        Send("2|A|" .. token)
+    elseif kind == "A" and token == pending then
         state.confirmed = state.confirmed + 1
         pending = nil -- One matched acknowledgement per probe; duplicates prove nothing.
     end
