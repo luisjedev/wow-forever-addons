@@ -3,6 +3,7 @@ local L = addon.L
 local window, minimapButton, selected
 local page, view, profession = "materials", "all", nil
 local tabs, navigation, professionButtons = {}, {}, {}
+local professionList
 local browser, inventory, settings, sidebar, materialList, details
 local bagList, search, bagSearch, listTitle, listHint, detailName, detailProfessions, detailIcon, detailSlot, detailStar, emptyOwners
 local inventoryNote, hiddenList, syncStatus, syncDescription, scaleLabel
@@ -241,6 +242,39 @@ local function Scroll(parent, x, y, width, height)
     return {scroll = scroll, content = content, rows = {}, width = width - 24}
 end
 
+local function LayoutProfessions()
+    local learned = addon.LearnedProfessions()
+    if not learned then return end -- Keep the last layout when the client cannot supply a complete read.
+    local order = table.concat(learned, ":")
+    if professionList.order == order then return end
+    professionList.order = order
+    local y, seen = 40, {}
+    local function Heading(label, shown)
+        label:SetShown(shown)
+        if shown then
+            label:ClearAllPoints()
+            label:SetPoint("TOPLEFT", 8, -y - 12)
+            y = y + 36
+        end
+    end
+    local function Place(key)
+        local button = professionButtons[key]
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", 0, -y)
+        y = y + 40
+    end
+    Heading(professionList.myTitle, #learned > 0)
+    for _, key in ipairs(learned) do Place(key); seen[key] = true end
+    Heading(professionList.otherTitle, #learned < #addon.professions)
+    for _, entry in ipairs(addon.professions) do
+        if not seen[entry[1]] then Place(entry[1]) end
+    end
+    professionList.content:SetHeight(y)
+    professionList.scroll:UpdateScrollChildRect()
+    local maximum = math.max(0, y - professionList.scroll:GetHeight())
+    professionList.scroll.ScrollBar:SetValue(math.min(professionList.scroll:GetVerticalScroll(), maximum))
+end
+
 local function Favorite(id)
     return type(addon.db.favorites) == "table" and addon.db.favorites[id] == true
 end
@@ -452,6 +486,7 @@ function addon.Refresh()
     inventory:SetShown(page == "inventory")
     settings:SetShown(page == "settings")
     if page == "materials" then
+        LayoutProfessions()
         for key, button in pairs(navigation) do Highlight(button, key == view) end
         for key, button in pairs(professionButtons) do Highlight(button, key == (profession or "all")) end
         local entries = addon.Materials(view, profession, (search.appliedText or ""))
@@ -542,7 +577,7 @@ local function CreateWindow()
     navigation.favorites.image:ClearAllPoints()
     navigation.favorites.image:SetPoint("LEFT", 14, 0)
     Label(sidebar, L["Used by"], 15, 118, 218, 13, muted)
-    local professionList = Scroll(sidebar, 7, 145, 234, 404)
+    professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
         if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
@@ -554,6 +589,12 @@ local function CreateWindow()
         end, "Interface\\Icons\\" .. entry[2])
     end
     professionList.content:SetHeight((#addon.professions + 1) * 40)
+    professionList.myTitle = Label(professionList.content, L["My professions"], 8, 0, 202, 13, muted)
+    professionList.otherTitle = Label(professionList.content, L["Other professions"], 8, 0, 202, 13, muted)
+    professionList.myTitle:SetWordWrap(false)
+    professionList.otherTitle:SetWordWrap(false)
+    professionList.myTitle:Hide()
+    professionList.otherTitle:Hide()
     local middle = Panel(browser, 258, 77, 324, 566)
     search = Search(middle, "Search materials...", 11, 13, 301)
     listTitle = Label(middle, "", 14, 64, 295, 19)

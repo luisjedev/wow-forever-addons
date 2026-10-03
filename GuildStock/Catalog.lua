@@ -18,6 +18,32 @@ local function ProfessionKey(value)
     end
 end
 
+function addon.LearnedProfessions()
+    if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return end
+    local indices = { pcall(GetProfessions) }
+    if not indices[1] then return end
+    local learned, seen = {}, {}
+    -- Match Forever's profession book: two primaries, Cooking, Fishing, First Aid.
+    -- pcall adds one slot; optional profession returns can contain nil holes.
+    for _, slot in ipairs({2, 3, 6, 5, 4}) do
+        local index = indices[slot]
+        if not addon.Accessible(index) then return end
+        if index ~= nil then
+            if not addon.Integer(index, 1, 1000) then return end
+            local values = { pcall(GetProfessionInfo, index) }
+            local skillLine = values[8]
+            if not values[1] or not addon.Integer(skillLine, 1, 2147483647) then return end
+            local info = addon.Read(C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID, skillLine)
+            if not Table(info) or not addon.Integer(info.profession, 0, 100) then return end
+            local key = ProfessionKey(info.profession)
+            if key and not seen[key] then
+                learned[#learned + 1], seen[key] = key, true
+            end
+        end
+    end
+    return learned
+end
+
 function addon.ItemData(id)
     if addon.itemData[id] == nil then
         addon.itemData[id] = false -- one request until GET_ITEM_INFO_RECEIVED succeeds

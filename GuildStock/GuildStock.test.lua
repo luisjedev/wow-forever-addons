@@ -7,7 +7,7 @@ InCombatLockdown = function() return combat end
 GetLocale = function() return "enUS" end
 local secret = setmetatable({}, { __tostring = function() error("secret used") end })
 canaccessvalue = function(value) return value ~= secret end
-local timers, frames = {}, {}
+local timers, frames, fontStrings = {}, {}, {}
 C_Timer = { After = function(_, callback) timers[#timers + 1] = callback end }
 local function Drain()
     local callbacks = timers
@@ -83,7 +83,12 @@ end
 function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
-methods.CreateTexture, methods.CreateFontString, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame, Frame
+methods.CreateTexture, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame
+function methods:CreateFontString()
+    local label = Frame()
+    fontStrings[#fontStrings + 1] = label
+    return label
+end
 CreateFrame = function(_, name, parent, template)
     local f = Frame()
     f.parent = parent
@@ -106,7 +111,7 @@ GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
 UISpecialFrames, SlashCmdList = {}, {}
 Constants = { InventoryConstants = { NumBagSlots = 4, NumReagentBagSlots = 1 } }
 Enum = {
-    Profession = {Engineering = 2, Cooking = 4},
+    Profession = {Mining = 1, Engineering = 2, FirstAid = 3, Cooking = 4, Fishing = 5},
     BagIndex = { Backpack = 0, ReagentBag = 5 },
     RegisterAddonMessagePrefixResult = { Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2 },
     SendAddonMessageResult = { Success = 0, AddonMessageThrottle = 3, AddOnMessageLockdown = 11 },
@@ -137,6 +142,9 @@ C_Item = { GetItemInfo = function(id)
 end }
 C_TradeSkillUI = {
     GetAllRecipeIDs = function() return {1, 2} end,
+    GetProfessionInfoBySkillLineID = function(id)
+        return {profession = ({[100] = 1, [200] = 2, [300] = 3, [400] = 5, [500] = 4})[id]}
+    end,
     GetProfessionInfoByRecipeID = function(id) return {profession = id == 1 and 2 or 4} end,
     GetRecipeSchematic = function(id)
         return {reagentSlotSchematics = {{reagents = {{itemID = id == 1 and 10 or 20}}}}}
@@ -224,6 +232,40 @@ addon.snapshot = nil
 assert(addon.ShareableSnapshot() == nil, "missing observations cannot be advertised as empty")
 addon.snapshot = withObservation
 assert(addon.ProfessionNames() == "Engineering, Cooking", "secondary professions survive nil holes")
+do
+    local getProfessions, getInfo = GetProfessions, GetProfessionInfo
+    local getBySkillLine = C_TradeSkillUI.GetProfessionInfoBySkillLineID
+    assert(table.concat(addon.LearnedProfessions(), ",") == "Engineering,Cooking")
+    GetProfessions = function() return 1, 2, 3, 4, 5 end
+    GetProfessionInfo = function(index) return "Localized name", nil, nil, nil, nil, nil, index * 100 end
+    assert(table.concat(addon.LearnedProfessions(), ",") == "Mining,Engineering,Cooking,Fishing,FirstAid",
+        "stable IDs identify localized professions in primary/secondary book order")
+    GetProfessions = function() return nil, nil, 3, nil, 5 end
+    assert(table.concat(addon.LearnedProfessions(), ",") == "Cooking,FirstAid", "secondary-only characters retain sparse skills")
+    GetProfessions = function() return 2, 2 end
+    assert(table.concat(addon.LearnedProfessions(), ",") == "Engineering", "duplicate professions appear once")
+    GetProfessions = function() end
+    assert(#addon.LearnedProfessions() == 0, "no learned professions is a complete empty result")
+    for _, query in ipairs({function() error("not ready") end, function() return secret end, function() return "bad index" end}) do
+        GetProfessions = query
+        assert(addon.LearnedProfessions() == nil, "failed or inaccessible reads stay unknown")
+    end
+    GetProfessions = getProfessions
+    for _, query in ipairs({function() error("not ready") end, function() return nil end,
+        function() return nil, nil, nil, nil, nil, nil, secret end}) do
+        GetProfessionInfo = query
+        assert(addon.LearnedProfessions() == nil, "unavailable skill lines are not used as IDs")
+    end
+    GetProfessionInfo = getInfo
+    for _, query in ipairs({function() error("not ready") end, function() return secret end,
+        function() return {profession = secret} end, function() return {} end}) do
+        C_TradeSkillUI.GetProfessionInfoBySkillLineID = query
+        assert(addon.LearnedProfessions() == nil, "unknown metadata does not erase the learned list")
+    end
+    C_TradeSkillUI.GetProfessionInfoBySkillLineID = nil
+    assert(addon.LearnedProfessions() == nil, "missing APIs are tolerated")
+    C_TradeSkillUI.GetProfessionInfoBySkillLineID = getBySkillLine
+end
 
 local complete = addon.snapshot
 local realInfo = C_Container.GetContainerItemInfo
@@ -399,6 +441,50 @@ for _, frame in ipairs(frames) do
     if frame.icon and frame.icon.atlas == "auctionhouse-icon-favorite-off" and not frame.parent.label then detailFavorite = frame end
 end
 assert(materialInput and detailUses and detailFavorite)
+do
+    local buttons, mine, other = {}
+    for _, frame in ipairs(frames) do
+        if frame.label and frame.image then buttons[frame.label:GetText()] = frame end
+    end
+    for _, frame in ipairs(fontStrings) do
+        if frame:GetText() == "My professions" then mine = frame end
+        if frame:GetText() == "Other professions" then other = frame end
+    end
+    local content = buttons["All professions"].parent
+    local scroll = content.parent
+    assert(mine:IsShown() and other:IsShown() and buttons["All professions"].point[3] == 0)
+    assert(buttons.Engineering.point[3] == -76 and buttons.Cooking.point[3] == -116)
+    assert(buttons.Alchemy.point[3] < other.point[3] and other.point[3] < buttons.Cooking.point[3])
+    Click("Engineering")
+    local getProfessions, allocated, packetCount = GetProfessions, #frames, #sent
+    GetProfessions = function() return 1, nil, 3, 4, 5 end
+    Event("SKILL_LINES_CHANGED")
+    assert(buttons.Mining.point[3] == -76 and buttons.Cooking.point[3] == -116
+        and buttons.Fishing.point[3] == -156 and buttons["First Aid"].point[3] == -196)
+    assert(buttons.Engineering.point[3] < other.point[3] and buttons.Engineering.selection:IsShown(),
+        "an unlearned profession moves to Other without changing the selected filter")
+    assert(materialInput.list.rows[1].itemID == 10, "the selected profession still filters materials")
+    local positions = {}
+    for _, entry in ipairs(addon.professions) do
+        local button = buttons[addon.L[entry[1]]]
+        assert(button.parent == content and not positions[button.point[3]], "every profession has one distinct row")
+        positions[button.point[3]] = true
+    end
+    GetProfessions = function() return secret end
+    Event("SKILL_LINES_CHANGED")
+    assert(buttons.Mining.point[3] == -76 and mine:IsShown(), "inaccessible reads retain the previous grouping")
+    scroll.ScrollBar:SetValue(content:GetHeight() - scroll:GetHeight())
+    GetProfessions = function() end
+    Event("SKILL_LINES_CHANGED")
+    assert(not mine:IsShown() and other:IsShown() and buttons.Alchemy.point[3] == -76)
+    assert(scroll:GetVerticalScroll() == content:GetHeight() - scroll:GetHeight(), "shorter lists clamp the scroll offset")
+    GuildStockFrame:Hide()
+    GetProfessions = getProfessions
+    Event("SKILL_LINES_CHANGED")
+    SlashCmdList.GUILDSTOCK("")
+    assert(mine:IsShown() and buttons.Engineering.point[3] == -76, "reopening discovers changes made while hidden")
+    assert(#frames == allocated and #sent == packetCount, "regrouping reuses buttons and sends no messages")
+end
 -- Fishing is a secondary profession filter and shares the material-use renderer.
 local fishingButton = Click("Fishing")
 assert(fishingButton.image.texture == "Interface\\Icons\\Trade_Fishing")
@@ -713,6 +799,7 @@ do
     assert(locales.esES["Used by"] == "Usado por" and locales.esES["Fishing"] == "Pesca")
     assert(locales.esES["Not shared with guild"] == "No se comparte" and locales.esES["Share"] == "Compartir")
     assert(locales.esES["Not shared"] == "No compartidos")
+    assert(locales.esES["My professions"] == "Mis profesiones" and locales.esES["Other professions"] == "Otras profesiones")
 end
 
 -- Large catalogs exercise bounded UI work, recycled actions and cache invalidation.
