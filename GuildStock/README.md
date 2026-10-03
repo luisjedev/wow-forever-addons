@@ -2,7 +2,7 @@
 
 An in-development implementation of the [GuildStock design](PLAN.md), targeting **WoW Forever beta 1.60.1, build 70205, interface 16001**. The interface uses near-black bronze surfaces, ivory text, four top tabs, and a three-column material browser. All tabs share borderless content panels, table headings, rows and item icons. A yellow underline identifies the active tab; a narrow side marker and soft background identify selected filters, materials and characters. Search fields, the opening-view menu and small profession slots retain subtle outlines. Its palette and native favorite stars refine the earlier mockups. The catalog is partial and guild inventory sharing is not active yet.
 
-Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock` or its crate minimap button. Left-drag the button to reposition it. English and Spanish (`esES` and `esMX`) are supported; other languages fall back to English.
+Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock`, its crate minimap button, or the crate shortcut at the bottom-right of the native Professions window, separated from the profession tabs. Click the shortcut again to close GuildStock. Left-drag the minimap button to reposition it. English and Spanish (`esES` and `esMX`) are supported; other languages fall back to English.
 
 ## Available now
 

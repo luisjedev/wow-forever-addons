@@ -33,6 +33,7 @@ function methods:HookScript(event, fn)
 end
 function methods:GetScript(event) return self.scripts[event] end
 function methods:RegisterEvent(event) self.events[event] = true end
+function methods:UnregisterAllEvents() self.events = {} end
 function methods:SetPoint(...) self.point = {...} end
 function methods:ClearAllPoints() self.point = nil end
 function methods:SetText(value)
@@ -48,6 +49,8 @@ function methods:SetBackdropBorderColor(...) self.border = {...} end
 function methods:SetTexture(value) self.texture = value end
 function methods:SetAtlas(value) self.atlas = value end
 function methods:SetChecked(value) self.checked = value end
+function methods:SetFillToInterior(value) self.fillToInterior = value end
+function methods:SetCustomOnMouseUpHandler(handler) self.customMouseUpHandler = handler end
 function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
 function methods:SetWidth(value) self.width = value end
@@ -86,6 +89,7 @@ CreateFrame = function(_, name, parent, template)
     f.parent = parent
     f.template = template
     f.TitleText, f.ScrollBar = Frame(), Frame()
+    if template == "LargeSideTabButtonTemplate" then f.Icon = Frame() end
     f.ScrollBar.scroll = f
     frames[#frames + 1] = f
     if name then _G[name] = f end
@@ -94,7 +98,9 @@ end
 UIParent, Minimap, GameTooltip = Frame(), Frame(), Frame()
 UIParent:SetSize(1920, 1080)
 STANDARD_TEXT_FONT = "Fonts/example.ttf"
-methods.SetOwner, methods.AddLine = function() end, function() end
+methods.AddLine = function() end
+function methods:SetOwner(owner) self.owner = owner end
+function methods:IsOwned(owner) return self.owner == owner end
 GetCursorPosition = function() return 150, 100 end
 GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
 UISpecialFrames, SlashCmdList = {}, {}
@@ -774,5 +780,54 @@ do
     addon.InvalidateMaterials()
     GuildStockFrame:Hide()
 end
+
+-- The profession window loads on demand; attaching must wait for it and for combat to end.
+assert(not GuildStockProfessionsButton, "login must not require or load the profession window")
+ProfessionsFrame = Frame()
+ProfessionsFrame.ProfessionsOverviewTab = Frame()
+local nativeTabs = {Frame(), Frame()}
+ProfessionsFrame.rightProfessionTabs = nativeTabs
+combat = true
+Event("ADDON_LOADED", "Blizzard_Professions")
+assert(not GuildStockProfessionsButton, "no native-window attachment during combat")
+combat = false
+Event("PLAYER_REGEN_ENABLED")
+local shortcut = GuildStockProfessionsButton
+assert(shortcut and shortcut.parent == ProfessionsFrame and shortcut.template == "LargeSideTabButtonTemplate")
+assert(shortcut.point[1] == "BOTTOMLEFT" and shortcut.point[2] == ProfessionsFrame
+    and shortcut.point[3] == "BOTTOMRIGHT" and shortcut.point[4] == 0 and shortcut.point[5] == 4,
+    "shortcut stays at the foot of the right-hand tabs instead of following the last profession")
+assert(shortcut.Icon.texture == "Interface\\Icons\\INV_Crate_01" and shortcut.fillToInterior)
+assert(not shortcut:GetChecked() and shortcut.tooltipText == "GuildStock")
+assert(ProfessionsFrame.rightProfessionTabs == nativeTabs and #nativeTabs == 2, "native tabs stay untouched")
+GuildStockFrame:Hide()
+local traffic = #sent
+shortcut.customMouseUpHandler(shortcut, "RightButton", true)
+shortcut.customMouseUpHandler(shortcut, "LeftButton", false)
+assert(not GuildStockFrame:IsShown(), "only a left click released inside activates the shortcut")
+shortcut.customMouseUpHandler(shortcut, "LeftButton", true)
+assert(GuildStockFrame:IsShown() and ProfessionsFrame:IsShown(), "shortcut opens GuildStock and preserves professions")
+shortcut.customMouseUpHandler(shortcut, "LeftButton", true)
+assert(not GuildStockFrame:IsShown() and #sent == traffic, "second click closes without sending messages")
+GameTooltip:SetOwner(shortcut); GameTooltip:Show()
+shortcut:Hide()
+assert(not GameTooltip:IsShown(), "hiding the shortcut dismisses its tooltip")
+GameTooltip:SetOwner(ProfessionsFrame); GameTooltip:Show()
+shortcut:Hide()
+assert(GameTooltip:IsShown(), "unrelated tooltips stay untouched")
+GameTooltip:Hide()
+local frameCount = #frames
+Event("ADDON_LOADED", "Blizzard_Professions")
+Event("PLAYER_REGEN_ENABLED")
+assert(#frames == frameCount and GuildStockProfessionsButton == shortcut, "attachment stops listening after creation")
+
+-- A separate UI load covers Blizzard_Professions already being present at login.
+GuildStockProfessionsButton = nil
+assert(loadfile("GuildStock/UI.lua"))("GuildStock", addon)
+Event("ADDON_LOADED", "UnrelatedAddon")
+assert(not GuildStockProfessionsButton)
+Event("PLAYER_LOGIN")
+assert(GuildStockProfessionsButton and GuildStockProfessionsButton.parent == ProfessionsFrame,
+    "already-loaded profession UI also receives the shortcut")
 
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

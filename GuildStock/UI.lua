@@ -701,6 +701,39 @@ local function Toggle()
     window:SetShown(not window:IsShown())
 end
 
+-- Forever loads its profession window on demand. Keep this shortcut outside
+-- rightProfessionTabs so native profession selection never treats it as a skill.
+local professionEvents = CreateFrame("Frame")
+local function CreateProfessionsShortcut()
+    local parent = ProfessionsFrame
+    if not parent or not parent.ProfessionsOverviewTab or InCombatLockdown() then return end
+    local button = CreateFrame("Frame", "GuildStockProfessionsButton", parent, "LargeSideTabButtonTemplate")
+    button:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 0, 4)
+    button:EnableMouse(true)
+    button.Icon:SetTexture("Interface\\Icons\\INV_Crate_01")
+    button:SetFillToInterior(true)
+    button:SetChecked(false)
+    button.tooltipText = "GuildStock"
+    button:SetCustomOnMouseUpHandler(function(_, mouseButton, upInside)
+        if mouseButton == "LeftButton" and upInside then
+            GameTooltip:Hide()
+            Toggle()
+        end
+    end)
+    button:SetScript("OnHide", function(self)
+        if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+    end)
+    professionEvents:UnregisterAllEvents()
+end
+for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED"}) do
+    professionEvents:RegisterEvent(event)
+end
+professionEvents:SetScript("OnEvent", function(_, event, loadedName)
+    if event ~= "ADDON_LOADED" or loadedName == "Blizzard_Professions" then
+        CreateProfessionsShortcut()
+    end
+end)
+
 function addon.CreateMinimapButton()
     local button = CreateFrame("Button", "GuildStockMinimapButton", Minimap)
     minimapButton = button
