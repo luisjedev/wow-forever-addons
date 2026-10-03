@@ -160,7 +160,7 @@ local function PrimarySkills()
     return table.concat(skills, ",")
 end
 local function Build()
-    if not fresh or addon.incomplete then return end
+    if addon.IsSharingEnabled() and (not fresh or addon.incomplete) then return end
     local snapshot = addon.ShareableSnapshot()
     if not snapshot then return end
     local ids, catalog = {}, addon.Catalog()
@@ -384,7 +384,7 @@ function addon.SyncTick()
     if not published then Publish(current)
     else
         if current.key ~= published.key and not dirtyAt then dirtyAt = now end
-        if dirtyAt and now - dirtyAt >= 300 then
+        if dirtyAt and (not addon.IsSharingEnabled() or now - dirtyAt >= 300) then
             if current.key ~= published.key then Publish(current) else dirtyAt = nil end
         end
     end

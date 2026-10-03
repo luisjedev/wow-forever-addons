@@ -11,6 +11,7 @@ local characters, characterList, characterItems, characterSearch, characterItemS
 local selectedCharacter, characterName, characterNote
 local temporarySettings = {}
 local gold, cream, muted = {0.64, 0.46, 0.23}, {0.94, 0.88, 0.73}, {0.70, 0.64, 0.54}
+local disabledText = {0.5, 0.5, 0.5}
 local colors = {
     window = {0.095, 0.075, 0.045, 1}, panel = {0.125, 0.10, 0.06, 1},
     border = {0.35, 0.27, 0.17}, button = {0.105, 0.08, 0.045, 1},
@@ -467,13 +468,13 @@ local function RenderVisibleRows(list)
                 row.sharing = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
                 row.sharing:SetPoint("TOPLEFT", list.width - 88, -13.5)
                 row.sharing:SetSize(28, 28)
-                Label(row, L["Share"], list.width - 59, 20, 59, 14)
+                row.shareLabel = Label(row, L["Share"], list.width - 59, 20, 59, 14)
+                row.sharing:SetMotionScriptsWhileDisabled(true)
                 row.sharing:SetScript("OnClick", function(self)
                     addon.SetItemHidden(row.itemID, not self:GetChecked())
                     GameTooltip:Hide()
                     addon.Refresh()
                 end)
-                Tip(row.sharing, L["Share this item with your guild. Uncheck to stop sharing."])
                 row.privateNote = Label(row, L["Not shared with guild"], 59, 32, contentWidth * 0.5 - 73, 12, muted)
                 row.privateNote:SetWordWrap(false)
             elseif hidden then
@@ -481,12 +482,12 @@ local function RenderVisibleRows(list)
                 row.sharing:SetPoint("TOPLEFT", list.width - 88, -14)
                 row.sharing:SetSize(84, 27)
                 row.sharing:SetText(L["Share"])
+                row.sharing:SetMotionScriptsWhileDisabled(true)
                 row.sharing:SetScript("OnClick", function()
                     addon.SetItemHidden(row.itemID, false)
                     GameTooltip:Hide()
                     addon.Refresh()
                 end)
-                Tip(row.sharing, L["Share this item again."])
             end
             list.rows[i] = row
         end
@@ -500,6 +501,13 @@ local function RenderVisibleRows(list)
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         Highlight(row, not own and not hidden and entry.id == selected)
+        if row.sharing then
+            local sharing = addon.IsSharingEnabled()
+            row.sharing:SetEnabled(sharing)
+            if row.shareLabel then row.shareLabel:SetTextColor(unpack(sharing and cream or disabledText)) end
+            Tip(row.sharing, not sharing and L["Enable Share bag items with guild in Settings to configure sharing for individual items."]
+                or (list.sharing and L["Share this item with your guild. Uncheck to stop sharing."] or L["Share this item again."]))
+        end
         if list.sharing then
             local excluded = addon.IsItemHidden(entry.id)
             row.sharing:SetChecked(not excluded)
@@ -719,6 +727,7 @@ function addon.Refresh()
         end
         settings.offline:SetChecked(preferences.showOffline ~= false)
         settings.minimap:SetChecked(preferences.showMinimap ~= false)
+        settings.sharing:SetChecked(addon.IsSharingEnabled())
         settings.initial.label:SetText(L[viewLabels[InitialView()]])
         local language = addon.LanguageChoice(preferences.language)
         settings.language.label:SetText(language[1] == "auto" and L["Automatic (game language)"] or language[2])
@@ -906,7 +915,7 @@ local function CreateWindow(colors)
 
     settings = Panel(window, 7, 77, 1166, 566)
     Label(settings, L["Settings"], 27, 20, 1000, 29, cream, true)
-    local display = Panel(settings, 26, 76, 1114, 192)
+    local display = Panel(settings, 26, 76, 1114, 224)
     Label(display, L["Material view"], 16, 14, 1040, 20, cream, true)
     local function Check(parent, key, title, y, callback)
         local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
@@ -924,14 +933,20 @@ local function CreateWindow(colors)
     settings.minimap = Check(display, "showMinimap", "Show minimap button", 102, function()
         if minimapButton then minimapButton:SetShown(Preferences().showMinimap ~= false) end
     end)
-    Label(display, L["Opening view"], 19, 154, 160, 16)
-    settings.initial = Button(display, "", 181, 143, 271, 34, function()
+    settings.sharing = Check(display, "shareInventory", "Share bag items with guild", 137)
+    settings.sharing:SetScript("OnClick", function(self)
+        addon.SetSharingEnabled(self:GetChecked() == true)
+        addon.Refresh()
+    end)
+    Tip(settings.sharing, L["Turn off to stop sharing all bag items. Your individual item choices are preserved."])
+    Label(display, L["Opening view"], 19, 186, 160, 16)
+    settings.initial = Button(display, "", 181, 175, 271, 34, function()
         settings.languages:Hide()
         settings.choices:SetShown(not settings.choices:IsShown())
     end)
     settings.initial:SetBackdropBorderColor(unpack(colors.border))
     Icon(settings.initial, "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up", 241, 5, 24)
-    settings.choices = Panel(settings, 207, 253, 271, 73, colors.border)
+    settings.choices = Panel(settings, 207, 285, 271, 73, colors.border)
     settings.choices:SetFrameLevel(settings.initial:GetFrameLevel() + 10)
     settings.choices:Hide()
     for i, key in ipairs({"all", "favorites"}) do
@@ -939,7 +954,7 @@ local function CreateWindow(colors)
             Preferences().initialView = key; settings.choices:Hide(); addon.Refresh()
         end)
     end
-    local interface = Panel(settings, 26, 280, 1114, 96)
+    local interface = Panel(settings, 26, 312, 1114, 96)
     Label(interface, L["Interface"], 16, 14, 1040, 20, cream, true)
     Label(interface, L["Window scale"], 19, 60, 175, 16)
     local slider = CreateFrame("Slider", nil, interface, "BackdropTemplate")
@@ -985,10 +1000,10 @@ local function CreateWindow(colors)
             end)
         option.language = key
     end
-    local sync = Panel(settings, 26, 388, 1114, 131)
+    local sync = Panel(settings, 26, 420, 1114, 105)
     Label(sync, L["Synchronization"], 16, 14, 1040, 20, cream, true)
-    syncStatus = Label(sync, "", 21, 52, 1050, 16, gold)
-    syncDescription = Label(sync, "", 21, 83, 1050, 15, muted)
+    syncStatus = Label(sync, "", 21, 45, 1050, 16, gold)
+    syncDescription = Label(sync, "", 21, 72, 1050, 15, muted)
     settings.saveNotice = Label(settings, "", 26, 536, 1114, 13, muted)
     settings.saveNotice:SetJustifyH("RIGHT")
     window:SetScript("OnShow", function()

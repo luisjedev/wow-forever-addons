@@ -47,7 +47,23 @@ function addon.IsItemHidden(id)
     return type(addon.db.hiddenItems) == "table" and addon.db.hiddenItems[id] == true
 end
 
+function addon.IsSharingEnabled()
+    if not addon.db or addon.temporary then return false end
+    local settings = addon.db.settings
+    return settings == nil or (type(settings) == "table"
+        and (settings.shareInventory == nil or settings.shareInventory == true))
+end
+
+function addon.SetSharingEnabled(enabled)
+    if not addon.db or addon.temporary or type(enabled) ~= "boolean" then return end
+    if addon.db.settings == nil then addon.db.settings = {} end
+    if type(addon.db.settings) ~= "table" then return end
+    addon.db.settings.shareInventory = enabled
+    if addon.SyncChanged then addon.SyncChanged() end
+end
+
 function addon.SetItemHidden(id, hidden)
+    if not addon.IsSharingEnabled() then return end
     if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return end
     if addon.db.hiddenItems == nil then addon.db.hiddenItems = {} end
     if type(addon.db.hiddenItems) ~= "table" then return end -- Preserve unsupported saved data.
@@ -58,11 +74,17 @@ end
 -- GUILD inventory senders build from this copy at send time, never db.own.
 -- Local observations retain all bag contents; hidden IDs and quantities never enter this copy.
 function addon.ShareableSnapshot()
-    if not addon.db or not addon.snapshot or addon.temporary
+    if not addon.db or addon.temporary
         or (addon.db.hiddenItems ~= nil and type(addon.db.hiddenItems) ~= "table") then return nil end
     for id, hidden in pairs(addon.db.hiddenItems or {}) do
         if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return nil end
     end
+    local settings = addon.db.settings
+    if settings ~= nil and (type(settings) ~= "table"
+        or (settings.shareInventory ~= nil and type(settings.shareInventory) ~= "boolean")) then return nil end
+    -- An explicit opt-out withdraws old stock even before bags can be read.
+    if not addon.IsSharingEnabled() then return {items = {}, observedAt = time()} end
+    if not addon.snapshot then return nil end
     local result = {items = {}, observedAt = addon.snapshot.observedAt}
     for id, item in pairs(addon.snapshot.items) do
         if not addon.IsItemHidden(id) then

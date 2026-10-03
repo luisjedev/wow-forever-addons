@@ -423,4 +423,80 @@ historian=Reload(historian,{version=99,guildHistory=original})
 assert(historian.addon.temporary and historian.env.GuildStockDB.version==99)
 assert(not historian.env.GuildStockDB.guildHistory.characters[source.name].session)
 
+-- The global opt-out withdraws existing stock promptly and still receives guild inventories.
+clients,bus,log,clock = {},{},{},0
+local private,reader=Client("Private Example"),Client("Reader Example")
+private.inventory[2589]={count=4,bound=0}
+private.addon.Initialize();private.addon.SetItemHidden(2589,true)
+private:Login();reader:Login();Step(90)
+assert(Received(reader,private).snapshot.items[2770] and not Received(reader,private).snapshot.items[2589])
+private.incomplete=true;private.addon.Observe()
+private.addon.SetSharingEnabled(false);quiet=#log;Step(60)
+assert(next(Received(reader,private).snapshot.items)==nil, "opt-out bypasses the five-minute batch even with incomplete bags")
+assert(next(reader.env.GuildStockDB.guildHistory.characters[private.name].snapshot.items)==nil)
+local function AssertNoItemsSince(client, first)
+    local snapshots=0
+    for i=first+1,#log do
+        local packet=log[i]
+        if packet.sender==client.name and packet.message:match("^1|S|") then
+            assert(packet.message:match("|$"), "disabled sharing must send no item IDs or quantities")
+            snapshots=snapshots+1
+        end
+    end
+    return snapshots
+end
+assert(AssertNoItemsSince(private,quiet)>0)
+reader.inventory[2770].count=19;reader.addon.Observe();Step(380)
+assert(Received(private,reader).snapshot.items[2770].count==19, "receiving remains active while sharing is off")
+AssertNoItemsSince(private,quiet)
+private=Reload(private);Step(90)
+assert(not private.addon.IsSharingEnabled() and private.addon.IsItemHidden(2589))
+assert(next(Received(reader,private).snapshot.items)==nil, "reload restores global opt-out before discovery")
+private.inventory={[2770]={count=23,bound=2},[2589]={count=8,bound=0}}
+private.addon.Observe();local idle=#log;Step(600);assert(#log==idle, "private bag changes never publish counts")
+private.addon.SetSharingEnabled(true);Step(380)
+assert(Received(reader,private).snapshot.items[2770].count==23 and not Received(reader,private).snapshot.items[2589],
+    "reenabling shares current stock with the original per-item exclusions")
+
+-- Stop a multipart transfer immediately; no remaining fragment may contain stock.
+clients,bus,log,clock = {},{},{},0
+private,reader=Client("Private Transfer Example"),Client("Transfer Reader Example")
+private.inventory={}
+local quantity=0
+for id in pairs(private.addon.catalogSeed) do
+    quantity=quantity+1;private.inventory[id]={count=quantity,bound=0};if quantity==40 then break end
+end
+private:Login();reader:Login()
+local stopped
+for _=1,120 do
+    Step(0.5)
+    if not stopped then
+        for _,packet in ipairs(log) do
+            if packet.sender==private.name and packet.message:match("^1|S|") then
+                private.addon.SetSharingEnabled(false);quiet=#log;stopped=true;break
+            end
+        end
+    end
+end
+assert(stopped);Step(90)
+assert(AssertNoItemsSince(private,quiet)>0 and next(Received(reader,private).snapshot.items)==nil)
+
+-- A saved opt-out can discover peers before the first successful bag read.
+clients,bus,log,clock = {},{},{},0
+private,reader=Client("Private Login Example"),Client("Login Reader Example")
+private.env.GuildStockDB={version=1,settings={shareInventory=false},hiddenItems={[2589]=true}}
+private.incomplete=true;private:Login();reader:Login();Step(90)
+assert(not private.addon.snapshot and Received(private,reader) and next(Received(reader,private).snapshot.items)==nil)
+assert(AssertNoItemsSince(private,0)>0)
+private.addon.SetSharingEnabled(true);quiet=#log;Step(380)
+for i=quiet+1,#log do assert(log[i].sender~=private.name, "reenabling must wait for a complete bag read") end
+private.incomplete=false;private.addon.Observe();Step(380)
+assert(Received(reader,private).snapshot.items[2770].count==7)
+private.combat=true;private.addon.SetSharingEnabled(false);quiet=#log;Step(60)
+for i=quiet+1,#log do assert(log[i].sender~=private.name, "privacy withdrawal respects combat lockdown") end
+private.combat=false;private.lockdown=true;Step(60)
+for i=quiet+1,#log do assert(log[i].sender~=private.name, "privacy withdrawal respects messaging lockdown") end
+private.lockdown=false;Step(90)
+assert(AssertNoItemsSince(private,quiet)>0 and next(Received(reader,private).snapshot.items)==nil)
+
 print("GuildStock sync: automatic exchange, fixed batching, privacy, zero, repair, sessions, transitions, restrictions and bounded traffic OK")

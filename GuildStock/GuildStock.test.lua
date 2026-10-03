@@ -62,6 +62,8 @@ function methods:SetFontObject(value) self.fontObject = value end
 function methods:SetFontHeight(value) self.fontSize = value end
 function methods:SetAtlas(value) self.atlas = value end
 function methods:SetEnabled(value) self.enabled = value end
+function methods:SetMotionScriptsWhileDisabled(value) self.motionWhileDisabled = value end
+function methods:SetTextColor(...) self.textColor = {...} end
 function methods:SetChecked(value) self.checked = value end
 function methods:SetFillToInterior(value) self.fillToInterior = value end
 function methods:SetCustomOnMouseUpHandler(handler) self.customMouseUpHandler = handler end
@@ -239,6 +241,29 @@ addon.db, addon.snapshot = nil, nil
 Event("PLAYER_LOGIN")
 Drain()
 assert(saved.hiddenItems == exclusions and addon.IsItemHidden(10) and not addon.ShareableSnapshot().items[10], "login restores exclusions")
+assert(addon.IsSharingEnabled(), "existing installations keep sharing enabled")
+addon.SetSharingEnabled(false)
+assert(not addon.IsSharingEnabled() and saved.settings.shareInventory == false)
+assert(next(addon.ShareableSnapshot().items) == nil and saved.own.items[10].count == 9)
+addon.SetItemHidden(10, false); addon.SetItemHidden(20, true)
+assert(exclusions[10] and not exclusions[20], "global opt-out locks individual preferences")
+for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN"}) do
+    addon.db, addon.snapshot = nil, nil
+    Event(event, "GuildStock"); Drain()
+    assert(not addon.IsSharingEnabled() and saved.hiddenItems == exclusions and exclusions[10])
+end
+addon.snapshot = nil
+assert(next(addon.ShareableSnapshot().items) == nil, "explicit opt-out needs no bag read to withdraw stock")
+addon.snapshot = saved.own
+addon.SetSharingEnabled(true)
+assert(not addon.ShareableSnapshot().items[10] and addon.ShareableSnapshot().items[20].count == 1)
+for _, unsupported in ipairs({"preserve settings", {shareInventory = "unknown"}}) do
+    saved.settings = unsupported
+    assert(not addon.IsSharingEnabled() and addon.ShareableSnapshot() == nil and saved.settings == unsupported)
+end
+addon.SetSharingEnabled("true")
+assert(saved.settings.shareInventory == "unknown", "invalid actions cannot rewrite a preference")
+saved.settings = nil
 addon.SetItemHidden(20, true)
 assert(next(addon.ShareableSnapshot().items) == nil, "all hidden is a complete empty sharing snapshot")
 addon.SetItemHidden(10, false)
@@ -673,6 +698,40 @@ assert(addon.snapshot == rawBeforeHiding and not addon.ShareableSnapshot().items
 local hiddenRow = HiddenRow(10)
 assert(hiddenRow.sharing.template == "UIPanelButtonTemplate" and hiddenRow.sharing:GetText() == "Share", "restore uses a native Blizzard button")
 assert(math.abs((bagRows.width + 24) / (hiddenRow.parent.width + 24) - 7 / 3) < 0.001, "inventory panes use the requested 70/30 split")
+Click("Settings")
+local globalSharing
+for _, f in ipairs(frames) do
+    if f.template == "UICheckButtonTemplate" and f.point[3] == -137 then globalSharing = f end
+end
+assert(globalSharing and globalSharing:GetChecked())
+globalSharing:SetChecked(false); globalSharing.scripts.OnClick(globalSharing)
+Click("My inventory")
+for _, id in ipairs({10, 20}) do
+    local row = ItemRow(bagRows, id)
+    assert(row.sharing.enabled == false and row.sharing.motionWhileDisabled)
+    assert(row.sharing:GetChecked() == (id == 20), "disabled controls preserve checked and unchecked states")
+    assert(row.shareLabel.textColor[1] == 0.5 and row.shareLabel.textColor[2] == 0.5)
+    row.sharing.scripts.OnEnter(row.sharing)
+    assert(GameTooltip:GetText() == "Enable Share bag items with guild in Settings to configure sharing for individual items.")
+    row.sharing.scripts.OnLeave(row.sharing); assert(not GameTooltip:IsShown())
+    row.sharing:SetChecked(id == 10); row.sharing.scripts.OnClick(row.sharing)
+    assert(row.sharing:GetChecked() == (id == 20), "even stale click callbacks cannot alter exclusions")
+end
+assert(hiddenRow.sharing.enabled == false and hiddenRow.sharing.motionWhileDisabled)
+hiddenRow.sharing.scripts.OnEnter(hiddenRow.sharing)
+assert(GameTooltip:GetText():find("Enable Share bag items", 1, true))
+hiddenRow.sharing.scripts.OnClick(hiddenRow.sharing)
+assert(addon.IsItemHidden(10) and not addon.IsItemHidden(20) and addon.snapshot == rawBeforeHiding)
+bagInput:SetText("no matching material"); bagInput:SetText("")
+assert(ItemRow(bagRows, 20).sharing.enabled == false, "recycled rows stay disabled")
+Click("Settings")
+assert(not globalSharing:GetChecked())
+globalSharing:SetChecked(true); globalSharing.scripts.OnClick(globalSharing)
+Click("My inventory")
+assert(ItemRow(bagRows, 10).sharing.enabled and ItemRow(bagRows, 20).sharing.enabled and hiddenRow.sharing.enabled)
+assert(not shareCheck:GetChecked() and ItemRow(bagRows, 20).sharing:GetChecked())
+shareCheck.scripts.OnEnter(shareCheck)
+assert(GameTooltip:GetText() == "Share this item with your guild. Uncheck to stop sharing.")
 bagInput:SetText("no matching material")
 assert(HiddenRow(10), "bag search cannot conceal privacy preferences")
 hiddenRow.sharing.scripts.OnClick(hiddenRow.sharing)
@@ -836,7 +895,7 @@ assert(saved.favorites[20] == nil and saved.favorites[10])
 Click("Settings")
 local checks = {}
 for _, f in ipairs(frames) do if f.checked ~= nil and not f.parent.itemID then checks[#checks + 1] = f end end
-assert(#checks == 2)
+assert(#checks == 3)
 checks[2]:SetChecked(false)
 checks[2].scripts.OnClick(checks[2])
 assert(saved.settings.showMinimap == false and not GuildStockMinimapButton:IsShown())
@@ -858,6 +917,8 @@ checks[2]:SetChecked(false)
 checks[2].scripts.OnClick(checks[2])
 addon.Refresh()
 assert(saved.settings == "preserve unsupported preferences" and addon.temporaryPreferences)
+globalSharing:SetChecked(true); globalSharing.scripts.OnClick(globalSharing)
+assert(saved.settings == "preserve unsupported preferences" and not globalSharing:GetChecked())
 saved.settings = settingsBefore
 addon.Refresh()
 local slider
