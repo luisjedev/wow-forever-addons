@@ -13,6 +13,8 @@ Copy this folder into the client's `Interface/AddOns`, restart the client, and e
 - Bag events coalesce into complete observations. Missing, inaccessible, locked, inconsistent or not-yet-loaded bags preserve the previous observation. Scanning resumes after combat. A successful empty observation removes previous quantities. No bank is scanned.
 - `GuildStockDB` preserves bag observations, discovered materials, favorites and display preferences per character. Unsupported schemas stay untouched and use temporary runtime data. The beta's historical persistence limitation remains open.
 
+Both inventory tables use **Material, Used by, Bags** columns. Used by shows the catalog's known consuming-profession icons, including secondary professions, with localized names on hover. A dash means the profession has not yet been identified; it does not mean the object has no profession use.
+
 The **partial catalog** is built from the current client's crafting-reagent item flag and reagents in accessible recipes when a profession window is opened. Only observed recipe data establishes profession relationships. Discovered materials remain searchable after their bag quantity reaches zero; this is not an exhaustive Forever catalog. No Classic/Retail list or mock player data is shipped.
 
 All materials is the default opening view. The removed For my professions preference is migrated to All materials; existing favorites and other preferences are preserved.

@@ -328,6 +328,30 @@ local function Click(label)
     error("Missing button: " .. label)
 end
 Click("My inventory")
+local bagInput
+for _, frame in ipairs(frames) do
+    if frame.list and frame.list.rows[1] and frame.list.rows[1].usedBy then bagInput = frame end
+end
+assert(bagInput, "inventory rows include profession uses")
+local function ItemRow(list, id)
+    for _, row in ipairs(list.rows) do if row.itemID == id then return row end end
+end
+local materialUses = addon.Catalog()[10]
+materialUses.Cooking, materialUses.FirstAid = true, true
+materialUses.Alchemy, materialUses.Unknown = secret, true
+addon.Refresh()
+local ownUses = ItemRow(bagInput.list, 10).usedBy
+assert(#ownUses.slots == 3 and not ownUses.unknown:IsShown(), "all known uses include secondary professions and omit inaccessible/unknown keys")
+ownUses.slots[3].scripts.OnEnter(ownUses.slots[3])
+assert(GameTooltip:GetText() == "First Aid", "each icon identifies its profession")
+local allUses = {}
+for _, profession in ipairs(addon.professions) do allUses[profession[1]] = true end
+addon.db.catalog[10] = allUses
+addon.Refresh()
+assert(#ownUses.slots == #addon.professions, "material uses are not limited to two primary professions")
+addon.db.catalog[10] = materialUses
+addon.Refresh()
+assert(not ownUses.slots[4]:IsShown(), "reused rows hide obsolete profession icons")
 local queries = 0
 C_Item.GetItemInfo = function() queries = queries + 1; return "Loaded item" end
 Event("GET_ITEM_INFO_RECEIVED", 20, false)
@@ -365,13 +389,26 @@ end
 assert(characterInput and peerItemInput, "both searchable character panes are active")
 local peerRows = peerItemInput.list.rows
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
+assert(peerRows[1].usedBy.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
+assert(peerRows[2].usedBy.unknown:IsShown(), "a peer-only item does not invent profession uses")
+peerRows[2].usedBy.scripts.OnEnter(peerRows[2].usedBy)
+assert(GameTooltip:GetText() == "Profession not yet identified")
 peerRows[2].scripts.OnEnter(peerRows[2])
 assert(GameTooltip:GetText():find("Bound: 0", 1, true))
 assert(GameTooltip:GetText():find(tostring(epoch - 10), 1, true), "tooltips use the selected peer observation")
 Click("Beta Example")
 assert(peerRows[1].itemID == 10 and peerRows[1].count:GetText() == 99 and not peerRows[2]:IsShown())
+assert(peerRows[1].usedBy.slots[3]:IsShown(), "character inventories use the same material-to-profession mapping")
+addon.db.catalog[10] = allUses
+addon.Refresh()
+local lastProfession = peerRows[1].usedBy.slots[#addon.professions]
+assert(lastProfession.point[2] + lastProfession.width <= peerRows[1].usedBy.width, "all supported icons fit the narrower character inventory")
+addon.db.catalog[10] = materialUses
 characterInput:SetText("[")
 assert(peerRows[1].count:GetText() == 7, "filtering selects an available character instead of keeping stale details")
+assert(not peerRows[1].usedBy.slots[2]:IsShown(), "switching characters clears the previous material's extra uses")
+peerRows[1].usedBy.slots[1].scripts.OnEnter(peerRows[1].usedBy.slots[1])
+assert(GameTooltip:GetText() == "Cooking", "reused icons refresh their tooltip")
 peerItemInput:SetText("[")
 assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:IsShown(), "item search is literal too")
 peerItemInput:SetText("")
@@ -447,5 +484,6 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     assert(localized.L["My inventory"] == "Mi inventario" and localized.L["unknown"] == "unknown")
     assert(localized.L["Skills"] == "Profesiones")
     assert(localized.L["Characters"] == "Personajes")
+    assert(localized.L["Used by"] == "Usado por")
 end
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

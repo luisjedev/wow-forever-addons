@@ -181,6 +181,12 @@ The view accepts only complete, valid snapshots from the current guild’s runti
 
 **Automated:** syntax and all repository regression checks pass. Synthetic fixtures cover selecting different inventories, peer-only item IDs, literal searches, stable selection, removed records, complete empty versus incomplete snapshots, guild/no-guild changes, observation-specific tooltips and preservation of local inventory. UI browsing sends no addon messages. **Reproduced in the game:** after `/reload`, all four English tabs appeared in order and Characters opened with both panes, search fields, Material/Bags headings and the expected empty states. A subsequent search interaction was interrupted by detected user activity; populated rows and searching were verified only in the offline fixture tests. Real synchronized records, long lists, Spanish rendering, other scales and persistence still require client tests. No screenshots or real player records are published.
 
+### GuildStock material-use icons · October 3, 2026
+
+Reference remains Forever beta `1.60.1.70205`, interface `16001`. My inventory and the selected inventory in Characters now share Material, Used by, Bags columns. The middle column renders all known consuming professions from the existing catalog, including secondary professions, with localized hover names. Unknown associations show a dash and an explanatory tooltip. These icons describe the material's uses, not the owner's learned professions. Catalog coverage, discovery, SavedVariables and transport are unchanged.
+
+**Automated:** syntax and all repository regression checks pass. Synthetic inventory checks cover multiple uses, secondary professions, unsupported/inaccessible mappings, peer-only unknown materials, icon and tooltip replacement when reusing rows, all supported icons fitting the narrower Characters table, and Spanish labels. **Reproduced in the game:** after `/reload`, My inventory displayed the three aligned English headings, existing Blacksmithing icons, unknown dashes and both hover explanations; Characters displayed the same headings in its empty inventory pane. Populated Characters rows, multiple simultaneous icons, Spanish rendering and other scales remain verified only by offline checks or pending native tests. This does not validate catalog completeness or guild synchronization. No screenshots or player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

@@ -13,6 +13,7 @@ local es = {
     ["No items recorded for this character."] = "No hay objetos registrados para este personaje.",
     ["Last known bag inventory"] = "Último inventario conocido de sus bolsas",
     ["Material"] = "Material",
+    ["Used by"] = "Usado por",
     ["My inventory"] = "Mi inventario",
     ["Settings"] = "Ajustes",
     ["All materials"] = "Todos los materiales",

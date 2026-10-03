@@ -96,6 +96,50 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+local function InventoryHeader(parent, x, y, width)
+    local header = Panel(parent, x, y, width, 39)
+    header:SetBackdropColor(0.25, 0.29, 0.31, 1)
+    local contentWidth = width - 24 -- reserve the same scrollbar space as the rows
+    Label(header, L["Material"], 19, 11, contentWidth * 0.5 - 33, 15)
+    Label(header, L["Used by"], contentWidth * 0.5, 11, contentWidth * 0.5 - 114, 15)
+    Label(header, L["Bags"], contentWidth - 100, 11, 100, 15):SetJustifyH("CENTER")
+end
+
+local function SetMaterialProfessions(row, professions, width)
+    if not row.usedBy then
+        local cell = CreateFrame("Frame", nil, row)
+        cell:SetPoint("LEFT", width * 0.5, 0)
+        cell:SetSize(width * 0.5 - 114, 24)
+        cell:EnableMouse(true)
+        cell.slots = {}
+        cell.unknown = Label(cell, "—", 0, 3, 24, 16, muted)
+        row.usedBy = cell
+    end
+    local cell, names = row.usedBy, {}
+    if addon.Accessible(professions) and type(professions) == "table" then
+        for _, profession in ipairs(addon.professions) do
+            local known = professions[profession[1]]
+            if addon.Accessible(known) and known == true then
+                local name = L[profession[1]]
+                names[#names + 1] = name
+                local slot = cell.slots[#names]
+                if not slot then
+                    slot = Panel(cell, (#names - 1) * 26, 0, 24, 24)
+                    slot:EnableMouse(true)
+                    slot.icon = Icon(slot, nil, 2, 2, 20)
+                    cell.slots[#names] = slot
+                end
+                slot.icon:SetTexture("Interface\\Icons\\" .. profession[2])
+                Tip(slot, name)
+                slot:Show()
+            end
+        end
+    end
+    for i = #names + 1, #cell.slots do cell.slots[i]:Hide() end
+    cell.unknown:SetShown(#names == 0)
+    Tip(cell, #names > 0 and table.concat(names, " · ") or L["Profession not yet identified"])
+end
+
 local function Button(parent, text, x, y, width, height, callback, texture)
     local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
     button:SetPoint("TOPLEFT", x, -y)
@@ -176,6 +220,7 @@ end
 
 local function RenderList(list, entries, snapshot)
     local own = snapshot ~= nil
+    local catalog = own and addon.Catalog()
     -- ponytail: one reused row per discovered material; virtualize if large catalogs make refresh slow.
     for i, entry in ipairs(entries) do
         local row = list.rows[i]
@@ -187,10 +232,10 @@ local function RenderList(list, entries, snapshot)
             row.icon = Icon(slot, nil, 2, 2, 39)
             row.label:ClearAllPoints()
             row.label:SetPoint("LEFT", 59, 0)
-            row.label:SetWidth(own and list.width * 0.65 - 65 or list.width - 96)
+            row.label:SetWidth(own and list.width * 0.5 - 73 or list.width - 96)
             row.label:SetJustifyH("LEFT")
             if own then
-                row.count = Label(row, "", list.width * 0.72, 18, 100, 16)
+                row.count = Label(row, "", list.width - 100, 18, 100, 16)
                 row.count:SetJustifyH("CENTER")
             else
                 row.star = StarButton(row, list.width - 36, 11, function() addon.ToggleFavorite(row.itemID); addon.Refresh() end)
@@ -203,6 +248,7 @@ local function RenderList(list, entries, snapshot)
         Highlight(row, not own and entry.id == selected)
         if own then
             row.count:SetText(entry.count)
+            SetMaterialProfessions(row, catalog[entry.id], list.width)
             Tip(row, entry.name .. "\n" .. L["Bound"] .. ": " .. snapshot.items[entry.id].bound .. "\n"
                 .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", snapshot.observedAt)))
         else
@@ -438,10 +484,7 @@ local function CreateWindow()
     characterName:SetWordWrap(false)
     Label(characterDetail, L["Last known bag inventory"], 22, 53, 818, 15, muted)
     characterItemSearch = Search(characterDetail, "Search character items...", 20, 82, 820)
-    local characterHeader = Panel(characterDetail, 20, 130, 820, 39)
-    characterHeader:SetBackdropColor(0.25, 0.29, 0.31, 1)
-    Label(characterHeader, L["Material"], 19, 11, 530, 15)
-    Label(characterHeader, L["Bags"], (820 - 24) * 0.72, 11, 100, 15):SetJustifyH("CENTER")
+    InventoryHeader(characterDetail, 20, 130, 820)
     characterItems = Scroll(characterDetail, 20, 169, 820, 351)
     characterItemSearch.list = characterItems
     characterItems.empty = Label(characterDetail, "", 62, 300, 738, 17, muted)
@@ -452,10 +495,7 @@ local function CreateWindow()
     Label(inventory, L["My inventory"], 25, 20, 1050, 29, cream, true)
     Label(inventory, L["Profession materials in your bags"], 26, 63, 1050, 17, muted)
     bagSearch = Search(inventory, "Search my bags...", 23, 98, 1118)
-    local inventoryHeader = Panel(inventory, 23, 148, 1118, 39)
-    inventoryHeader:SetBackdropColor(0.25, 0.29, 0.31, 1)
-    Label(inventoryHeader, L["Material"], 19, 11, 700, 15)
-    Label(inventoryHeader, L["Bags"], 789, 11, 100, 15):SetJustifyH("CENTER")
+    InventoryHeader(inventory, 23, 148, 1118)
     bagList = Scroll(inventory, 23, 187, 1118, 325)
     bagSearch.list = bagList
     bagList.empty = Label(inventory, "", 160, 283, 840, 17, muted)
