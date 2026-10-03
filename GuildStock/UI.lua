@@ -22,7 +22,7 @@ local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interfac
 local viewLabels = { all = "All materials", favorites = "Favorites" }
 local playerColumns = {
     {"Player", 15, 144}, {"Skills", 176, 64}, {"Units", 251, 68},
-    {"Last online", 321, 113}, {"Whisper", 449, 89},
+    {"Last online", 321, 113},
 }
 
 local function Preferences()
@@ -605,10 +605,13 @@ function addon.RenderOwners()
             row.name:SetWordWrap(false)
             row.count = Label(row, "", 251, 14, 68, 14)
             row.presence = Label(row, "", 321, 14, 113, 13)
-            row.whisper = Button(row, L["Whisper"], 449, 8, 79, 30, function(self)
+            row.whisper = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            row.whisper:SetPoint("TOPLEFT", 449, -8)
+            row.whisper:SetSize(79, 30)
+            row.whisper:SetText(L["Whisper"])
+            row.whisper:SetScript("OnClick", function(self)
                 addon.WhisperCharacter(self.characterID)
             end)
-            row.whisper.label:SetFontHeight(12)
             details.owners.rows[i] = row
         end
         row:SetPoint("TOPLEFT", 0, -(first + i - 2) * 46)
