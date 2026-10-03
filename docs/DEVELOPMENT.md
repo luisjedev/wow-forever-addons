@@ -54,11 +54,12 @@ Read the shared [rulesets, layers and communication reference](BLIZZARD_API.md#f
 From the repository root, with Lua 5.1 or LuaJIT installed:
 
 ```sh
-luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/ItemNames.lua", "GuildStock/Catalog.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
+luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/ItemNames.lua", "GuildStock/CatalogSeed.lua", "GuildStock/CatalogSeed.test.lua", "GuildStock/Catalog.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
 luajit TDL/TDL.test.lua
 (cd Revenge && luajit Revenge.test.lua)
 luajit tests/minimap.test.lua
 luajit GuildStock/GuildStock.test.lua
+luajit GuildStock/CatalogSeed.test.lua
 ```
 
 You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. The interface checks use small frame stubs; these checks do not reproduce the WoW client: test TDL text truncation, accordion layout and scrolling, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game. GuildStock's [prototype checks](../GuildStock/README.md) also require two real guild clients; simulated transport is not delivery evidence.

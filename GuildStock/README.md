@@ -1,8 +1,8 @@
-# GuildStock · Interface prototype 0.2.1
+# GuildStock · Interface prototype 0.2.2
 
 An in-development implementation of the [GuildStock design](PLAN.md), targeting **WoW Forever beta 1.60.1, build 70205, interface 16001**. The interface uses near-black bronze surfaces, ivory text, four top tabs, and a three-column material browser. All tabs share borderless content panels, table headings, rows and item icons. A yellow underline identifies the active tab; a narrow side marker and soft background identify selected filters, materials and characters. Search fields, the opening-view menu and small profession slots retain subtle outlines. Its palette and native favorite stars refine the earlier mockups. The catalog is partial and guild inventory sharing is not active yet.
 
-Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock`, its crate minimap button, or the crate shortcut at the bottom-right of the native Professions window, separated from the profession tabs. Click the shortcut again to close GuildStock. Left-drag the minimap button to reposition it. The interface follows the client language by default: English, Spanish (`esES`/`esMX`), French, German, Italian, Brazilian Portuguese, Russian, Korean, Simplified Chinese and Traditional Chinese. Unsupported languages and missing translations fall back to English. In Settings → Interface → Language, select Automatic (game language) or an explicit language, then use `/reload` to apply it. This choice is saved per character and does not change the game language. Displayed item names keep the client language. Item searches also accept names in the supported languages, independently of the interface selection, for the 579 materials with bundled aliases. For example, searching `Copper Ore` can find `Mineral de cobre` in a Spanish client. Materials must already be discovered; this does not add items or stock. Uncovered items remain searchable by their native name. The [data provenance and license](THIRD_PARTY_NOTICES.md) document the earlier-build source and its limitations.
+Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock`, its crate minimap button, or the crate shortcut at the bottom-right of the native Professions window, separated from the profession tabs. Click the shortcut again to close GuildStock. Left-drag the minimap button to reposition it. The interface follows the client language by default: English, Spanish (`esES`/`esMX`), French, German, Italian, Brazilian Portuguese, Russian, Korean, Simplified Chinese and Traditional Chinese. Unsupported languages and missing translations fall back to English. In Settings → Interface → Language, select Automatic (game language) or an explicit language, then use `/reload` to apply it. This choice is saved per character and does not change the game language. Displayed item names keep the client language. Item searches also accept names in the supported languages, independently of the interface selection, for the 579 materials with bundled aliases. For example, searching `Copper Ore` can find `Mineral de cobre` in a Spanish client. Materials must belong to the bundled or locally discovered catalog; aliases do not add items or stock. Uncovered items remain searchable by their native name. The [data provenance and license](THIRD_PARTY_NOTICES.md) document the earlier-build source and its limitations.
 
 ## Available now
 
@@ -17,9 +17,26 @@ Excluded items stay excluded across bag changes, including using the last unit a
 
 Both inventory tables use **Material, Used by, Bags** columns. Used by shows the catalog's known consuming-profession icons, including secondary professions, with localized names on hover over each icon. There is no tooltip for the whole cell. A dash means the profession has not yet been identified; it does not mean the object has no profession use.
 
-The **partial catalog** is built from the current client's crafting-reagent item flag and reagents in accessible recipes when a profession window is opened. Only observed recipe data establishes profession relationships. Discovered materials remain searchable after their bag quantity reaches zero; this is not an exhaustive Forever catalog. No Classic/Retail list or mock player data is shipped.
+The **bundled partial catalog** provides the same starting set on every installation: **589 material IDs, 1,083 material–profession associations across 12 professions**. These are the persisted discoveries collected in Forever beta **1.60.1, build 70205**, extracted on **October 3, 2026**. Only numeric item IDs and known profession keys were copied into `CatalogSeed.lua`; no inventories, counts, characters, preferences or other profile data are distributed. Extraction parsed a restricted data grammar without executing the saved file. This snapshot preserves the observed relationships; it is not a fresh audit of every recipe or an exhaustive Forever catalog, and it is independent of the 579 earlier-build multilingual aliases.
 
-Open each learned profession's crafting window at least once with GuildStock enabled to discover its materials. For Mining, open the window containing smelting. Learning the profession alone does not populate its category. The catalog accumulates discoveries per character; it does not yet combine discoveries from different characters.
+| Profession | Materials with observed uses |
+| --- | ---: |
+| Alchemy | 100 |
+| Blacksmithing | 153 |
+| Cooking | 113 |
+| Enchanting | 123 |
+| Engineering | 200 |
+| First Aid | 42 |
+| Fishing | 7 |
+| Herbalism | 8 |
+| Leatherworking | 174 |
+| Mining | 27 |
+| Skinning | 7 |
+| Tailoring | 129 |
+
+Materials shared by professions are counted in each applicable row. The common catalog is available without opening profession windows. Names and icons are resolved by the local client's item APIs; an uncached name may initially appear as an item ID. Quantities come only from that character's own bag observations. No owners or quantities are included in the seed.
+
+The base merges into the character's catalog without replacing existing discoveries, associations, favorites, exclusions or settings. Unsupported saved schemas remain untouched and use temporary runtime data. Opening profession windows can still add new recipe discoveries (for Mining, use smelting), and accessible crafting-reagent items can add materials from bags. Local discoveries remain searchable at zero stock and may extend the common base; they are not yet exchanged between characters.
 
 All materials is the default opening view. The removed For my professions preference is migrated to All materials; existing favorites and other preferences are preserved.
 

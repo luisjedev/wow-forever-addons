@@ -61,6 +61,7 @@ function addon.ItemData(id)
 end
 
 local runtimeCatalog = {}
+local seededCatalog
 local sortedMaterials, sortedCatalog, filteredMaterials = nil, nil, {}
 local filterSnapshot, filterFavorites
 function addon.InvalidateMaterials()
@@ -70,6 +71,18 @@ end
 function addon.Catalog()
     if addon.db.catalog == nil then addon.db.catalog = {} end
     local catalog = type(addon.db.catalog) == "table" and addon.db.catalog or runtimeCatalog
+    if seededCatalog ~= catalog then
+        for id, uses in pairs(addon.catalogSeed or {}) do
+            if catalog[id] == nil then catalog[id] = {} end
+            if type(catalog[id]) == "table" then
+                for profession in pairs(uses) do
+                    if catalog[id][profession] == nil then catalog[id][profession] = true end
+                end
+            end
+        end
+        seededCatalog = catalog
+        addon.InvalidateMaterials()
+    end
     if addon.snapshot then
         for id in pairs(addon.snapshot.items) do
             if addon.ItemData(id).reagent and catalog[id] == nil then

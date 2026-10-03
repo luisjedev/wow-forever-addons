@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y lua5.1
       - name: Check Lua syntax
-        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/ItemNames.lua", "GuildStock/Catalog.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
+        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/ItemNames.lua", "GuildStock/CatalogSeed.lua", "GuildStock/CatalogSeed.test.lua", "GuildStock/Catalog.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
       - name: Check TDL interface logic
         run: lua5.1 TDL/TDL.test.lua
       - name: Check Revenge logic
@@ -22,3 +22,5 @@ jobs:
         run: lua5.1 tests/minimap.test.lua
       - name: Check GuildStock prototype
         run: lua5.1 GuildStock/GuildStock.test.lua
+      - name: Check GuildStock bundled catalog
+        run: lua5.1 GuildStock/CatalogSeed.test.lua
