@@ -776,7 +776,7 @@ local function CreateWindow(colors)
     browser = CreateFrame("Frame", nil, window)
     browser:SetAllPoints()
     sidebar = Panel(browser, 7, 77, 247, 566)
-    for i, entry in ipairs({{"all", "INV_Crate_01"}, {"favorites", "INV_Misc_Note_01"}}) do
+    for i, entry in ipairs({{"all", "INV_Misc_Bag_10"}, {"favorites", "INV_Misc_Note_01"}}) do
         navigation[entry[1]] = Button(sidebar, L[viewLabels[entry[1]]], 7, 13 + (i - 1) * 47, 233, 44, function()
             if search.exactItemID then search:SetText("") end
             if view == entry[1] and (view ~= "all" or profession == nil) then return end

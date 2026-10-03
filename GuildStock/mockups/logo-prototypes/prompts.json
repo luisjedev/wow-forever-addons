@@ -1,0 +1,26 @@
+{
+  "generator": "Built-in image_gen",
+  "purpose": "GuildStock logo prototypes; not installed in the addon.",
+  "prototypes": [
+    {
+      "name": "01-guild-vault",
+      "prompt": "Use case: logo-brand. Create one original square logo icon prototype for GuildStock, a World of Warcraft Forever addon for guildmates to find and share crafting materials. Hand-painted fantasy game UI icon with bold simplified shapes, warm antique gold, rich brown and restrained luminous accents to fit a dark bronze interface. Centered strong silhouette, reads clearly at 32px, generous transparent margin, polished stylized material rendering, no tiny decoration. No lettering, no words, no watermark, no scene or mockup. Actual transparent background. Subject: an open compact oak guild supply chest, thick brass bands, holding a clearly readable silver ingot, rolled red cloth and green herb sprig. A welcoming shared treasury, three-quarter view, low visual complexity."
+    },
+    {
+      "name": "02-materials-emblem",
+      "prompt": "Use case: logo-brand. Create one original square logo icon prototype for GuildStock, a World of Warcraft Forever addon for guildmates to find and share crafting materials. Hand-painted fantasy game UI icon with bold simplified shapes, warm antique gold, rich brown and restrained luminous accents to fit a dark bronze interface. Centered strong silhouette, reads clearly at 32px, generous transparent margin, polished stylized material rendering, no tiny decoration. No lettering, no words, no watermark, no scene or mockup. Actual transparent background. Subject: a compact triangular arrangement of three large crafting materials: a silver metal ingot at the base, a rolled burgundy cloth behind, a green herb sprig alongside; held together by one broad bronze ring. A clear circular emblem for all professions, no box or chest."
+    },
+    {
+      "name": "03-guild-banner",
+      "prompt": "Use case: logo-brand. Create one original square logo icon prototype for GuildStock, a World of Warcraft Forever addon for guildmates to find and share crafting materials. Hand-painted fantasy game UI icon with bold simplified shapes, warm antique gold, rich brown and restrained luminous accents to fit a dark bronze interface. Centered strong silhouette, reads clearly at 32px, generous transparent margin, polished stylized material rendering, no tiny decoration. No lettering, no words, no watermark, no scene or mockup. Actual transparent background. Subject: a small bold deep-red guild banner with antique-gold trim and a central emblem of three stacked silver ingots. Simple broad angular heraldic silhouette, emblem fills the banner, restrained painterly highlights. No letters."
+    },
+    {
+      "name": "04-linked-supplies",
+      "prompt": "Use case: logo-brand. Create one original square logo icon prototype for GuildStock, a World of Warcraft Forever addon for guildmates to find and share crafting materials. Hand-painted fantasy game UI icon with bold simplified shapes, warm antique gold, rich brown and restrained luminous accents to fit a dark bronze interface. Centered strong silhouette, reads clearly at 32px, generous transparent margin, polished stylized material rendering, no tiny decoration. No lettering, no words, no watermark, no scene or mockup. Actual transparent background. Subject: two broad interlocking antique-gold chain links forming a compact guild cooperation emblem around one luminous teal cut gemstone. Subtle hammered metal, powerful simple silhouette, no extra objects, no badge frame."
+    },
+    {
+      "name": "05-gs-monogram",
+      "prompt": "Use case: logo-brand. Create one original square logo icon prototype for GuildStock, a World of Warcraft Forever addon for guildmates to find and share crafting materials. Hand-painted fantasy game UI icon with bold simplified shapes, warm antique gold, rich brown and restrained luminous accents to fit a dark bronze interface. Centered strong silhouette, reads clearly at 32px, generous transparent margin, polished stylized material rendering, no tiny decoration. No lettering, no words, no watermark, no scene or mockup. Actual transparent background. Subject: an original bold interwoven uppercase G and S monogram cast in warm aged gold, shaped with the sturdy bevels of a fantasy inventory emblem, a small silver ingot integrated into the lower stroke. The exact and only lettering is GS, crisply legible, no other words."
+    }
+  ]
+}

@@ -19,6 +19,10 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock All materials icon · October 4, 2026
+
+**Reference:** Forever beta `wow_classic_beta`, installed version `1.60.1.70205`, interface `16001` from the existing client reference. All materials now uses the native `INV_Misc_Bag_10` pouch texture to distinguish navigation from GuildStock's crate logo. **Validation:** Lua syntax and all six repository suites pass. After `/reload`, native observation confirmed the pouch beside All materials and the crate in the window header. Other scales remain untested. No API, saved-data or communication behavior changes; no screenshots or player records are published.
+
 ## History
 
 | Product / version / build | Evidence | Limitations and status |
