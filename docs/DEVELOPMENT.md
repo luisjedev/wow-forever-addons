@@ -8,6 +8,7 @@ The repository is where editing, commits, and publishing happen. `Interface/AddO
 WoW Forever Addons/
 ├── TDL/                 ← Interface/AddOns/TDL
 ├── Revenge/             ← Interface/AddOns/Revenge
+├── GuildStock/          ← Interface/AddOns/GuildStock (API prototype)
 ├── docs/
 ├── AGENTS.md
 └── .local/              (private, excluded from Git)
@@ -24,6 +25,7 @@ repo="$HOME/Desktop/WoW Forever Addons"
 addons="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns"
 ln -s "$repo/TDL" "$addons/TDL"
 ln -s "$repo/Revenge" "$addons/Revenge"
+ln -s "$repo/GuildStock" "$addons/GuildStock"
 ```
 
 The destinations must be unused: if folders already exist, back them up outside `AddOns` first. Do not use `ln -sf` to replace them blindly. On Windows, use a directory junction with `mklink /J`. If you move the repository, update the links.
@@ -43,13 +45,14 @@ Switching branches immediately changes the files that the next `/reload` will re
 From the repository root, with Lua 5.1 or LuaJIT installed:
 
 ```sh
-luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua"}) do assert(loadfile(p)) end'
+luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
 luajit TDL/TDL.test.lua
 (cd Revenge && luajit Revenge.test.lua)
 luajit tests/minimap.test.lua
+luajit GuildStock/GuildStock.test.lua
 ```
 
-You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. The TDL and minimap checks use small frame stubs; these checks do not reproduce the WoW client: test TDL text truncation, accordion layout and scrolling, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game.
+You can replace `luajit` with `lua5.1`. GitHub Actions runs the same checks. The interface checks use small frame stubs; these checks do not reproduce the WoW client: test TDL text truncation, accordion layout and scrolling, Revenge nameplates, entering and leaving combat, zone changes, and saving after `/reload` and a restart in the game. GuildStock's [prototype checks](../GuildStock/README.md) also require two real guild clients; simulated transport is not delivery evidence.
 
 ## Private recovery for this installation
 

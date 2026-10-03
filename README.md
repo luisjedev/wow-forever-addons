@@ -13,6 +13,8 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 
 Hover over either minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
 
+**In development:** [GuildStock](GuildStock/README.md) will help guildmates find profession materials. Its first installable prototype provides a local bag viewer and API diagnostics, opened with `/guildstock` or its crate minimap button. Shared inventories and the full material catalog are pending validation.
+
 ### TDL · Remember your plans
 
 Unfinished quests, materials to gather, or plans for your next session. Create, edit, complete, and delete tasks in a movable window that follows your game's language. All tasks share one vertically scrolling list. Click a truncated task to expand or collapse it, or double-click any task to edit its text directly. Edits save automatically when you leave the field, close the window, reload the UI, or log out. Delete stays visible below each task, and the input at the bottom creates new tasks. The window opens on login or UI reload when you have unfinished tasks.

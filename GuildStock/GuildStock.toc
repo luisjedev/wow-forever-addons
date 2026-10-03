@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: GuildStock
+## Notes: Guild materials addon - API feasibility prototype.
+## Version: 0.1.0
+## SavedVariablesPerCharacter: GuildStockDB
+
+Locales.lua
+GuildStock.lua
+Probe.lua
+UI.lua

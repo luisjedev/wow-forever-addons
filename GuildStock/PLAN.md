@@ -2,7 +2,7 @@
 
 Design and implementation plan, October 3, 2026. Addon folder: **GuildStock**. The addon will help guild members find profession materials held by other participating characters. It will share inventory counts automatically; holding an item does not imply offering it for sale.
 
-The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. No addon code has been implemented. Feasibility depends first on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
+The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. The [0.1.0 API prototype](README.md) begins stage 1 with safe local bag observations, persistence guards, a diagnostic window, and an opt-in two-client transport probe. The production interface and distributed inventory are not implemented yet. Feasibility still depends on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
 
 ## Player experience
 
