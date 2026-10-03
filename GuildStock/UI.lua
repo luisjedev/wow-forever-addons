@@ -13,7 +13,7 @@ local gold, cream, muted = {0.64, 0.46, 0.23}, {0.94, 0.88, 0.73}, {0.70, 0.64, 
 local colors = {
     window = {0.095, 0.075, 0.045, 1}, panel = {0.125, 0.10, 0.06, 1},
     border = {0.35, 0.27, 0.17}, button = {0.105, 0.08, 0.045, 1},
-    selected = {0.18, 0.14, 0.06, 1}, selectedBorder = {1, 0.82, 0},
+    selected = {0.18, 0.14, 0.06, 1}, accent = {1, 0.82, 0},
     header = {0.16, 0.12, 0.06, 1},
     text = {0.83, 0.78, 0.67},
 }
@@ -43,7 +43,8 @@ local function Panel(parent, x, y, width, height, border)
     frame:SetSize(width, height)
     frame:SetBackdrop(backdrop)
     frame:SetBackdropColor(unpack(colors.panel))
-    frame:SetBackdropBorderColor(unpack(border or colors.border))
+    if border then frame:SetBackdropBorderColor(unpack(border))
+    else frame:SetBackdropBorderColor(0, 0, 0, 0) end
     return frame
 end
 
@@ -73,7 +74,7 @@ function addon.SetPlayerSkills(row, skills)
     if not row.skillSlots then
         row.skillSlots = {}
         for i = 1, 2 do
-            local slot = Panel(row, 0, 0, 26, 26)
+            local slot = Panel(row, 0, 0, 26, 26, colors.border)
             slot:ClearAllPoints()
             slot:SetPoint("LEFT", playerColumns[2][2] + 3 + (i - 1) * 32, 0)
             slot.icon = Icon(slot, nil, 2, 2, 22)
@@ -107,7 +108,6 @@ end
 local function InventoryHeader(parent, x, y, width, sharing)
     local header = Panel(parent, x, y, width, 39)
     header:SetBackdropColor(unpack(colors.header))
-    if sharing then header:SetBackdropBorderColor(0, 0, 0, 0) end
     local contentWidth = width - 24 - (sharing and 92 or 0) -- same scrollbar/action space as the rows
     Label(header, L["Material"], 19, 11, contentWidth * 0.5 - 33, 15)
     Label(header, L["Used by"], contentWidth * 0.5, 11, contentWidth * 0.5 - 114, 15)
@@ -134,7 +134,7 @@ local function SetMaterialProfessions(cell, professions)
                 count = count + 1
                 local slot = cell.slots[count]
                 if not slot then
-                    slot = Panel(cell, (count - 1) * (size + 2), 0, size, size)
+                    slot = Panel(cell, (count - 1) * (size + 2), 0, size, size, colors.border)
                     slot:EnableMouse(true)
                     slot.icon = Icon(slot, nil, 2, 2, size - 4)
                     cell.slots[count] = slot
@@ -162,7 +162,7 @@ local function Button(parent, text, x, y, width, height, callback, texture)
     button:SetSize(width, height)
     button:SetBackdrop(backdrop)
     button:SetBackdropColor(unpack(colors.button))
-    button:SetBackdropBorderColor(unpack(colors.border))
+    button:SetBackdropBorderColor(0, 0, 0, 0)
     button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
     button:GetHighlightTexture():SetVertexColor(1, 0.8, 0.4, 0.025)
     button.label = Label(button, text, texture and 47 or 10, (height - 18) / 2, width - (texture and 58 or 20), 16)
@@ -175,13 +175,26 @@ local function Button(parent, text, x, y, width, height, callback, texture)
 end
 
 local function Highlight(button, active)
+    if not button.selection then
+        local marker = button:CreateTexture(nil, "ARTWORK")
+        marker:SetTexture("Interface\\Buttons\\WHITE8X8")
+        marker:SetVertexColor(unpack(colors.accent))
+        if button.tab then
+            marker:SetPoint("BOTTOMLEFT", 10, 0)
+            marker:SetSize(button:GetWidth() - 20, 2)
+        else
+            marker:SetPoint("LEFT", 0, 0)
+            marker:SetSize(2, button:GetHeight() - 12)
+        end
+        button.selection = marker
+    end
+    button.selection:SetShown(active)
     button:SetBackdropColor(unpack(active and colors.selected or colors.button))
-    button:SetBackdropBorderColor(unpack(active and colors.selectedBorder or colors.border))
     button.label:SetTextColor(unpack(active and cream or colors.text))
 end
 
 local function Search(parent, placeholder, x, y, width)
-    local shell = Panel(parent, x, y, width, 35)
+    local shell = Panel(parent, x, y, width, 35, colors.border)
     local field = CreateFrame("EditBox", nil, shell)
     field:SetPoint("TOPLEFT", 12, -5)
     field:SetPoint("BOTTOMRIGHT", -34, 5)
@@ -271,8 +284,7 @@ local function RenderVisibleRows(list)
                     RefreshMaterialDetail()
                 end
             end)
-            local slot = Panel(row, 7, 6, 43, 43, gold)
-            if list.sharing or hidden then slot:SetBackdropBorderColor(0, 0, 0, 0) end
+            local slot = Panel(row, 7, 6, 43, 43)
             row.icon = Icon(slot, nil, 2, 2, 39)
             row.label:ClearAllPoints()
             row.label:SetPoint("LEFT", 59, 0)
@@ -321,7 +333,6 @@ local function RenderVisibleRows(list)
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         Highlight(row, not own and not hidden and entry.id == selected)
-        if list.sharing or hidden then row:SetBackdropBorderColor(0, 0, 0, 0) end
         if list.sharing then
             local excluded = addon.IsItemHidden(entry.id)
             row.sharing:SetChecked(not excluded)
@@ -501,9 +512,9 @@ local function CreateWindow()
     Label(window, L["Guild materials"], 83, 45, 260, 15, muted)
     for i, tab in ipairs({{"Materials", "materials"}, {"Characters", "characters"}, {"My inventory", "inventory"}, {"Settings", "settings"}}) do
         tabs[tab[2]] = Button(window, L[tab[1]], 348 + (i - 1) * 166, 16, 166, 45, function() SelectPage(tab[2]) end)
+        tabs[tab[2]].tab = true
     end
     Button(window, "×", 1138, 14, 30, 30, function() window:Hide() end)
-    Panel(window, 7, 73, 1166, 1, gold)
     browser = CreateFrame("Frame", nil, window)
     browser:SetAllPoints()
     sidebar = Panel(browser, 7, 77, 247, 566)
@@ -543,7 +554,7 @@ local function CreateWindow()
     materialList.empty = Label(middle, "", 22, 184, 278, 15, muted)
     materialList.empty:SetJustifyH("CENTER")
     details = Panel(browser, 586, 77, 587, 566)
-    detailSlot = Panel(details, 17, 12, 43, 43, gold)
+    detailSlot = Panel(details, 17, 12, 43, 43)
     detailIcon = Icon(detailSlot, nil, 2, 2, 39)
     detailName = Label(details, "", 76, 14, 453, 16)
     detailName:SetWordWrap(false)
@@ -605,7 +616,6 @@ local function CreateWindow()
     bagList.empty = Label(inventory, "", 45, 283, bagWidth - 68, 17, muted)
     bagList.empty:SetJustifyH("CENTER")
     local hiddenPanel = Panel(inventory, 23 + bagWidth + 18, 98, hiddenWidth, 414)
-    hiddenPanel:SetBackdropBorderColor(0, 0, 0, 0)
     Label(hiddenPanel, L["Not shared"], 14, 12, hiddenWidth - 28, 22, cream, true)
     Label(hiddenPanel, L["Excluded from guild sharing. Use Share to include them again."], 14, 44, hiddenWidth - 28, 14, muted)
     hiddenList = Scroll(hiddenPanel, 0, 89, hiddenWidth, 325)
@@ -615,7 +625,7 @@ local function CreateWindow()
     inventoryNote = Label(inventory, "", 26, 534, 1090, 13, muted)
 
     settings = Panel(window, 7, 77, 1166, 566)
-    Label(settings, L["Settings"], 27, 20, 1000, 28, cream, true)
+    Label(settings, L["Settings"], 27, 20, 1000, 29, cream, true)
     local display = Panel(settings, 26, 76, 1114, 192)
     Label(display, L["Material view"], 16, 14, 1040, 20, cream, true)
     local function Check(parent, key, title, y, callback)
@@ -638,8 +648,9 @@ local function CreateWindow()
     settings.initial = Button(display, "", 181, 143, 271, 34, function()
         settings.choices:SetShown(not settings.choices:IsShown())
     end)
+    settings.initial:SetBackdropBorderColor(unpack(colors.border))
     Icon(settings.initial, "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up", 241, 5, 24)
-    settings.choices = Panel(settings, 207, 253, 271, 73, gold)
+    settings.choices = Panel(settings, 207, 253, 271, 73, colors.border)
     settings.choices:SetFrameLevel(settings.initial:GetFrameLevel() + 10)
     settings.choices:Hide()
     for i, key in ipairs({"all", "favorites"}) do

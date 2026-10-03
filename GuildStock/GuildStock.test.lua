@@ -606,6 +606,8 @@ assert(addon.snapshot == ownBefore and addon.db.own == ownBefore and saved.guild
 local materialsTab = Click("Materials")
 local inventoryTab = Click("My inventory")
 assert(materialsTab.point[2] < charactersTab.point[2] and charactersTab.point[2] < inventoryTab.point[2], "Characters follows Materials")
+assert(inventoryTab.selection:IsShown() and not materialsTab.selection:IsShown()
+    and not charactersTab.selection:IsShown(), "only the active tab keeps its selection marker")
 Click("Materials")
 Click("All materials")
 Click("Favorites")
@@ -684,8 +686,11 @@ do
     assert(#list.entries == 5000 and #list.rows == 9, "only viewport rows plus one buffer are allocated")
     local allocated = #frames
     local firstRow = list.rows[1]
+    local selectionMarker = firstRow.selection
+    assert(selectionMarker:IsShown(), "the selected material has a visible marker")
     list.scroll.ScrollBar:SetValue(5500)
     assert(list.rows[1] == firstRow and firstRow.itemID == 1101 and firstRow.point[3] == -5500)
+    assert(firstRow.selection == selectionMarker and not selectionMarker:IsShown(), "recycling clears the previous item's marker")
     assert(#frames == allocated and #list.rows == 9, "scrolling reuses frames")
     list.scroll.ScrollBar:SetValue(5527)
     assert(firstRow.itemID == 1101, "partial-row scrolling keeps the correct first entry")
@@ -694,6 +699,7 @@ do
     addon.Refresh = function(...) refreshes = refreshes + 1; return refresh(...) end
     addon.Materials = function(...) queries = queries + 1; return materials(...) end
     firstRow.scripts.OnClick(firstRow)
+    assert(selectionMarker:IsShown() and not list.rows[2].selection:IsShown(), "clicking a recycled row marks its current item")
     assert(refreshes == 0 and queries == 0, "selection updates detail without rebuilding the list")
     firstRow.star.scripts.OnClick(firstRow.star)
     assert(addon.db.favorites[1101] and not addon.db.favorites[1001], "recycled favorite targets its displayed item")
