@@ -1021,6 +1021,7 @@ do
     list.scroll.ScrollBar:SetValue(5500)
     assert(list.rows[1] == firstRow and firstRow.itemID == 1101 and firstRow.point[3] == -5500)
     assert(firstRow.selection == selectionMarker and not selectionMarker:IsShown(), "recycling clears the previous item's marker")
+    assert(firstRow.background[4] == 0, "recycling a selected row restores the panel background")
     assert(#frames == allocated and #list.rows == 9, "scrolling reuses frames")
     list.scroll.ScrollBar:SetValue(5527)
     assert(firstRow.itemID == 1101, "partial-row scrolling keeps the correct first entry")
@@ -1030,6 +1031,7 @@ do
     addon.Materials = function(...) queries = queries + 1; return materials(...) end
     firstRow.scripts.OnClick(firstRow)
     assert(selectionMarker:IsShown() and not list.rows[2].selection:IsShown(), "clicking a recycled row marks its current item")
+    assert(firstRow.background[4] == 1 and list.rows[2].background[4] == 0, "only the selected row has its own fill")
     assert(refreshes == 0 and queries == 0, "selection updates detail without rebuilding the list")
     firstRow.star.scripts.OnClick(firstRow.star)
     assert(addon.db.favorites[1101] and not addon.db.favorites[1001], "recycled favorite targets its displayed item")
@@ -1046,11 +1048,14 @@ do
     assert(list.entries == stable, "returning to All materials reuses its results")
     list.scroll.ScrollBar:SetValue(list.scroll:GetVerticalScrollRange())
     assert(list.rows[8].itemID == 6000 and list.rows[8]:IsShown() and not list.rows[9]:IsShown(), "final row remains reachable")
+    assert(list.rows[7].separator:IsShown() and not list.rows[8].separator:IsShown(), "separators stop before the final material")
     materialInput:SetText("Material 001001")
     assert(list.scroll:GetVerticalScroll() == 0 and #list.entries == 1 and not list.rows[2]:IsShown())
+    assert(not firstRow.separator:IsShown(), "a single search result has no trailing separator")
     materialInput:SetText("missing")
     assert(list.empty:IsShown() and not list.rows[1]:IsShown() and list.scroll:GetVerticalScrollRange() == 0)
     materialInput:SetText("")
+    assert(firstRow.separator:IsShown(), "clearing search restores the recycled row separator")
     Drain()
     refreshes = 0
     for id = 200001, 200100 do Event("GET_ITEM_INFO_RECEIVED", id, true) end

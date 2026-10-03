@@ -160,12 +160,28 @@ local function SetMaterialProfessions(cell, professions)
     cell.unknown:SetShown(count == 0)
 end
 
-local function Button(parent, text, x, y, width, height, callback, texture)
+local function RowSeparator(row)
+    local separator = row:CreateTexture(nil, "ARTWORK")
+    separator:SetTexture("Interface\\Buttons\\WHITE8X8")
+    separator:SetVertexColor(gold[1], gold[2], gold[3], 0.18)
+    separator:SetRoundLayoutToNearestPixel(true)
+    separator:SetPoint("BOTTOMLEFT", 7, 0)
+    separator:SetPoint("BOTTOMRIGHT", -7, 0)
+    separator:SetHeight(1)
+    row.separator = separator
+end
+
+local function Button(parent, text, x, y, width, height, callback, texture, listRow)
     local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
     button:SetPoint("TOPLEFT", x, -y)
     button:SetSize(width, height)
     button:SetBackdrop(backdrop)
     button:SetBackdropColor(unpack(colors.button))
+    button.listRow = listRow
+    if listRow then
+        button:SetBackdropColor(0, 0, 0, 0)
+        RowSeparator(button)
+    end
     button:SetBackdropBorderColor(0, 0, 0, 0)
     button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
     button:GetHighlightTexture():SetVertexColor(1, 0.8, 0.4, 0.025)
@@ -202,7 +218,11 @@ local function Highlight(button, active)
         button.selection = marker
     end
     button.selection:SetShown(active)
-    button:SetBackdropColor(unpack(active and colors.selected or colors.button))
+    if button.listRow and not active then
+        button:SetBackdropColor(0, 0, 0, 0)
+    else
+        button:SetBackdropColor(unpack(active and colors.selected or colors.button))
+    end
     button.label:SetTextColor(unpack(active and cream or colors.text))
 end
 
@@ -361,7 +381,7 @@ local function RenderVisibleRows(list)
                     for _, visible in ipairs(list.rows) do Highlight(visible, visible.itemID == selected) end
                     RefreshMaterialDetail()
                 end
-            end)
+            end, nil, true)
             local slot = Panel(row, 7, 6, 43, 43)
             row.icon = Icon(slot, nil, 2, 2, 39)
             row.label:ClearAllPoints()
@@ -407,6 +427,7 @@ local function RenderVisibleRows(list)
             GameTooltip:Hide()
         end
         row:SetPoint("TOPLEFT", 0, -(index - 1) * 55)
+        row.separator:SetShown(index < #entries)
         row.itemID = entry.id
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -460,11 +481,12 @@ local function RefreshCharacters()
                 selectedCharacter = self.characterID
                 characterItems.scroll.ScrollBar:SetValue(0)
                 addon.Refresh()
-            end)
+            end, nil, true)
             row.label:SetJustifyH("LEFT")
             characterList.rows[i] = row
         end
         row.characterID = entry.id
+        row.separator:SetShown(i < #entries)
         row.label:SetText(entry.name)
         Tip(row, entry.name)
         Highlight(row, entry.id == selectedCharacter)
@@ -506,6 +528,7 @@ function addon.RenderOwners()
         if not row then
             row = CreateFrame("Frame", nil, details.owners.content)
             row:SetSize(554, 46)
+            RowSeparator(row)
             row.name = Label(row, "", 15, 14, 144, 13)
             row.name:SetWordWrap(false)
             row.count = Label(row, "", 259, 14, 44, 14)
@@ -517,6 +540,7 @@ function addon.RenderOwners()
             details.owners.rows[i] = row
         end
         row:SetPoint("TOPLEFT", 0, -(first + i - 2) * 46)
+        row.separator:SetShown(first + i - 1 < #entries)
         row.name:SetText(entry.name)
         row.count:SetText(entry.snapshot.items[selected].count)
         row.presence:SetText(L[entry.online and "Online" or "Unknown"])
@@ -654,7 +678,7 @@ local function CreateWindow()
             if view == "all" then profession = nil end
             materialList.scroll.ScrollBar:SetValue(0)
             addon.Refresh()
-        end, "Interface\\Icons\\" .. entry[2])
+        end, "Interface\\Icons\\" .. entry[2], true)
     end
     navigation.favorites.image:SetTexCoord(0, 1, 0, 1)
     navigation.favorites.image:SetAtlas("auctionhouse-icon-favorite")
@@ -667,12 +691,12 @@ local function CreateWindow()
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
         if profession == nil then return end
         profession = nil; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
-    end, "Interface\\Icons\\Trade_Mining")
+    end, "Interface\\Icons\\Trade_Mining", true)
     for i, entry in ipairs(addon.professions) do
         professionButtons[entry[1]] = Button(professionList.content, L[entry[1]], 0, i * 40, 210, 40, function()
             if profession == entry[1] then return end
             profession = entry[1]; materialList.scroll.ScrollBar:SetValue(0); addon.Refresh()
-        end, "Interface\\Icons\\" .. entry[2])
+        end, "Interface\\Icons\\" .. entry[2], true)
     end
     professionList.content:SetHeight((#addon.professions + 1) * 40)
     professionList.myTitle = Label(professionList.content, L["My professions"], 8, 0, 202, 13, muted)
