@@ -136,22 +136,25 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local function SeenTip(frame, entry)
-    local receivedAt = entry.receivedAt or entry.snapshot.observedAt
+local function SyncAge(receivedAt)
+    local age = math.max(0, time() - receivedAt)
+    local count, key
+    if age >= 3600 then
+        count = math.floor(age / 3600)
+        key = count == 1 and "Last synced %s hour ago" or "Last synced %s hours ago"
+    elseif age >= 60 then
+        count = math.floor(age / 60)
+        key = count == 1 and "Last synced %s minute ago" or "Last synced %s minutes ago"
+    else
+        count = math.floor(age)
+        key = count == 1 and "Last synced %s second ago" or "Last synced %s seconds ago"
+    end
+    return string.format(L[key], count)
+end
+
+local function SyncTip(frame, entry)
     local function Update()
-        local age = math.max(0, time() - receivedAt)
-        local count, key
-        if age >= 3600 then
-            count = math.floor(age / 3600)
-            key = count == 1 and "Seen %s hour ago" or "Seen %s hours ago"
-        elseif age >= 60 then
-            count = math.floor(age / 60)
-            key = count == 1 and "Seen %s minute ago" or "Seen %s minutes ago"
-        else
-            count = math.floor(age)
-            key = count == 1 and "Seen %s second ago" or "Seen %s seconds ago"
-        end
-        GameTooltip:SetText(entry.name .. "\n" .. string.format(L[key], count), 1, 1, 1, 1, true)
+        GameTooltip:SetText(entry.name .. "\n" .. SyncAge(entry.receivedAt or entry.snapshot.observedAt), 1, 1, 1, 1, true)
     end
     local function Hide(self)
         self:SetScript("OnUpdate", nil)
@@ -557,7 +560,7 @@ local function RefreshCharacters()
         addon.SetPlayerRace(row, entry.race, 10)
         row.separator:SetShown(i < #entries)
         row.label:SetText(entry.name)
-        SeenTip(row, entry)
+        SyncTip(row, entry)
         Highlight(row, entry.id == selectedCharacter)
         row:Show()
     end
@@ -568,7 +571,16 @@ local function RefreshCharacters()
     characterList.empty:SetShown(#entries == 0)
     characterList.empty:SetText(L[(characterSearch.appliedText or "") == "" and "No character data yet." or "No matching characters."])
     characterName:SetText(current and current.name or L["Select a character"])
-    characterNote:SetText(current and string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", current.snapshot.observedAt)) or "")
+    characters.receivedAt = current and (current.receivedAt or current.snapshot.observedAt)
+    characterNote:SetText(characters.receivedAt and SyncAge(characters.receivedAt) or "")
+    local ageElapsed = 0
+    characters:SetScript("OnUpdate", current and function(self, elapsed)
+        ageElapsed = ageElapsed + elapsed
+        if ageElapsed >= 1 then
+            ageElapsed = 0
+            characterNote:SetText(SyncAge(self.receivedAt))
+        end
+    end or nil)
     local items = addon.CharacterItems(current, (characterItemSearch.appliedText or ""))
     RenderList(characterItems, items, current and current.snapshot)
     characterItems.empty:SetShown(#items == 0)
@@ -624,7 +636,7 @@ function addon.RenderOwners()
         row.whisper.characterID = entry.id
         row.whisper:SetEnabled(entry.online == true)
         Tip(row.whisper, L[entry.online and "Whisper" or "Whisper requires confirmed online presence."])
-        SeenTip(row.nameArea, entry)
+        SyncTip(row.nameArea, entry)
         row:SetAlpha(entry.online and 1 or 0.65)
         addon.SetPlayerSkills(row, entry.skills)
         row:Show()

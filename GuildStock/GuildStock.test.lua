@@ -1347,23 +1347,42 @@ assert(owner.raceIcon.atlas == nil, "missing roster race also clears the owner b
 -- Age reflects the last complete receipt, updates while hovered and follows the cursor.
 local seen=owner.nameArea
 local record=addon.guildData.characters["Peer Fullname"]
+local syncFooter
+for _, label in ipairs(fontStrings) do
+    if label.point and label.point[2]==22 and label.point[3]==-536 then syncFooter=label end
+end
+local characterPanel=characterInput.parent.parent.parent
+assert(syncFooter and characterPanel.scripts.OnUpdate)
 assert(not owner.scripts.OnEnter, "only the player cell owns the observation tooltip")
 for _,case in ipairs({{0,"0 seconds"},{1,"1 second"},{59,"59 seconds"},{60,"1 minute"},
     {3599,"59 minutes"},{3600,"1 hour"},{7200,"2 hours"}}) do
     record.receivedAt=epoch-case[1]
     addon.Refresh();seen.scripts.OnEnter(seen)
     assert(GameTooltip.anchor=="ANCHOR_CURSOR" and GameTooltip:IsOwned(seen))
-    assert(GameTooltip:GetText()=="Peer Fullname\nSeen "..case[2].." ago")
+    assert(GameTooltip:GetText()=="Peer Fullname\nLast synced "..case[2].." ago")
     seen.scripts.OnLeave(seen)
     assert(not GameTooltip:IsShown() and not seen.scripts.OnUpdate)
+    Click("Characters")
+    assert(syncFooter:GetText()=="Last synced "..case[2].." ago", "footer uses receipt time, not bag observation time")
+    Click("Materials")
 end
 record.receivedAt=epoch-59;addon.Refresh();seen.scripts.OnEnter(seen)
 epoch=epoch+1;seen.scripts.OnUpdate(seen,1)
-assert(GameTooltip:GetText()=="Peer Fullname\nSeen 1 minute ago")
+assert(GameTooltip:GetText()=="Peer Fullname\nLast synced 1 minute ago")
 seen.scripts.OnHide(seen);assert(not GameTooltip:IsShown() and not seen.scripts.OnUpdate)
 addon.ApplyLanguage("esES");seen.scripts.OnEnter(seen)
-assert(GameTooltip:GetText()=="Peer Fullname\nVisto hace 1 minuto")
+assert(GameTooltip:GetText()=="Peer Fullname\nSincronizado hace 1 minuto")
 addon.ApplyLanguage("enUS");seen.scripts.OnLeave(seen)
+Click("Characters")
+record.receivedAt=epoch-59;addon.Refresh()
+assert(syncFooter:GetText()=="Last synced 59 seconds ago")
+epoch=epoch+1;characterPanel.scripts.OnUpdate(characterPanel,1)
+assert(syncFooter:GetText()=="Last synced 1 minute ago", "visible footer ages without a data refresh")
+addon.ApplyLanguage("esES");addon.Refresh()
+assert(syncFooter:GetText()=="Sincronizado hace 1 minuto")
+characterInput:SetText("no matching player")
+assert(syncFooter:GetText()=="" and not characterPanel.receivedAt, "no stale footer after filtering out the selection")
+characterInput:SetText("");addon.ApplyLanguage("enUS");Click("Materials")
 
 local draft
 ChatFrameUtil = {SendTell = function(name) draft = name end}
