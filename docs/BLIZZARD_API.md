@@ -187,6 +187,12 @@ Reference remains Forever beta `1.60.1.70205`, interface `16001`. My inventory a
 
 **Automated:** syntax and all repository regression checks pass. Synthetic inventory checks cover multiple uses, secondary professions, unsupported/inaccessible mappings, peer-only unknown materials, icon and tooltip replacement when reusing rows, all supported icons fitting the narrower Characters table, and Spanish labels. **Reproduced in the game:** after `/reload`, My inventory displayed the three aligned English headings, existing Blacksmithing icons, unknown dashes and both hover explanations; Characters displayed the same headings in its empty inventory pane. Populated Characters rows, multiple simultaneous icons, Spanish rendering and other scales remain verified only by offline checks or pending native tests. This does not validate catalog completeness or guild synchronization. No screenshots or player records are published.
 
+### GuildStock Mining discovery · October 3, 2026
+
+Same client reference: Forever beta `1.60.1.70205`, interface `16001`. Mining was learned but the saved catalog had zero Mining associations. `C_TradeSkillUI.OpenTradeSkill(186)` returned `true` and opened the native Mining window, containing Camping and Smelted Bars. GuildStock then had 27 distinct material IDs associated with Mining, and its Mining filter displayed materials including Copper Ore, Copper Bar and Coal. No addon code change was needed: discovery runs on `TRADE_SKILL_SHOW` and `TRADE_SKILL_LIST_UPDATE`, not merely from knowing a profession. This count describes the observed catalog, not exhaustive Forever coverage.
+
+The current collector adds item-to-profession associations without removing earlier discoveries when learned professions change. Its SavedVariables are per character; cross-character catalog merging is not implemented. A read-only inspection of the native `StaticPopupDialogs.UNLEARN_SKILL.text` confirmed that the client warns about losing all associated recipes. No profession was unlearned. **Pending:** coverage at initial profession rank, retention through an actual profession change, and reload/restart persistence of these new Mining discoveries; the reload attempt was interrupted by user activity. The earlier persistence limitations remain open. No screenshots or player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |

@@ -17,6 +17,8 @@ Both inventory tables use **Material, Used by, Bags** columns. Used by shows the
 
 The **partial catalog** is built from the current client's crafting-reagent item flag and reagents in accessible recipes when a profession window is opened. Only observed recipe data establishes profession relationships. Discovered materials remain searchable after their bag quantity reaches zero; this is not an exhaustive Forever catalog. No Classic/Retail list or mock player data is shipped.
 
+Open each learned profession's crafting window at least once with GuildStock enabled to discover its materials. For Mining, open the window containing smelting. Learning the profession alone does not populate its category. The catalog accumulates discoveries per character; it does not yet combine discoveries from different characters.
+
 All materials is the default opening view. The removed For my professions preference is migrated to All materials; existing favorites and other preferences are preserved.
 
 `/guildstock diagnostics` prints the build/interface, prefix and send results, probe counts and learned professions locally. It does not print character names, GUIDs or the roster.
