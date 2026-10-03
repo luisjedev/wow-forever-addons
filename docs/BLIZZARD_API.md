@@ -224,6 +224,21 @@ The existing item exclusions should apply to the combined quantity, and automati
 
 **Pending native verification:** compare slot scans and native totals for known materials (including a bank-only item and bound stacks) before the first bank opening, while open, after closing, after `/reload` and after a full restart; cover all purchased tabs, empty/unpurchased storage, delayed or inaccessible reads, combat deferral, stack splitting, deposits/withdrawals, bank bag replacement, last-stack removal, and closing immediately after a move. Test any supported crafting consumption from bank outside the scan window rather than assuming it exists or updates the cache. Then verify exclusions, zero-stock replacement, persistence and aggregate reception with two consenting guild clients, keeping cross-shard delivery a separate test. No game interaction, live bank read, addon implementation or persistence fix is claimed by this research.
 
+### Live bank-inclusive count after character selection · October 4, 2026
+
+**Reference:** Forever beta `wow_classic_beta`; the running client's `GetBuildInfo()` returned version `1.60.1`, build `70205`, interface `16001`. **Affected addon:** GuildStock feasibility research; no addon code was changed.
+
+**User-prepared fixture:** one Copper Bar in the character bank and two in carried bags, followed by logout to character selection. The user corrected the initial item description from Copper Ore to Copper Bar. **Reproduced in the game:** entered the selected character and executed local API queries without opening the bank or interacting with a banker during this login:
+
+| Query | Observed result |
+| --- | ---: |
+| `C_Item.GetItemCount(2840, false)` | 2 |
+| `C_Item.GetItemCount(2840, true)` | 3 |
+
+Item `2840` is Copper Bar. The omitted inclusion arguments default to false in the [matching-build API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ItemDocumentation.lua#L425). Results were read from the native `/dump` output, independently of GuildStock's inventory cache. No item was intentionally moved or consumed during the test, and no screenshots or player identifiers are published.
+
+**Conclusion and limits:** bank-inclusive counting works for this item after returning from character selection without reopening the bank. The result strengthens the direct-count option above and rules out a mandatory bank visit on every character login in this tested scenario. It does not establish how the native client obtains the bank data, behavior after a full application restart or on a fresh client installation, updates after deposits/withdrawals or remote crafting, enumeration of the complete bank, bank-only material discovery, or bound quantities. The bank deposit itself was reported by the user, not independently inspected. Those cases and aggregate guild synchronization remain pending; no general persistence fix or bank implementation is claimed.
+
 ## Guild materials feasibility review October 3 2026
 
 Product `wow_classic_beta`, installed version `1.60.1.70205`, matches source revision `e3ecc27`. Existing addons declare interface `16001`; the running client's interface value still needs `GetBuildInfo()` verification. This review supports the [guild materials implementation plan](../GuildStock/PLAN.md); it does not revalidate TDL or Revenge.
