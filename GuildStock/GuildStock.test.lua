@@ -60,8 +60,9 @@ function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
 methods.CreateTexture, methods.CreateFontString, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame, Frame
-CreateFrame = function(_, name)
+CreateFrame = function(_, name, parent)
     local f = Frame()
+    f.parent = parent
     f.TitleText, f.ScrollBar = Frame(), Frame()
     frames[#frames + 1] = f
     if name then _G[name] = f end
@@ -334,6 +335,65 @@ addon.Refresh()
 assert(queries == 0, "failed item loads are not requested in a refresh loop")
 Event("GET_ITEM_INFO_RECEIVED", 20, true)
 assert(queries == 1 and addon.itemData[20].name == "Loaded item", "async names replace item-ID placeholders")
+local charactersTab = Click("Characters")
+local ownBefore = addon.snapshot
+assert(#addon.GuildCharacters() == 0, "no roster-only or mock participants")
+local sharedAlpha = {items = {[20] = {count = 7, bound = 0}, [30] = {count = 3, bound = 0}}, observedAt = epoch - 10}
+local sharedBeta = {items = {[10] = {count = 99, bound = 1}}, observedAt = epoch - 20}
+addon.guildData = {guildID = club, characters = {
+    alpha = {name = "Alpha [Example]", snapshot = sharedAlpha},
+    beta = {name = "Beta Example", snapshot = sharedBeta},
+    empty = {name = "Empty Example", snapshot = {items = {}, observedAt = epoch}},
+    incomplete = {name = "Incomplete Example"},
+    invalid = {name = "Invalid Example", snapshot = {items = {[10] = {count = -1, bound = 0}}, observedAt = epoch}},
+}}
+assert(#addon.GuildCharacters() == 3, "only complete observations, including confirmed empty inventories")
+assert(addon.GuildCharacters("[")[1].id == "alpha", "literal character search")
+assert(#addon.GuildCharacters("missing") == 0)
+local known = addon.GuildCharacters()
+local sharedItems = addon.CharacterItems(known[1])
+assert(#sharedItems == 2 and sharedItems[1].id == 20 and sharedItems[1].count == 7)
+assert(sharedItems[2].id == 30 and not addon.Catalog()[30], "peer items need not be discovered locally")
+addon.Refresh()
+local characterInput, peerItemInput
+for _, frame in ipairs(frames) do
+    if frame.list and frame.list.rows[1] then
+        if frame.list.rows[1].characterID then characterInput = frame end
+        if frame.list.rows[2] and frame.list.rows[2].itemID == 30 then peerItemInput = frame end
+    end
+end
+assert(characterInput and peerItemInput, "both searchable character panes are active")
+local peerRows = peerItemInput.list.rows
+assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
+peerRows[2].scripts.OnEnter(peerRows[2])
+assert(GameTooltip:GetText():find("Bound: 0", 1, true))
+assert(GameTooltip:GetText():find(tostring(epoch - 10), 1, true), "tooltips use the selected peer observation")
+Click("Beta Example")
+assert(peerRows[1].itemID == 10 and peerRows[1].count:GetText() == 99 and not peerRows[2]:IsShown())
+characterInput:SetText("[")
+assert(peerRows[1].count:GetText() == 7, "filtering selects an available character instead of keeping stale details")
+peerItemInput:SetText("[")
+assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:IsShown(), "item search is literal too")
+peerItemInput:SetText("")
+characterInput:SetText("")
+assert(peerRows[1].count:GetText() == 7, "selection survives unrelated refreshes")
+addon.guildData.characters.alpha = nil
+addon.Refresh()
+assert(peerRows[1].count:GetText() == 99, "removing the selection clears its old inventory")
+Click("Empty Example")
+assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:GetText() == "No items recorded for this character.")
+club = 456
+Event("PLAYER_GUILD_UPDATE", "player")
+assert(#addon.GuildCharacters() == 0 and not characterInput.list.rows[1]:IsShown())
+assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:GetText() == "Select a character to view their items.")
+club = nil
+assert(#addon.GuildCharacters() == 0, "no-guild state cannot expose cached peers")
+club, addon.guildData = 123, nil
+addon.Refresh()
+assert(addon.snapshot == ownBefore and addon.db.own == ownBefore and saved.guildData == nil, "character browsing cannot overwrite own inventory or persist a new schema")
+local materialsTab = Click("Materials")
+local inventoryTab = Click("My inventory")
+assert(materialsTab.point[2] < charactersTab.point[2] and charactersTab.point[2] < inventoryTab.point[2], "Characters follows Materials")
 Click("Materials")
 Click("All materials")
 Click("Favorites")
@@ -386,5 +446,6 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     assert(loadfile("GuildStock/Locales.lua"))("GuildStock", localized)
     assert(localized.L["My inventory"] == "Mi inventario" and localized.L["unknown"] == "unknown")
     assert(localized.L["Skills"] == "Profesiones")
+    assert(localized.L["Characters"] == "Personajes")
 end
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

@@ -41,6 +41,25 @@ function addon.Initialize()
     end
 end
 
+-- Runtime view of complete observations; the future GUILD receiver must verify membership
+-- before populating guildData = { guildID = ..., characters = { [id] = { name, snapshot } } }.
+-- No network producer or persisted peer cache is enabled by this interface prototype.
+function addon.GuildCharacters(search)
+    local result, data = {}, addon.guildData
+    local guild = addon.Read(C_Club and C_Club.GetGuildClubId)
+    if not guild or type(data) ~= "table" or data.guildID ~= guild or type(data.characters) ~= "table" then return result end
+    search = (search or ""):lower()
+    for id, character in pairs(data.characters) do
+        if type(id) == "string" and type(character) == "table" and addon.Accessible(character.name)
+            and type(character.name) == "string" and character.name ~= "" and ValidSnapshot(character.snapshot)
+            and character.name:lower():find(search, 1, true) then
+            result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot}
+        end
+    end
+    table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
+    return result
+end
+
 function addon.ScanBags()
     local api = C_Container
     local constants = Constants and Constants.InventoryConstants
@@ -128,7 +147,7 @@ end
 
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED",
-    "PLAYER_REGEN_ENABLED", "ITEM_LOCK_CHANGED", "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do
+    "PLAYER_REGEN_ENABLED", "ITEM_LOCK_CHANGED", "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_GUILD_UPDATE" }) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, loadedName, success)
@@ -144,7 +163,7 @@ events:SetScript("OnEvent", function(_, event, loadedName, success)
             addon.itemData[loadedName] = nil
             if addon.Refresh then addon.Refresh() end
         end
-    elseif event == "SKILL_LINES_CHANGED" then
+    elseif event == "SKILL_LINES_CHANGED" or event == "PLAYER_GUILD_UPDATE" then
         if addon.Refresh then addon.Refresh() end
     else
         addon.ScheduleScan()

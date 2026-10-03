@@ -6,6 +6,8 @@ local tabs, navigation, professionButtons = {}, {}, {}
 local browser, inventory, settings, sidebar, materialList, details
 local bagList, search, bagSearch, listTitle, listHint, detailName, detailProfessions, detailIcon, detailSlot, detailStar, emptyOwners
 local inventoryNote, syncStatus, syncDescription, scaleLabel
+local characters, characterList, characterItems, characterSearch, characterItemSearch
+local selectedCharacter, characterName, characterNote
 local temporarySettings = {}
 local gold, cream, muted = {0.68, 0.51, 0.24}, {0.94, 0.90, 0.76}, {0.61, 0.66, 0.67}
 local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
@@ -129,8 +131,7 @@ local function Search(parent, placeholder, x, y, width)
     local hint = Label(shell, L[placeholder], 12, 9, width - 48, 14, muted)
     field:SetScript("OnTextChanged", function(self)
         hint:SetShown(self:GetText() == "")
-        if materialList then materialList.scroll.ScrollBar:SetValue(0) end
-        if bagList then bagList.scroll.ScrollBar:SetValue(0) end
+        if self.list then self.list.scroll.ScrollBar:SetValue(0) end
         addon.Refresh()
     end)
     field:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -173,7 +174,8 @@ local function StarButton(parent, x, y, callback)
     return button
 end
 
-local function RenderList(list, entries, own)
+local function RenderList(list, entries, snapshot)
+    local own = snapshot ~= nil
     -- ponytail: one reused row per discovered material; virtualize if large catalogs make refresh slow.
     for i, entry in ipairs(entries) do
         local row = list.rows[i]
@@ -201,7 +203,6 @@ local function RenderList(list, entries, own)
         Highlight(row, not own and entry.id == selected)
         if own then
             row.count:SetText(entry.count)
-            local snapshot = addon.snapshot
             Tip(row, entry.name .. "\n" .. L["Bound"] .. ": " .. snapshot.items[entry.id].bound .. "\n"
                 .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", snapshot.observedAt)))
         else
@@ -213,6 +214,46 @@ local function RenderList(list, entries, own)
     list.content:SetHeight(math.max(1, #entries * 55))
     list.scroll:UpdateScrollChildRect()
     list.scroll.ScrollBar:SetValue(math.min(list.scroll.ScrollBar:GetValue(), list.scroll:GetVerticalScrollRange()))
+end
+
+local function RefreshCharacters()
+    local entries = addon.GuildCharacters(characterSearch:GetText())
+    local current
+    for _, entry in ipairs(entries) do if entry.id == selectedCharacter then current = entry end end
+    current = current or entries[1]
+    local nextID = current and current.id
+    if selectedCharacter ~= nextID then characterItems.scroll.ScrollBar:SetValue(0) end
+    selectedCharacter = nextID
+    for i, entry in ipairs(entries) do
+        local row = characterList.rows[i]
+        if not row then
+            row = Button(characterList.content, "", 0, (i - 1) * 46, characterList.width, 46, function(self)
+                selectedCharacter = self.characterID
+                characterItems.scroll.ScrollBar:SetValue(0)
+                addon.Refresh()
+            end)
+            row.label:SetJustifyH("LEFT")
+            characterList.rows[i] = row
+        end
+        row.characterID = entry.id
+        row.label:SetText(entry.name)
+        Tip(row, entry.name)
+        Highlight(row, entry.id == selectedCharacter)
+        row:Show()
+    end
+    for i = #entries + 1, #characterList.rows do characterList.rows[i]:Hide() end
+    characterList.content:SetHeight(math.max(1, #entries * 46))
+    characterList.scroll:UpdateScrollChildRect()
+    characterList.scroll.ScrollBar:SetValue(math.min(characterList.scroll.ScrollBar:GetValue(), characterList.scroll:GetVerticalScrollRange()))
+    characterList.empty:SetShown(#entries == 0)
+    characterList.empty:SetText(L[characterSearch:GetText() == "" and "No character data yet." or "No matching characters."])
+    characterName:SetText(current and current.name or L["Select a character"])
+    characterNote:SetText(current and string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", current.snapshot.observedAt)) or "")
+    local items = addon.CharacterItems(current, characterItemSearch:GetText())
+    RenderList(characterItems, items, current and current.snapshot)
+    characterItems.empty:SetShown(#items == 0)
+    characterItems.empty:SetText(L[not current and "Select a character to view their items."
+        or characterItemSearch:GetText() ~= "" and "No matching materials." or "No items recorded for this character."])
 end
 
 local function ApplyScale()
@@ -231,6 +272,7 @@ function addon.Refresh()
     local preferences = Preferences()
     for key, button in pairs(tabs) do Highlight(button, key == page) end
     browser:SetShown(page == "materials")
+    characters:SetShown(page == "characters")
     inventory:SetShown(page == "inventory")
     settings:SetShown(page == "settings")
     if page == "materials" then
@@ -264,9 +306,11 @@ function addon.Refresh()
             detailProfessions:SetText("")
         end
         emptyOwners:SetText(L[selected and "No players found with this material." or "Select a material"])
+    elseif page == "characters" then
+        RefreshCharacters()
     elseif page == "inventory" then
         local entries = addon.Materials("all", nil, bagSearch:GetText(), true)
-        RenderList(bagList, entries, true)
+        RenderList(bagList, entries, addon.snapshot)
         bagList.empty:SetShown(#entries == 0)
         bagList.empty:SetText(L[addon.snapshot and "No matching materials." or "No complete bag observation yet."])
         inventoryNote:SetText(addon.incomplete and L["Incomplete bag read; retaining the previous observation."] or L["Quantities for your current character."])
@@ -285,7 +329,9 @@ end
 
 local function SelectPage(value)
     page = value
-    if search then search:ClearFocus(); bagSearch:ClearFocus() end
+    if search then
+        search:ClearFocus(); bagSearch:ClearFocus(); characterSearch:ClearFocus(); characterItemSearch:ClearFocus()
+    end
     addon.Refresh()
 end
 
@@ -310,7 +356,7 @@ local function CreateWindow()
     Icon(window, "Interface\\Icons\\INV_Crate_01", 19, 15, 49)
     Label(window, "GuildStock", 82, 13, 260, 28, cream, true)
     Label(window, L["Guild materials"], 83, 45, 260, 15, muted)
-    for i, tab in ipairs({{"Materials", "materials"}, {"My inventory", "inventory"}, {"Settings", "settings"}}) do
+    for i, tab in ipairs({{"Materials", "materials"}, {"Characters", "characters"}, {"My inventory", "inventory"}, {"Settings", "settings"}}) do
         tabs[tab[2]] = Button(window, L[tab[1]], 348 + (i - 1) * 166, 16, 166, 45, function() SelectPage(tab[2]) end)
     end
     Button(window, "×", 1138, 14, 30, 30, function() window:Hide() end)
@@ -344,6 +390,7 @@ local function CreateWindow()
     listTitle = Label(middle, "", 14, 64, 295, 19)
     listHint = Label(middle, "", 14, 90, 295, 12, muted)
     materialList = Scroll(middle, 8, 119, 307, 434)
+    search.list = materialList
     materialList.empty = Label(middle, "", 22, 184, 278, 15, muted)
     materialList.empty:SetJustifyH("CENTER")
     details = Panel(browser, 586, 77, 587, 566)
@@ -376,6 +423,31 @@ local function CreateWindow()
     offlineNote:SetHeight(16)
     offlineNote:SetJustifyH("RIGHT")
 
+    characters = CreateFrame("Frame", nil, window)
+    characters:SetAllPoints()
+    local characterSidebar = Panel(characters, 7, 77, 300, 566)
+    Label(characterSidebar, L["Characters"], 18, 16, 264, 24, cream, true)
+    Label(characterSidebar, L["Guildmates with inventory data"], 18, 51, 264, 14, muted)
+    characterSearch = Search(characterSidebar, "Search characters...", 14, 82, 272)
+    characterList = Scroll(characterSidebar, 12, 129, 276, 421)
+    characterSearch.list = characterList
+    characterList.empty = Label(characterSidebar, "", 18, 225, 264, 16, muted)
+    characterList.empty:SetJustifyH("CENTER")
+    local characterDetail = Panel(characters, 311, 77, 862, 566)
+    characterName = Label(characterDetail, "", 22, 18, 818, 25, cream, true)
+    characterName:SetWordWrap(false)
+    Label(characterDetail, L["Last known bag inventory"], 22, 53, 818, 15, muted)
+    characterItemSearch = Search(characterDetail, "Search character items...", 20, 82, 820)
+    local characterHeader = Panel(characterDetail, 20, 130, 820, 39)
+    characterHeader:SetBackdropColor(0.25, 0.29, 0.31, 1)
+    Label(characterHeader, L["Material"], 19, 11, 530, 15)
+    Label(characterHeader, L["Bags"], (820 - 24) * 0.72, 11, 100, 15):SetJustifyH("CENTER")
+    characterItems = Scroll(characterDetail, 20, 169, 820, 351)
+    characterItemSearch.list = characterItems
+    characterItems.empty = Label(characterDetail, "", 62, 300, 738, 17, muted)
+    characterItems.empty:SetJustifyH("CENTER")
+    characterNote = Label(characterDetail, "", 22, 536, 818, 13, muted)
+
     inventory = Panel(window, 7, 77, 1166, 566)
     Label(inventory, L["My inventory"], 25, 20, 1050, 29, cream, true)
     Label(inventory, L["Profession materials in your bags"], 26, 63, 1050, 17, muted)
@@ -385,6 +457,7 @@ local function CreateWindow()
     Label(inventoryHeader, L["Material"], 19, 11, 700, 15)
     Label(inventoryHeader, L["Bags"], 789, 11, 100, 15):SetJustifyH("CENTER")
     bagList = Scroll(inventory, 23, 187, 1118, 325)
+    bagSearch.list = bagList
     bagList.empty = Label(inventory, "", 160, 283, 840, 17, muted)
     bagList.empty:SetJustifyH("CENTER")
     inventoryNote = Label(inventory, "", 26, 534, 1090, 13, muted)
@@ -451,7 +524,10 @@ local function CreateWindow()
     settings.saveNotice = Label(settings, "", 26, 536, 1114, 13, muted)
     settings.saveNotice:SetJustifyH("RIGHT")
     window:SetScript("OnShow", addon.Refresh)
-    window:SetScript("OnHide", function() search:ClearFocus(); bagSearch:ClearFocus(); settings.choices:Hide() end)
+    window:SetScript("OnHide", function()
+        search:ClearFocus(); bagSearch:ClearFocus(); characterSearch:ClearFocus(); characterItemSearch:ClearFocus()
+        settings.choices:Hide()
+    end)
     ApplyScale()
 end
 

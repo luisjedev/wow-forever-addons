@@ -98,6 +98,20 @@ function addon.ToggleFavorite(id)
     addon.db.favorites[id] = not addon.db.favorites[id] or nil
 end
 
+function addon.CharacterItems(character, search)
+    local result = {}
+    if not character then return result end
+    search = (search or ""):lower()
+    for id, item in pairs(character.snapshot.items) do
+        local data = addon.ItemData(id)
+        if data.name:lower():find(search, 1, true) then
+            result[#result + 1] = {id = id, name = data.name, icon = data.icon, count = item.count}
+        end
+    end
+    table.sort(result, function(a, b) return a.name == b.name and a.id < b.id or a.name < b.name end)
+    return result
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
 events:RegisterEvent("TRADE_SKILL_SHOW")

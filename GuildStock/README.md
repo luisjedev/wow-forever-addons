@@ -1,12 +1,13 @@
 # GuildStock · Interface prototype 0.2.1
 
-An in-development implementation of the [GuildStock design](PLAN.md), targeting **WoW Forever beta 1.60.1, build 70205, interface 16001**. The interface follows the agreed mockups: dark panels with gold accents, three top tabs, and a three-column material browser. The catalog is partial and guild inventory sharing is not active yet.
+An in-development implementation of the [GuildStock design](PLAN.md), targeting **WoW Forever beta 1.60.1, build 70205, interface 16001**. The interface follows the agreed mockups: dark panels with gold accents, four top tabs, and a three-column material browser. The catalog is partial and guild inventory sharing is not active yet.
 
 Copy this folder into the client's `Interface/AddOns`, restart the client, and enable GuildStock. Open the movable window with `/guildstock` or its crate minimap button. Left-drag the button to reposition it. English and Spanish (`esES` and `esMX`) are supported; other languages fall back to English.
 
 ## Available now
 
 - **Materials:** search, All materials / Favorites, one profession filter in the sidebar with All professions first, item icons and favorite stars. The detail table keeps Player, Skills, Bags, Last online and Whisper headings. When there are no player rows, it shows “No players found with this material.” without an icon. This describes the available results; synchronization restrictions appear in Settings. It never invents owners or counts.
+- **Characters:** immediately after Materials, a searchable character list on the left and the selected character’s item icons, names and bag quantities on the right, using the same inventory rows as My inventory. Item search and observation time belong to the selected character. Only complete records for the current guild qualify, including known empty inventories; the prototype has no incoming inventory producer yet, so this view is currently empty in live use.
 - **My inventory:** a full-width searchable table of discovered profession materials and actual bag quantities. Bound counts and observation time appear in row tooltips.
 - **Settings:** offline-member display preference, minimap visibility, opening view and window scale. Synchronization status is read-only and appears here, with no footer indicator or manual synchronization controls. Restricted addon messaging is never presented as active sharing.
 - Bag events coalesce into complete observations. Missing, inaccessible, locked, inconsistent or not-yet-loaded bags preserve the previous observation. Scanning resumes after combat. A successful empty observation removes previous quantities. No bank is scanned.

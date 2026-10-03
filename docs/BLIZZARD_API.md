@@ -173,6 +173,14 @@ Syntax and all repository regression checks pass. Cell checks cover two, one and
 
 **Affected addon:** GuildStock. Its current material sort is alphabetical and its catalog stores item-to-profession membership without recipe skill thresholds. A progression sort would need verified per-recipe thresholds and per-profession aggregation for shared materials. Progression is distinct from acquisition difficulty. **Pending:** validate all returned recipe records, their profession/build availability, unlearned schematics, other profession access paths, and a reliable source of minimum skill requirements. No catalog-completeness claim, new sorting implementation, or persistence validation follows from these probes. No personal screenshots or player records are published.
 
+### GuildStock Characters tab · October 3, 2026
+
+Reference remains Forever beta `1.60.1.70205`, interface `16001`. Characters follows Materials and provides a character list on the left and the selected character’s recorded bag inventory on the right. Both panes support literal search and scrolling. It reuses the local inventory renderer with an explicit snapshot, so peer counts and tooltip observation dates cannot fall back to the local character’s inventory.
+
+The view accepts only complete, valid snapshots from the current guild’s runtime data. Its internal adapter expects `addon.guildData = { guildID = ..., characters = { [id] = { name = ..., snapshot = ... } } }`; snapshots use the existing `items` / `observedAt` shape. This is not a wire protocol or a SavedVariables schema. A future GUILD receiver must verify current membership and supply complete observations before populating it; no incoming inventory producer or persisted peer cache is enabled here. No roster-only or example characters appear in the live interface. An unavailable/mismatched guild hides the old scope without mutating saved data. Production departure cleanup remains pending with synchronization.
+
+**Automated:** syntax and all repository regression checks pass. Synthetic fixtures cover selecting different inventories, peer-only item IDs, literal searches, stable selection, removed records, complete empty versus incomplete snapshots, guild/no-guild changes, observation-specific tooltips and preservation of local inventory. UI browsing sends no addon messages. **Reproduced in the game:** after `/reload`, all four English tabs appeared in order and Characters opened with both panes, search fields, Material/Bags headings and the expected empty states. A subsequent search interaction was interrupted by detected user activity; populated rows and searching were verified only in the offline fixture tests. Real synchronized records, long lists, Spanish rendering, other scales and persistence still require client tests. No screenshots or real player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
