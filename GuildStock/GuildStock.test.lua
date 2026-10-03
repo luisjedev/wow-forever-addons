@@ -370,6 +370,7 @@ for _, frame in ipairs(frames) do
     if frame.list and frame.list.rows[1] and frame.list.rows[1].usedBy then bagInput = frame end
 end
 assert(bagInput, "inventory rows include profession uses")
+assert(not bagInput.list.rows[1]:GetScript("OnEnter"), "inventory item names and quantities have no row tooltip")
 local function ItemRow(list, id)
     for _, row in ipairs(list.rows) do if row.itemID == id then return row end end
 end
@@ -379,8 +380,11 @@ materialUses.Alchemy, materialUses.Unknown = secret, true
 addon.Refresh()
 local ownUses = ItemRow(bagInput.list, 10).usedBy
 assert(#ownUses.slots == 3 and not ownUses.unknown:IsShown(), "all known uses include secondary professions and omit inaccessible/unknown keys")
+assert(not ownUses:GetScript("OnEnter"), "Used by has no combined profession tooltip")
 ownUses.slots[3].scripts.OnEnter(ownUses.slots[3])
 assert(GameTooltip:GetText() == "First Aid", "each icon identifies its profession")
+ownUses.slots[3].scripts.OnLeave(ownUses.slots[3])
+assert(not GameTooltip:IsShown(), "leaving a profession icon hides its tooltip")
 local allUses = {}
 for _, profession in ipairs(addon.professions) do allUses[profession[1]] = true end
 addon.db.catalog[10] = allUses
@@ -392,6 +396,7 @@ assert(not ownUses.slots[4]:IsShown(), "reused rows hide obsolete profession ico
 Click("Materials")
 materialInput:SetText("sample")
 assert(detailUses:IsShown() and #detailUses.slots == 3 and not detailUses.unknown:IsShown())
+assert(not detailUses:GetScript("OnEnter"), "material details have no combined profession tooltip")
 detailUses.slots[3].scripts.OnEnter(detailUses.slots[3])
 assert(GameTooltip:GetText() == "First Aid")
 addon.db.catalog[10] = allUses
@@ -401,8 +406,7 @@ assert(lastDetailUse.point[2] + lastDetailUse.width <= detailUses.width, "all co
 addon.db.catalog[10] = {}
 addon.Refresh()
 assert(detailUses.unknown:IsShown() and not detailUses.slots[1]:IsShown(), "unknown mappings remove stale detail icons")
-detailUses.scripts.OnEnter(detailUses)
-assert(GameTooltip:GetText() == "Profession not yet identified")
+assert(not detailUses:GetScript("OnEnter"), "unknown uses do not add a cell tooltip")
 addon.db.catalog[10] = materialUses
 materialInput:SetText("")
 materialInput.list.rows[1].scripts.OnClick(materialInput.list.rows[1])
@@ -447,11 +451,8 @@ local peerRows = peerItemInput.list.rows
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
 assert(peerRows[1].usedBy.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
 assert(peerRows[2].usedBy.unknown:IsShown(), "a peer-only item does not invent profession uses")
-peerRows[2].usedBy.scripts.OnEnter(peerRows[2].usedBy)
-assert(GameTooltip:GetText() == "Profession not yet identified")
-peerRows[2].scripts.OnEnter(peerRows[2])
-assert(GameTooltip:GetText():find("Bound: 0", 1, true))
-assert(GameTooltip:GetText():find(tostring(epoch - 10), 1, true), "tooltips use the selected peer observation")
+assert(not peerRows[2].usedBy:GetScript("OnEnter"), "unknown peer uses have no cell tooltip")
+assert(not peerRows[1]:GetScript("OnEnter") and not peerRows[2]:GetScript("OnEnter"), "character inventories have no row tooltips")
 Click("Beta Example")
 assert(peerRows[1].itemID == 10 and peerRows[1].count:GetText() == 99 and not peerRows[2]:IsShown())
 assert(peerRows[1].usedBy.slots[3]:IsShown(), "character inventories use the same material-to-profession mapping")

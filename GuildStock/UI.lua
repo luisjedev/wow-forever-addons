@@ -117,27 +117,26 @@ local function MaterialProfessionCell(parent, x, y, width)
     local cell = CreateFrame("Frame", nil, parent)
     cell:SetPoint("TOPLEFT", x, -y)
     cell:SetSize(width, 24)
-    cell:EnableMouse(true)
     cell.slots = {}
     cell.unknown = Label(cell, "—", 0, 3, 24, 16, muted)
     return cell
 end
 
 local function SetMaterialProfessions(cell, professions)
-    local names = {}
+    local count = 0
     local size = math.min(24, math.floor((cell:GetWidth() + 2) / #addon.professions) - 2)
     if addon.Accessible(professions) and type(professions) == "table" then
         for _, profession in ipairs(addon.professions) do
             local known = professions[profession[1]]
             if addon.Accessible(known) and known == true then
                 local name = L[profession[1]]
-                names[#names + 1] = name
-                local slot = cell.slots[#names]
+                count = count + 1
+                local slot = cell.slots[count]
                 if not slot then
-                    slot = Panel(cell, (#names - 1) * (size + 2), 0, size, size)
+                    slot = Panel(cell, (count - 1) * (size + 2), 0, size, size)
                     slot:EnableMouse(true)
                     slot.icon = Icon(slot, nil, 2, 2, size - 4)
-                    cell.slots[#names] = slot
+                    cell.slots[count] = slot
                 end
                 slot.icon:SetTexture("Interface\\Icons\\" .. profession[2])
                 Tip(slot, name)
@@ -145,9 +144,8 @@ local function SetMaterialProfessions(cell, professions)
             end
         end
     end
-    for i = #names + 1, #cell.slots do cell.slots[i]:Hide() end
-    cell.unknown:SetShown(#names == 0)
-    Tip(cell, #names > 0 and table.concat(names, " · ") or L["Profession not yet identified"])
+    for i = count + 1, #cell.slots do cell.slots[i]:Hide() end
+    cell.unknown:SetShown(count == 0)
 end
 
 local function Button(parent, text, x, y, width, height, callback, texture)
@@ -268,8 +266,6 @@ local function RenderList(list, entries, snapshot)
         if own then
             row.count:SetText(entry.count)
             SetMaterialProfessions(row.usedBy, catalog[entry.id])
-            Tip(row, entry.name .. "\n" .. L["Bound"] .. ": " .. snapshot.items[entry.id].bound .. "\n"
-                .. string.format(L["Observed: %s"], date("%Y-%m-%d %H:%M:%S", snapshot.observedAt)))
         else
             Star(row.star, entry.id)
         end

@@ -223,6 +223,12 @@ Reference remains product `wow_classic_beta`, installed version `1.60.1.70205`, 
 
 **Affected addon:** GuildStock. **Pending native verification:** profile cold/warm opening, repeated filters, selection, scrolling, search and item-event bursts in build 70205; measure time separately for filtering/sorting and frame updates. Any future row reuse must preserve item actions/tooltips, selection, scroll bounds and translated text. Saved-data, combat and transport limitations remain unchanged.
 
+### GuildStock tooltip simplification · October 3, 2026
+
+Reference remains product `wow_classic_beta`, installed version `1.60.1.70205`, interface `16001`. Inventory rows no longer show item names, bound counts or observation dates in a hover tooltip. Material-use cells no longer show a combined profession list or an unknown-use tooltip; each profession icon keeps its localized tooltip. The shared renderer applies this to My inventory, Characters and the material detail's profession icons. Saved observations and counts are unchanged.
+
+**Automated:** syntax and all repository regression checks pass, including absent row/cell tooltips, individual icon labels and tooltip dismissal. **Reproduced in the game:** `/reload` completed and GuildStock opened with My inventory visible. Concurrent interface activity prevented a reliable pointer-hover check, so native tooltip behavior remains **pending verification**, along with populated Characters rows and other scales. No screenshots or player records are published.
+
 ## Forever 1.60.1 · build 70009
 
 | Area | Evidence or limitation | Impact and approach |
