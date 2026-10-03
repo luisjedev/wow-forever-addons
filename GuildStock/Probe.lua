@@ -59,7 +59,7 @@ end
 function addon.StartProbe()
     local now = GetTime()
     if lastProbe and now - lastProbe < 60 then return L["Probe cooldown: 60 seconds."] end
-    if not CanSend() then return L["Probe unavailable: check Diagnostics."] end
+    if not CanSend() then return L["Probe unavailable: check Settings and /guildstock diagnostics."] end
     lastProbe, expires, guild = now, now + 60, Guild()
     pending = string.format("%d-%d", time(), math.random(1, 2147483647))
     replied, lastReply = {}, nil
@@ -67,7 +67,7 @@ function addon.StartProbe()
     state.WHISPER = nil
     if not Send("1|P|" .. pending, "GUILD") then
         pending, expires = nil, nil
-        return L["Probe unavailable: check Diagnostics."]
+        return L["Probe unavailable: check Settings and /guildstock diagnostics."]
     end
     return L["Probe active for 60 seconds. Run /guildstock probe on a second guild client."]
 end

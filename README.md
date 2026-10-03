@@ -13,7 +13,7 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 
 Hover over either minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
 
-**In development:** [GuildStock](GuildStock/README.md) will help guildmates find profession materials. Its first installable prototype provides a local bag viewer and API diagnostics, opened with `/guildstock` or its crate minimap button. Shared inventories and the full material catalog are pending validation.
+**In development:** [GuildStock](GuildStock/README.md) will help guildmates find profession materials. Its prototype provides a material browser, favorites, a searchable bag inventory and display settings, opened with `/guildstock` or its crate minimap button. The catalog is partial. Guild sharing remains pending; Settings reports the realm restriction observed during testing.
 
 ### TDL · Remember your plans
 

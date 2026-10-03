@@ -1,6 +1,5 @@
 local name, addon = ...
 local L = addon.L
-addon.itemNames = {}
 
 function addon.Accessible(value)
     return not canaccessvalue or canaccessvalue(value)
@@ -142,7 +141,7 @@ events:SetScript("OnEvent", function(_, event, loadedName, success)
         addon.ScheduleScan()
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         if addon.Integer(loadedName, 1, 2147483647) and addon.Accessible(success) and success == true then
-            addon.itemNames[loadedName] = nil
+            addon.itemData[loadedName] = nil
             if addon.Refresh then addon.Refresh() end
         end
     elseif event == "SKILL_LINES_CHANGED" then

@@ -2,13 +2,13 @@
 
 Design and implementation plan, October 3, 2026. Addon folder: **GuildStock**. The addon will help guild members find profession materials held by other participating characters. It will share inventory counts automatically; holding an item does not imply offering it for sale.
 
-The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. The [0.1.0 API prototype](README.md) begins stage 1 with safe local bag observations, persistence guards, a diagnostic window, and an opt-in two-client transport probe. The production interface and distributed inventory are not implemented yet. Feasibility still depends on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
+The user selected bags only, automatic synchronization between guild members, and a modern, clean interface with WoW styling. There are no material publications or manual publishing controls. Each character row has its own Whisper button, disabled while that character is offline. This document proposes the remaining behavior. The [0.2.0 interface prototype](README.md) includes the agreed three-tab layout, material browser, search, profession filters, favorites, local inventory and display settings. Its catalog contains only materials discovered from accessible client data, and distributed inventory remains unimplemented. A live check in build 70205 reported outgoing addon messages restricted on the development realm; Settings displays that limitation. The technical diagnostics are available through a slash command. Feasibility still depends on proving addon communications on the actual Forever realm and sourcing a complete matching-build material catalog.
 
 ## Player experience
 
 One movable window, opened through a minimap button or slash command, with three tabs: Materials, My inventory, and Settings. English is the implementation's base language; Spanish belongs in locale tables. The concept images show the Spanish translation and fictional sample data.
 
-- The left navigation offers For my professions, All materials, and Favorites. Its Professions section begins with All professions (Spanish: Todas las profesiones), followed by the individual profession icons. This is the only profession filter; there is no duplicate dropdown above the material list. Opening All materials selects All professions. Materials used by several professions appear under each relevant filter without duplicating inventory.
+- The left navigation offers All materials and Favorites. Its Professions section begins with All professions (Spanish: Todas las profesiones), followed by the individual profession icons. This is the only profession filter; there is no duplicate dropdown above the material list. Opening All materials selects All professions. Materials used by several professions appear under each relevant filter without duplicating inventory.
 - Search matches localized material names across the complete Forever profession-material catalog, independently of guild stock. Clear a profession filter using All professions in the sidebar. Materials remain visible and searchable even when no participant reports stock.
 - Selecting a material with no matching guild inventory leaves the player table empty, retaining its column headings and showing No guildmates have this material, qualified by According to synchronized data (Spanish: No hay compañeros con este material. / Según los datos sincronizados.). Do not fabricate zero-quantity character rows or hide the material from the catalog. Before inventory data arrives, show Waiting for guild data instead. If an offline-display filter hides all matching owners, explain that no owners match the active display filter rather than claiming no guildmate has stock.
 - The middle list shows material icons and names. Selecting one displays one row per character with positive known exchangeable stock. The exact columns are Player, Bags, Last online, and Whisper (Spanish: Jugador, Bolsas, Última conexión, Susurrar). Online rows come first; offline rows remain in the same table with muted styling and their last known bag counts.
@@ -18,15 +18,13 @@ One movable window, opened through a minimap button or slash command, with three
 - My inventory is a read-only view of profession materials in the player’s bags. Synchronization runs automatically while the addon is enabled and the character belongs to the guild, subject to client restrictions. There are no publish, offer, pause-publication, or manual synchronization buttons.
 - Settings use the full content width beneath the top tabs, without the material/profession sidebar. They are limited to showing offline members, minimap-button visibility, the initial view, and window scale. Show synchronization as a read-only status and save settings automatically. These presentation choices do not switch inventory synchronization on or off.
 
-For my professions means materials used by the player's learned professions. It is a relevance filter, not a claim that the player is missing those materials. Favorites are manual. Recipe-specific shortages require a selected recipe and target quantity and can follow later.
+Favorites are manual. The user removed For my professions to keep configuration simple; both navigation and the opening-view setting offer only All materials and Favorites. Recipe-specific shortages require a selected recipe and target quantity and can follow later.
 
 ## Concept images
 
 These images explore appearance and layout, not tested game functionality. Material names, quantities, timing, and characters are illustrative; their presence does not certify Forever catalog coverage. Use the player's guild emblem or a neutral materials icon in production, rather than a fixed faction crest.
 
-Created with the built-in image generation tool. The [current prompt set](mockups/prompts.json) covers all current screens and the empty-owner state. Earlier generation prompts remain in the repository as design history.
-
-![Materials for the player’s professions](mockups/my-professions.png)
+Created with the built-in image generation tool. The [prompt set](mockups/prompts.json) covers the screens and the empty-owner state. These images predate the removal of For my professions: omit that navigation entry and setting when implementing them. The [removed profession view](mockups/my-professions.png) and earlier generation prompts remain as design history.
 
 ![All materials with automatic bag synchronization](mockups/all-materials.png)
 
@@ -38,7 +36,7 @@ Created with the built-in image generation tool. The [current prompt set](mockup
 
 ![A catalog material with no matching guild inventory](mockups/material-empty.png)
 
-The earlier [material browser](../docs/guild-materials/material-browser.png), [own inventory](../docs/guild-materials/my-inventory.png), and [original prompts](../docs/guild-materials/prompts.json) are superseded historical drafts. Their bank columns, shared Whisper action, and publication controls are not part of the current design. The new All materials screen defines the revised row layout for every material view, including For my professions.
+The earlier [material browser](../docs/guild-materials/material-browser.png), [own inventory](../docs/guild-materials/my-inventory.png), and [original prompts](../docs/guild-materials/prompts.json) are superseded historical drafts. Their bank columns, shared Whisper action, and publication controls are not part of the current design. The new All materials screen defines the revised row layout for both material views.
 
 ## Scope and inventory meaning
 
@@ -97,6 +95,6 @@ On initialization, validate saved tables without overwriting valid data. Preserv
 
 ## Decisions still open
 
-Confirmed: bags only, automatic guild synchronization without publications or a footer indicator, the complete Forever profession-material catalog with an empty-owner notice, deletion of departed guild members from the local database, All professions as the first sidebar profession filter without a duplicate dropdown, and a Whisper button on every character row, disabled when offline. Offline character rows and Last online are part of the requested design. Final visual adjustments, timing policy, historical retention period, exchangeable-only filtering, and profession relevance rules remain open. Seven-day retention is a proposal, not a confirmed requirement.
+Confirmed: bags only, automatic guild synchronization without publications or a footer indicator, the complete Forever profession-material catalog with an empty-owner notice, deletion of departed guild members from the local database, All materials and Favorites as the only material views, All professions as the first sidebar profession filter without a duplicate dropdown, and a Whisper button on every character row, disabled when offline. Offline character rows and Last online are part of the requested design. Final visual adjustments, timing policy, historical retention period, and exchangeable-only filtering remain open. Seven-day retention is a proposal, not a confirmed requirement.
 
 Bank support, pricing, purchase orders, reservations, automatic transactions, and exact recipe shortage calculations can be added when the guild has a concrete need. They are not required to answer the first useful question: who has this material, how much was observed, and how old is that information?

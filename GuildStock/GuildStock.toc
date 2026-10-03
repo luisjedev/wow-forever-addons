@@ -1,10 +1,11 @@
 ## Interface: 16001
 ## Title: GuildStock
-## Notes: Guild materials addon - API feasibility prototype.
-## Version: 0.1.0
+## Notes: Browse profession materials and your bags. Guild synchronization is under development.
+## Version: 0.2.0
 ## SavedVariablesPerCharacter: GuildStockDB
 
 Locales.lua
 GuildStock.lua
 Probe.lua
+Catalog.lua
 UI.lua

@@ -17,7 +17,10 @@ end
 local methods = {}
 for _, method in ipairs({ "SetSize", "SetFrameLevel", "SetFrameStrata", "SetClampedToScreen", "SetMovable",
     "EnableMouse", "RegisterForDrag", "RegisterForClicks", "SetHighlightTexture", "SetTexture", "SetWidth",
-    "SetJustifyH", "SetJustifyV", "SetScrollChild", "UpdateScrollChildRect", "StartMoving", "StopMovingOrSizing" }) do
+    "SetJustifyH", "SetJustifyV", "SetScrollChild", "UpdateScrollChildRect", "StartMoving", "StopMovingOrSizing", "SetBackdrop", "SetBackdropBorderColor", "SetAllPoints",
+    "SetFont", "SetFontObject", "SetTextColor", "SetTexCoord", "SetVertexColor", "SetWordWrap", "SetAutoFocus",
+    "SetMaxLetters", "ClearFocus", "SetOrientation", "SetMinMaxValues", "SetValueStep", "SetObeyStepOnDrag",
+    "SetThumbTexture", "SetDesaturated", "SetAlpha" }) do
     methods[method] = function() end
 end
 function methods:SetScript(event, fn) self.scripts[event] = fn end
@@ -25,12 +28,22 @@ function methods:GetScript(event) return self.scripts[event] end
 function methods:RegisterEvent(event) self.events[event] = true end
 function methods:SetPoint(...) self.point = {...} end
 function methods:ClearAllPoints() self.point = nil end
-function methods:SetText(value) self.text = value end
+function methods:SetText(value)
+    self.text = value
+    if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self) end
+end
+function methods:GetText() return self.text or "" end
+function methods:SetSize(width, height) self.width, self.height = width, height end
+function methods:SetScale(value) self.scale = value end
+function methods:GetScale() return self.scale or 1 end
+function methods:SetBackdropColor(...) self.background = {...} end
+function methods:SetChecked(value) self.checked = value end
+function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
 function methods:GetStringHeight() return #(self.text or "") end
 function methods:GetFrameLevel() return 1 end
-function methods:GetWidth() return 160 end
-function methods:GetHeight() return 160 end
+function methods:GetWidth() return self.width or 160 end
+function methods:GetHeight() return self.height or 160 end
 function methods:GetEffectiveScale() return 1 end
 function methods:GetCenter() return 100, 100 end
 function methods:GetValue() return self.value or 0 end
@@ -45,7 +58,7 @@ end
 function methods:Hide() self:SetShown(false) end
 function methods:Show() self:SetShown(true) end
 local function Frame() return setmetatable({scripts = {}, events = {}, shown = true}, {__index = methods}) end
-methods.CreateTexture, methods.CreateFontString = Frame, Frame
+methods.CreateTexture, methods.CreateFontString, methods.GetHighlightTexture, methods.GetThumbTexture = Frame, Frame, Frame, Frame
 CreateFrame = function(_, name)
     local f = Frame()
     f.TitleText, f.ScrollBar = Frame(), Frame()
@@ -54,12 +67,15 @@ CreateFrame = function(_, name)
     return f
 end
 UIParent, Minimap, GameTooltip = Frame(), Frame(), Frame()
+UIParent:SetSize(1920, 1080)
+STANDARD_TEXT_FONT = "Fonts/example.ttf"
 methods.SetOwner, methods.AddLine = function() end, function() end
 GetCursorPosition = function() return 150, 100 end
 GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
 UISpecialFrames, SlashCmdList = {}, {}
 Constants = { InventoryConstants = { NumBagSlots = 4, NumReagentBagSlots = 1 } }
 Enum = {
+    Profession = {Engineering = 2, Cooking = 4},
     BagIndex = { Backpack = 0, ReagentBag = 5 },
     RegisterAddonMessagePrefixResult = { Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2 },
     SendAddonMessageResult = { Success = 0, AddonMessageThrottle = 3, AddOnMessageLockdown = 11 },
@@ -84,8 +100,17 @@ C_Container = {
 }
 GetInventoryItemID = function(_, slot) return equipped[slot] end
 GetProfessions = function() return nil, 2, nil, nil, 5 end
-GetProfessionInfo = function(index) return index == 2 and "Engineering" or "Cooking" end
-C_Item = { GetItemInfo = function(id) return id == 10 and "Sample item" or nil end }
+GetProfessionInfo = function(index) return index == 2 and "Engineering" or "Cooking", nil, nil, nil, nil, nil, index * 100 end
+C_Item = { GetItemInfo = function(id)
+    if id == 10 then return "Sample item", nil, nil, nil, nil, nil, nil, nil, nil, 123, nil, nil, nil, nil, nil, nil, true end
+end }
+C_TradeSkillUI = {
+    GetAllRecipeIDs = function() return {1, 2} end,
+    GetProfessionInfoByRecipeID = function(id) return {profession = id == 1 and 2 or 4} end,
+    GetRecipeSchematic = function(id)
+        return {reagentSlotSchematics = {{reagents = {{itemID = id == 1 and 10 or 20}}}}}
+    end,
+}
 local sent, restriction, sendResult, registerResult, club = {}, false, 0, 0, 123
 local members = {
     {name = "Self Example", isSelf = true, presence = 1},
@@ -105,7 +130,7 @@ C_Club = {
     GetMemberInfo = function(_, id) return members[id] end,
 }
 local addon = {}
-for _, file in ipairs({ "Locales", "GuildStock", "Probe", "UI" }) do
+for _, file in ipairs({ "Locales", "GuildStock", "Probe", "Catalog", "UI" }) do
     assert(loadfile("GuildStock/" .. file .. ".lua"))("GuildStock", addon)
 end
 local function Event(event, ...)
@@ -192,7 +217,7 @@ registerResult = 1
 addon.RegisterProbe()
 assert(addon.probe.registration == "DuplicatePrefix")
 restriction = true
-assert(addon.StartProbe() == addon.L["Probe unavailable: check Diagnostics."] and #sent == 0)
+assert(addon.StartProbe() == addon.L["Probe unavailable: check Settings and /guildstock diagnostics."] and #sent == 0)
 restriction = secret
 addon.StartProbe()
 assert(#sent == 0)
@@ -250,24 +275,79 @@ Event("PLAYER_GUILD_UPDATE", "player")
 Receive("1|P|103-20")
 assert(#sent == 4)
 
--- Exercise the actual slash, item loading refresh, minimap and diagnostic rendering.
+-- Exercise recipe discovery, real filters and native interface handlers with synthetic items.
 bags[0] = {Item(10, 5, false), Item(20, 2, true)}
 addon.Observe()
+Event("TRADE_SKILL_LIST_UPDATE")
+assert(addon.Catalog()[10].Engineering and addon.Catalog()[20].Cooking)
+assert(#addon.Materials("all") == 2 and #addon.Materials("all", "Engineering") == 1)
+assert(#addon.Materials("favorites") == 1 and #addon.Materials("all", nil, "[literal") == 0)
+assert(#addon.Materials("all", nil, "sample") == 1)
+local remembered = addon.Catalog()[20]
+local snapshot = addon.snapshot
+addon.snapshot = {items = {}, observedAt = epoch}
+assert(#addon.Materials("all") == 2 and #addon.Materials("all", nil, "", true) == 0, "zero stock stays in the catalog")
+assert(addon.Catalog()[20] == remembered)
+addon.snapshot = snapshot
+saved.settings = {initialView = "mine", showMinimap = true}
 SlashCmdList.GUILDSTOCK("")
+assert(saved.settings.initialView == "all" and saved.settings.showMinimap, "removed opening view migrates without losing other preferences")
 assert(GuildStockFrame:IsShown() and UISpecialFrames[1] == "GuildStockFrame")
-assert(addon.itemNames[10] == "Sample item" and addon.itemNames[20] == false)
+assert(GuildStockFrame.width == 1180 and GuildStockFrame.height == 650, "mock window proportions")
+assert(addon.itemData[10].name == "Sample item" and addon.itemData[20] == false)
+local function Click(label)
+    for _, f in ipairs(frames) do
+        if f.label and f.label.text == label then f.scripts.OnClick(f); return f end
+    end
+    error("Missing button: " .. label)
+end
+Click("My inventory")
 local queries = 0
 C_Item.GetItemInfo = function() queries = queries + 1; return "Loaded item" end
 Event("GET_ITEM_INFO_RECEIVED", 20, false)
 addon.Refresh()
 assert(queries == 0, "failed item loads are not requested in a refresh loop")
 Event("GET_ITEM_INFO_RECEIVED", 20, true)
-assert(queries == 1 and addon.itemNames[20] == "Loaded item", "async names replace item-ID placeholders")
-local diagnosticButton
-for _, f in ipairs(frames) do if f.text == "Diagnostics" then diagnosticButton = f end end
-assert(diagnosticButton)
-diagnosticButton.scripts.OnClick()
-Event("GET_ITEM_INFO_RECEIVED", 20)
+assert(queries == 1 and addon.itemData[20].name == "Loaded item", "async names replace item-ID placeholders")
+Click("Materials")
+Click("All materials")
+Click("Favorites")
+addon.ToggleFavorite(20)
+assert(saved.favorites[20] and #addon.Materials("favorites") == 2)
+addon.ToggleFavorite(20)
+assert(saved.favorites[20] == nil and saved.favorites[10])
+Click("Settings")
+local checks = {}
+for _, f in ipairs(frames) do if f.checked ~= nil then checks[#checks + 1] = f end end
+assert(#checks == 2)
+checks[2]:SetChecked(false)
+checks[2].scripts.OnClick(checks[2])
+assert(saved.settings.showMinimap == false and not GuildStockMinimapButton:IsShown())
+checks[2]:SetChecked(true)
+checks[2].scripts.OnClick(checks[2])
+assert(GuildStockMinimapButton:IsShown())
+-- Exercise the dropdown callbacks separately from the identically named navigation buttons.
+local choices
+for _, f in ipairs(frames) do
+    if f.width == 271 and f.height == 73 then choices = f end
+end
+for _, f in ipairs(frames) do
+    if f.width == 267 and f.label and f.label.text == "Favorites" then f.scripts.OnClick(f) end
+end
+assert(saved.settings.initialView == "favorites" and not choices:IsShown())
+local settingsBefore = saved.settings
+saved.settings = "preserve unsupported preferences"
+checks[2]:SetChecked(false)
+checks[2].scripts.OnClick(checks[2])
+addon.Refresh()
+assert(saved.settings == "preserve unsupported preferences" and addon.temporaryPreferences)
+saved.settings = settingsBefore
+addon.Refresh()
+local slider
+for _, f in ipairs(frames) do if f.scripts.OnValueChanged then slider = f end end
+slider.scripts.OnValueChanged(slider, 0.9)
+assert(saved.settings.scale == 0.9 and GuildStockFrame:GetScale() == 0.9)
+assert(#sent == 4, "UI operations never send addon messages")
 GuildStockMinimapButton.scripts.OnClick()
 assert(not GuildStockFrame:IsShown())
 GuildStockMinimapButton.scripts.OnDragStart(GuildStockMinimapButton)
@@ -279,6 +359,6 @@ for _, locale in ipairs({ "esES", "esMX" }) do
     GetLocale = function() return locale end
     local localized = {}
     assert(loadfile("GuildStock/Locales.lua"))("GuildStock", localized)
-    assert(localized.L["My bags"] == "Mis bolsas" and localized.L["unknown"] == "unknown")
+    assert(localized.L["My inventory"] == "Mi inventario" and localized.L["unknown"] == "unknown")
 end
-print("GuildStock: bag observations, saved data, probes and interface checks OK")
+print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

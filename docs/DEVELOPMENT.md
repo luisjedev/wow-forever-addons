@@ -8,7 +8,7 @@ The repository is where editing, commits, and publishing happen. `Interface/AddO
 WoW Forever Addons/
 ├── TDL/                 ← Interface/AddOns/TDL
 ├── Revenge/             ← Interface/AddOns/Revenge
-├── GuildStock/          ← Interface/AddOns/GuildStock (API prototype)
+├── GuildStock/          ← Interface/AddOns/GuildStock (interface prototype)
 ├── docs/
 ├── AGENTS.md
 └── .local/              (private, excluded from Git)
@@ -45,7 +45,7 @@ Switching branches immediately changes the files that the next `/reload` will re
 From the repository root, with Lua 5.1 or LuaJIT installed:
 
 ```sh
-luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
+luajit -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/Catalog.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
 luajit TDL/TDL.test.lua
 (cd Revenge && luajit Revenge.test.lua)
 luajit tests/minimap.test.lua
