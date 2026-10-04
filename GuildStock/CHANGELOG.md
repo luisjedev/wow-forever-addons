@@ -1,3 +1,11 @@
+# GuildStock 0.5.1
+
+- Each character now sends only its own inventory. Remove offline-inventory forwarding through other guild members and ignore legacy relay traffic.
+- Keep the existing protocol-2 prefix, direct message formats, GUILD transport, startup discovery, acknowledgements, 30-second batching, privacy withdrawals and bounded retries. Direct synchronization remains compatible with 0.4.x and 0.5.0; update every participant to stop relaying on every client.
+- Retain dated inventories received directly from their owners. Remove saved records explicitly marked as relayed so fabricated revisions cannot block a returning owner's direct update. Preserve local inventory, auction prices, preferences and unsupported saved schemas.
+
+Lua syntax and all eight repository suites pass, including relay rejection, saved-history migration and mixed direct exchanges with the unmodified 0.5.0 sync module. Native reload and multi-client validation of this update remain pending. Target: Forever 1.60.1, build 70205, interface 16001.
+
 # GuildStock 0.5.0
 
 - Add local estimated auction buyout prices per unit beside the material title and beneath item names in Materials, Favorites, My inventory, Not shared and Characters.

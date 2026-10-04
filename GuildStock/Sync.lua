@@ -4,14 +4,11 @@ local PREFIX, MAX_ITEMS, MAX_PARTS = "GuildStockS2", 1400, 1400
 local state = {status = "waiting", sent = 0, received = 0}
 addon.sync = state
 local world, registered, guild, session, published, revision, dirtyAt, fresh
-local ownerNames = {}
 local members, memberUntil, readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot
 local discoveryAt, discoveryRetries
 local queue, outgoing, peers, removed = {}, nil, {}, {}
 local nextSend, retries, retryAt = 0, 0, 0
 local privacyPending, requested
-local summaryAt, summary, relayOut, download
-local candidates, relayQueue, relayServed = {}, {}, {}
 local MAX_REVISION = 999999999999
 -- Observations, privacy/profession changes, catalog invalidation and session resets
 -- discard this representation. Timer ticks only need to compare its key.
@@ -36,20 +33,11 @@ local function ClearTransport()
     readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot = nil, nil, nil, nil, nil, nil
     discoveryAt, discoveryRetries = nil, 0
     retries, retryAt = 0, 0
-    privacyPending, requested, summaryAt, summary, relayOut, download = nil, nil, nil, nil, nil, nil
-    candidates, relayQueue, relayServed = {}, {}, {}
+    privacyPending, requested = nil, nil
 end
 local function SavedID(value)
     return (type(value) == "string" and #value > 0 and #value <= 200)
         or addon.Integer(value, 0, 9007199254740991)
-end
-local function OwnerKey(id)
-    if not SavedID(id) then return end
-    local value = type(id) == "number" and string.format("%.0f", id) or id
-    local key = (type(id) == "number" and "n" or "s") .. value:gsub("[^%w%-_.]", function(c)
-        return string.format("%%%02X", string.byte(c))
-    end)
-    if #key <= 80 then return key end -- Oversized native IDs remain local; never truncate identities.
 end
 local function History()
     if not addon.db or addon.temporary then return end
@@ -91,8 +79,6 @@ local function HistoricalCopy(name, character)
     return {name = name, memberID = character.memberID, skills = skills, receivedAt = character.receivedAt,
         professionRanks = CopyRanks(skills, character.professionRanks),
         revision = addon.Integer(character.revision, 1, MAX_REVISION) and character.revision or nil,
-        relayed = character.relayed == true or nil,
-        supersededBy = addon.Integer(character.supersededBy, 1, MAX_REVISION) and character.supersededBy or nil,
         snapshot = {observedAt = character.snapshot.observedAt, items = items}}
 end
 local function RestoreHistory()
@@ -104,13 +90,18 @@ local function RestoreHistory()
         if SavedID(guild) then addon.db.guildHistory = {version = 2, guildID = guild, characters = {}} end
         return
     end
-    if history.version == 1 then
-        -- Legacy records have no durable revision; retain them for display only.
-        for _, character in pairs(history.characters) do
-            if type(character) == "table" then character.revision = nil end
+    for name, character in pairs(history.characters) do
+        if type(character) == "table" then
+            if character.relayed == true then
+                -- Third-party revisions must never block the owner's next direct update.
+                history.characters[name] = nil
+            elseif history.version == 1 then
+                -- Legacy direct records have no durable revision; retain them for display.
+                character.revision = nil
+            end
         end
-        history.version = 2
     end
+    history.version = 2
     local count = 0
     for name, character in pairs(history.characters) do
         count = count + 1
@@ -157,11 +148,6 @@ local function Roster()
         end
     end
     if not own then return end -- Empty/partial initialization must not erase cached peers.
-    ownerNames = {}
-    for name, member in pairs(found) do
-        local key = OwnerKey(member.id)
-        if key then ownerNames[key] = name end
-    end
     members, memberUntil = found, GetTime() + 5
     return members
 end
@@ -263,9 +249,6 @@ function addon.SyncDiscover()
         for _, peer in pairs(peers) do
             if not peer.token and not peer.due then peer.offered = nil end
         end
-        -- Rebuild availability from online holders; a departed holder of a newer
-        -- revision must not prevent another usable copy from being discovered.
-        if not download then candidates = {} end
         Offer(true)
     end
 end
@@ -398,9 +381,8 @@ local function Snapshot(name, peer, fields)
     Commit(name, peer)
 end
 -- A frozen complete record can stream while newer ordinary quantities wait for their batch.
-local function Pack(record, owner)
-    local head = owner and ("2|T|" .. session .. "|" .. owner .. "|") or ("2|S|" .. session .. "|")
-    head = head .. record.revision .. "|"
+local function Pack(record)
+    local head = "2|S|" .. session .. "|" .. record.revision .. "|"
     local tail = "|" .. record.observedAt .. "|" .. record.skills .. "|"
     local budget = 240 - #head - #tail - 9 -- two four-digit part numbers and their separator
     local parts, part, length, ids = {}, {}, 0, {}
@@ -416,161 +398,7 @@ local function Pack(record, owner)
     if #parts > MAX_PARTS then state.status = "limited"; return end
     local messages = {}
     for i, value in ipairs(parts) do messages[i] = head .. i .. "|" .. #parts .. tail .. value end
-    return {messages = messages, part = 1, itemIDs = ids, revision = record.revision, owner = owner}
-end
-
-local function Owner(key)
-    local roster = Roster()
-    local name = roster and ownerNames[key]
-    local member = name and roster[name]
-    if member and not member.isSelf and member.offline then return name, member end
-end
-local function RelayRecord(key)
-    local name, member = Owner(key)
-    local record = name and addon.guildData.characters[name]
-    if record and record.memberID == member.id and addon.Integer(record.revision, 1, MAX_REVISION)
-        and (not record.supersededBy or record.revision >= record.supersededBy)
-        and addon.ValidSnapshot(record.snapshot) then return record end
-end
-local function SaveRecord(name, record)
-    addon.guildData.characters[name] = record
-    local history = History()
-    if history and history.guildID == guild then history.characters[name] = HistoricalCopy(name, record) end
-    state.received = state.received + 1
-    Refresh()
-end
-local function ScheduleSummary()
-    summaryAt = summaryAt or GetTime() + math.random(4, 8)
-end
-local function MakeSummary()
-    local entries = {}
-    for _, record in pairs(addon.guildData.characters) do
-        local key = OwnerKey(record.memberID)
-        if key and RelayRecord(key) == record then entries[#entries + 1] = key .. "," .. record.revision end
-    end
-    table.sort(entries)
-    local head, messages, part = "2|D|" .. session .. "|", {}, ""
-    for _, entry in ipairs(entries) do
-        if #head + #part + #entry + 1 > 240 then messages[#messages + 1] = head .. part; part = "" end
-        part = part == "" and entry or part .. ";" .. entry
-    end
-    if part ~= "" then messages[#messages + 1] = head .. part end
-    return {messages = messages, part = 1}
-end
-local function Digest(sender, fields)
-    if #fields ~= 4 then return end
-    for entry in (fields[4] .. ";"):gmatch("(.-);") do
-        local key, rev = entry:match("^([^,]+),(%d+)$")
-        rev = Integer(rev, 1, MAX_REVISION)
-        local name = key and Owner(key)
-        local known = name and addon.guildData.characters[name]
-        if name and rev and (not known or not known.supersededBy or rev >= known.supersededBy)
-            and (not known or not known.revision or rev > known.revision) then
-            local candidate = candidates[key]
-            if not candidate then
-                local count = 0; for _ in pairs(candidates) do count = count + 1 end
-                if count >= 2000 then return end
-            end
-            if not candidate or rev > candidate.revision then
-                candidate = {revision = rev, providers = {}, attempts = 0, due = GetTime() + 2}
-                candidates[key] = candidate
-            end
-            if candidate.revision == rev then
-                local count = 0; for _ in pairs(candidate.providers) do count = count + 1 end
-                if count < 3 or candidate.providers[sender] then candidate.providers[sender] = fields[3] end
-            end
-        end
-    end
-end
-local function RelayRequest(fields)
-    if #fields ~= 5 or fields[3] ~= session then return end
-    local key, rev = fields[4], Integer(fields[5], 1, MAX_REVISION)
-    local record = RelayRecord(key)
-    if not record or record.revision ~= rev or (relayServed[key] and GetTime() - relayServed[key] < 5) then return end
-    if relayOut and relayOut.owner == key and relayOut.revision == rev then return end
-    for _, queued in ipairs(relayQueue) do if queued == key then return end end
-    if #relayQueue < 16 then relayQueue[#relayQueue + 1] = key end
-end
-local function RelaySnapshot(sender, fields)
-    local work = download
-    if not work or sender ~= work.provider or fields[3] ~= work.session or fields[4] ~= work.key or #fields ~= 10 then return end
-    local rev, part, total = Integer(fields[5], 1, MAX_REVISION), Integer(fields[6], 1, MAX_PARTS), Integer(fields[7], 1, MAX_PARTS)
-    local observed, skills = Integer(fields[8], 0, time() + 300), DecodeSkills(fields[9])
-    local name, member = Owner(work.key)
-    if not name or rev ~= work.revision or not part or not total or part > total or not observed or not skills then return end
-    local known = addon.guildData.characters[name]
-    if known and ((known.revision and known.revision >= rev) or (known.supersededBy and known.supersededBy > rev)) then download = nil; return end
-    local transfer = work.transfer
-    if not transfer then
-        transfer = {total = total, observedAt = observed, skills = skills, skillText = fields[9], parts = {}, items = {}, count = 0, itemCount = 0}
-        work.transfer = transfer
-    end
-    if total ~= transfer.total or observed ~= transfer.observedAt or fields[9] ~= transfer.skillText or transfer.parts[part] then return end
-    local items, count = {}, 0
-    if fields[10] ~= "" then
-        for entry in (fields[10] .. ";"):gmatch("(.-);") do
-            local id, quantity, bound = entry:match("^(%d+),(%d+),(%d+)$")
-            id, quantity = Integer(id, 1, 2147483647), Integer(quantity, 1, 2147483647)
-            bound = Integer(bound, 0, quantity or 0)
-            if not id or not quantity or not bound or items[id] or transfer.items[id] then return end
-            items[id] = {count = quantity, bound = bound}; count = count + 1
-        end
-    elseif total ~= 1 then return end
-    if transfer.itemCount + count > MAX_ITEMS then return end
-    for id, item in pairs(items) do transfer.items[id] = item end
-    transfer.parts[part], transfer.count, transfer.itemCount = true, transfer.count + 1, transfer.itemCount + count
-    work.deadline = GetTime() + 20
-    if transfer.count == total then
-        SaveRecord(name, {name = name, memberID = member.id, revision = rev, relayed = true, receivedAt = time(), skills = skills,
-            snapshot = {items = transfer.items, observedAt = math.min(time(), observed)}})
-        candidates[work.key], download = nil, nil
-    end
-end
-local function RelayTick(now)
-    if summaryAt and now >= summaryAt then summaryAt = nil; summary = MakeSummary() end
-    if download and (not Owner(download.key) or not Peer(download.provider) or now >= download.deadline) then
-        download = nil
-    end
-    if not download then
-        for key, candidate in pairs(candidates) do
-            local name = Owner(key)
-            local known = name and addon.guildData.characters[name]
-            if not name or (known and known.revision and known.revision >= candidate.revision) then candidates[key] = nil
-            elseif now >= candidate.due and candidate.attempts < 3 then
-                local providers = {}; for provider in pairs(candidate.providers) do if Peer(provider) then providers[#providers + 1] = provider end end
-                table.sort(providers)
-                if #providers > 0 then
-                    local provider = providers[candidate.attempts % #providers + 1]
-                    if Enqueue("2|R|" .. candidate.providers[provider] .. "|" .. key .. "|" .. candidate.revision, provider) then
-                        candidate.attempts = candidate.attempts + 1
-                        download = {key = key, revision = candidate.revision, provider = provider, session = candidate.providers[provider], deadline = now + 20}
-                        break
-                    end
-                end
-            end
-        end
-    end
-end
-local function RelayMessage()
-    if relayOut then
-        local record = RelayRecord(relayOut.owner)
-        if not record or record.revision ~= relayOut.revision then relayOut = nil end
-    end
-    while not relayOut and relayQueue[1] do
-        local key = table.remove(relayQueue, 1)
-        local record = RelayRecord(key)
-        if record then
-            local values, ids, skills = {}, {}, {0, 0}
-            for id in pairs(record.snapshot.items) do ids[#ids + 1] = id end
-            table.sort(ids)
-            for _, id in ipairs(ids) do local item = record.snapshot.items[id]; values[#values + 1] = string.format("%d,%d,%d", id, item.count, item.bound) end
-            for i = 1, 2 do for index, profession in ipairs(addon.professions) do if record.skills[i] == profession[1] then skills[i] = index end end end
-            relayOut = Pack({revision = record.revision, observedAt = record.snapshot.observedAt, skills = table.concat(skills, ","), values = values}, key)
-            relayServed[key] = GetTime()
-        end
-    end
-    if relayOut then return relayOut, relayOut.messages[relayOut.part] end
-    if summary then return summary, summary.messages[summary.part] end
+    return {messages = messages, part = 1, itemIDs = ids, revision = record.revision}
 end
 
 function addon.ReceiveSync(prefix, message, channel, sender)
@@ -590,6 +418,8 @@ function addon.ReceiveSync(prefix, message, channel, sender)
     for field in (message .. "|"):gmatch("(.-)|") do fields[#fields + 1] = field end
     if fields[1] ~= "2" or not ValidToken(fields[3]) then return end
     local kind, remote = fields[2], fields[3]
+    -- Retain protocol-2 direct packets; ignore retired D/R/T relay traffic from older clients.
+    if kind ~= "H" and kind ~= "O" and kind ~= "Q" and kind ~= "A" and kind ~= "P" and kind ~= "S" then return end
     local peer = peers[sender]
     if not peer or peer.memberID ~= member.id then
         local count = 0
@@ -602,13 +432,6 @@ function addon.ReceiveSync(prefix, message, channel, sender)
         if #fields ~= 4 or not rev then return end
         local previous = addon.guildData.characters[sender]
         if previous and previous.memberID ~= member.id then previous = nil end
-        if previous and rev > (previous.revision or 0) and rev > (previous.supersededBy or 0) then
-            -- An owner's announcement makes the older stored copy ineligible for relay,
-            -- including after reload if a withdrawal's complete replacement was lost.
-            previous.supersededBy = rev
-            local history = History()
-            if history and history.guildID == guild then history.characters[sender] = HistoricalCopy(sender, previous) end
-        end
         if not previous or previous.session ~= remote or previous.revision < rev then
             if peer.wanted ~= remote then
                 peer.token, peer.timeout, peer.transfer = nil, nil, nil
@@ -620,7 +443,6 @@ function addon.ReceiveSync(prefix, message, channel, sender)
             end
         end
         if kind == "H" then
-            ScheduleSummary()
             -- A recent offer may predate this client's login. Defer its reply rather than
             -- dropping it: otherwise the newcomer can remain without peer inventories while idle.
             offerAt = offerAt or math.max(GetTime() + math.random(1, 3), (lastOffer or -5) + 5)
@@ -643,10 +465,7 @@ function addon.ReceiveSync(prefix, message, channel, sender)
         peer.timeout = GetTime() + 20
         Commit(sender, peer)
     elseif kind == "P" then ProfessionRanks(sender, peer, fields)
-    elseif kind == "S" then Snapshot(sender, peer, fields)
-    elseif kind == "D" then Digest(sender, fields)
-    elseif kind == "R" then RelayRequest(fields)
-    elseif kind == "T" then RelaySnapshot(sender, fields) end
+    elseif kind == "S" then Snapshot(sender, peer, fields) end
 end
 local function Flush()
     if GetTime() < nextSend or GetTime() < retryAt or not CanSend() then return end
@@ -663,9 +482,6 @@ local function Flush()
         sending = outgoing
         message = sending.messages[sending.part]
     end
-    if not message then
-        sending, message = RelayMessage()
-    end
     if not message then return end
     if #message > 240 then outgoing, queue = nil, {}; state.status = "limited"; return end
     local result = addon.Read(C_ChatInfo and C_ChatInfo.SendAddonMessage, PREFIX, message, "GUILD")
@@ -679,8 +495,7 @@ local function Flush()
             sending.part = sending.part + 1
             if sending == outgoing and sending.part > #sending.messages then
                 outgoing = nil; published.withdrawal = nil; Offer(false)
-            elseif sending == relayOut and sending.part > #sending.messages then relayOut = nil
-            elseif sending == summary and sending.part > #sending.messages then summary = nil end
+            end
         end
     else
         retries = retries + 1
@@ -689,8 +504,6 @@ local function Flush()
             queue, outgoing, snapshotAt, offerAt = {}, nil, nil, nil
             discoveryAt, discoveryRetries = nil, 0
             retries = 0; retryAt = GetTime() + 60
-            summaryAt, summary, relayOut, download = nil, nil, nil, nil
-            candidates, relayQueue = {}, {}
         end
     end
 end
@@ -742,7 +555,6 @@ function addon.SyncTick()
             if Peer(name) then Request(name, peer) end
         end
     end
-    RelayTick(now)
     Flush()
 end
 function addon.SyncStatus()

@@ -42,6 +42,7 @@ local function Client(name, syncPath)
         InChatMessagingLockdown = function() return client.lockdown end,
         SendAddonMessage = function(prefix, message, channel, target)
             assert(channel == "GUILD" and target == nil and #message <= 240)
+            if not syncPath then assert(not message:match("^2|[DRT]|"), "updated clients never send relay packets") end
             assert(not client.combat and client.lockdown == false)
             log[#log + 1] = {sender = name, message = message, at = clock, guild = client.guild}
             if client.result == 0 then bus[#bus + 1] = {sender = name, message = message, prefix = prefix, guild = client.guild} end
@@ -642,97 +643,115 @@ do
     for _,packet in ipairs(log) do assert(#packet.message<=240) end
 end
 
--- Recover the newest offline-owner record, persist it, and relay it through another hop.
+-- A returning reader keeps its own dated direct history until the owner returns.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
     local reader,owner,holder=Client("Returning Example"),Client("Offline Owner Example"),Client("Holder Example")
     reader:Login();owner:Login();holder:Login();Step(60)
     local old=Copy(reader.env.GuildStockDB)
+    local original=Copy(Received(reader,owner))
     reader.online=false
     owner.inventory[2770].count=40;owner.addon.Observe();Step(60)
-    local original=Copy(Received(holder,owner))
-    assert(original.snapshot.items[2770].count==40)
+    assert(Received(holder,owner).snapshot.items[2770].count==40)
     owner.online=false
-    reader=Reload(reader,old);Step(60)
-    local recovered=Received(reader,owner)
-    assert(recovered and recovered.relayed and recovered.revision==original.revision and recovered.snapshot.items[2770].count==40)
-    assert(recovered.snapshot.observedAt==original.snapshot.observedAt and recovered.receivedAt>original.receivedAt,
-        "relay reception must not rejuvenate the owner's observation")
-    holder.online=false;reader=Reload(reader);Step(30)
-    local newcomer=Client("Later Example");newcomer:Login();Step(60)
-    assert(Received(newcomer,owner) and Received(newcomer,owner).snapshot.items[2770].count==40)
-    assert(Received(newcomer,owner).snapshot.observedAt==original.snapshot.observedAt,
-        "a second hop after reloading the holder preserves the original observation")
-    assert(newcomer.addon.SyncMember(owner.name).offline)
-    for _, entry in ipairs(newcomer.addon.MaterialOwners(2770,false)) do assert(entry.id~=owner.name) end
-    local accepted=Received(newcomer,owner)
-    Receive(newcomer,reader,"2|D|1-2|n2,"..old.guildHistory.characters[owner.name].revision)
-    Receive(newcomer,reader,"2|T|1-2|n2|"..old.guildHistory.characters[owner.name].revision.."|1|1|"..reader.env.time().."|0,0|2770,7,0")
-    Step(5)
-    assert(Received(newcomer,owner)==accepted,"old data with a newer receipt timestamp cannot override a newer owner revision")
-    newcomer:Event("CLUB_MEMBER_REMOVED",42,2)
-    Receive(newcomer,reader,"2|D|1-2|n2,"..original.revision)
-    Step(30);assert(not Received(newcomer,owner),"a confirmed departed owner cannot be resurrected by a relay")
+    reader=Reload(reader,old);Step(90)
+    local retained=Received(reader,owner)
+    assert(retained.snapshot.items[2770].count==7 and retained.revision==original.revision)
+    assert(retained.snapshot.observedAt==original.snapshot.observedAt and retained.receivedAt==original.receivedAt,
+        "another participant cannot refresh the reader's offline history")
+    assert(reader.addon.SyncMember(owner.name).offline)
+    for _,entry in ipairs(reader.addon.MaterialOwners(2770,false)) do assert(entry.id~=owner.name) end
+    holder=Reload(holder);reader=Reload(reader);Step(90)
+    local newcomer=Client("Later Example");newcomer:Login();Step(90)
+    assert(not Received(newcomer,owner),"a new participant must wait for the owner, even when others have its history")
+    assert(Received(reader,owner).snapshot.items[2770].count==7)
+    owner.online=true;owner:Event("PLAYER_ENTERING_WORLD")
+    for _,client in ipairs({reader,holder,newcomer}) do client:Event("CLUB_MEMBERS_UPDATED",42) end
+    Step(90)
+    assert(Received(reader,owner).snapshot.items[2770].count==40 and Received(newcomer,owner).snapshot.items[2770].count==40)
+    assert(Received(reader,owner).session and Received(reader,owner).receivedAt>original.receivedAt)
 end
 
--- Relayed empty withdrawals supersede stock; a stale holder cannot resurrect excluded items.
+-- A missed privacy withdrawal also waits for direct contact; peers never relay it.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
     local reader,owner,holder=Client("Private Returning Example"),Client("Private Owner Example"),Client("Private Holder Example")
     reader:Login();owner:Login();holder:Login();Step(60)
     local old=Copy(reader.env.GuildStockDB);reader.online=false
     owner.incomplete=true;owner.addon.Observe();owner.addon.SetSharingEnabled(false);Step(15)
-    local withdrawal=Copy(Received(holder,owner))
-    assert(next(withdrawal.snapshot.items)==nil)
-    owner.online=false;reader=Reload(reader,old);Step(60)
-    assert(Received(reader,owner).revision==withdrawal.revision and next(Received(reader,owner).snapshot.items)==nil)
-    holder=Reload(holder,old);Step(60) -- old belongs to the same synthetic guild; includes the stale owner's record
-    assert(next(Received(reader,owner).snapshot.items)==nil)
+    assert(next(Received(holder,owner).snapshot.items)==nil)
+    owner.online=false;reader=Reload(reader,old);Step(90)
+    assert(Received(reader,owner).snapshot.items[2770].count==7,"missed withdrawals cannot remotely erase old direct history")
+    owner.online=true;owner:Event("PLAYER_ENTERING_WORLD");reader:Event("CLUB_MEMBERS_UPDATED",42);Step(90)
+    assert(next(Received(reader,owner).snapshot.items)==nil,"the owner's empty replacement still withdraws stock")
 end
 
--- Missing history fragments repair with bounded attempts and atomic replacement.
+-- Retired packets cannot poison a direct record, trigger replies or create an offline owner.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
-    local owner,holder=Client("Repair Owner Example"),Client("Repair Holder Example")
-    owner.inventory={};local n=0
-    for id in pairs(owner.addon.catalogSeed) do n=n+1;owner.inventory[id]={count=n,bound=0};if n==100 then break end end
-    owner:Login();holder:Login();Step(60);assert(Received(holder,owner))
-    owner.online=false
-    local reader=Client("Repair Reader Example")
-    local lost,partial=false,false
-    filter=function(packet,client)
-        if client==reader and packet.message:match("^2|T|") then
-            local part=packet.message:match("^2|T|[^|]+|[^|]+|%d+|(%d+)|")
-            if part=="2" and not lost then lost=true;return false end
-            if lost and not Received(reader,owner) then partial=true end
-        end
-        return true
-    end
-    reader:Login();Step(20)
-    assert(lost and partial and not Received(reader,owner),"partial relays are never visible")
-    Step(60);filter=nil
-    assert(Received(reader,owner) and Received(reader,owner).snapshot.items[next(owner.inventory)])
-    local requests=0
-    for _,packet in ipairs(log) do if packet.sender==reader.name and packet.message:match("^2|R|") then requests=requests+1 end end
-    assert(requests==2,"one missing fragment repairs once after an inactivity timeout")
-    local quiet=#log;Step(600);assert(#log==quiet,"relaying settles without an idle network heartbeat")
+    local reader,owner,sender=Client("Safe Reader Example"),Client("Safe Owner Example"),Client("Untrusted Sender Example")
+    reader:Login();owner:Login();sender:Login();Step(120)
+    local accepted=Received(reader,owner)
+    local readerSession=Received(sender,reader).session
+    owner.online=false;reader:Event("CLUB_MEMBERS_UPDATED",42)
+    local first,received=#log,reader.addon.sync.received
+    Receive(reader,sender,"2|D|1-2|n2,999999999999")
+    Step(3)
+    Receive(reader,sender,"2|T|1-2|n2|999999999999|1|1|"..reader.env.time().."|0,0|2770,999,0")
+    Receive(reader,sender,"2|R|"..readerSession.."|n2|"..accepted.revision)
+    Step(120)
+    assert(Received(reader,owner)==accepted and reader.addon.sync.received==received and #log==first)
+    local newcomer=Client("Safe Newcomer Example");newcomer:Login();Step(120)
+    Receive(newcomer,sender,"2|D|1-2|n2,999999999999");Step(3)
+    Receive(newcomer,sender,"2|T|1-2|n2|999999999999|1|1|"..newcomer.env.time().."|0,0|2770,999,0")
+    Step(30);assert(not Received(newcomer,owner))
+    owner.online=true;owner.inventory[2770].count=11;owner:Event("PLAYER_ENTERING_WORLD")
+    reader:Event("CLUB_MEMBERS_UPDATED",42);newcomer:Event("CLUB_MEMBERS_UPDATED",42);Step(90)
+    assert(Received(reader,owner).snapshot.items[2770].count==11 and Received(newcomer,owner).snapshot.items[2770].count==11)
 end
 
--- A donor announcement invalidates its older cached copy even if the replacement never arrives.
-do
+-- Upgrades remove only marked relay history, including revisions that previously blocked owners.
+for _,version in ipairs({1,2}) do
     clients,bus,log,clock,filter = {},{},{},0,nil
-    local owner,holder=Client("Withdrawal Owner Example"),Client("Withdrawal Holder Example")
-    owner:Login();holder:Login();Step(60)
-    local earlier=Received(holder,owner).revision
-    filter=function(packet,client) return not (client==holder and packet.sender==owner.name and packet.message:match("^2|S|")) end
-    owner.addon.SetSharingEnabled(false);Step(15)
-    assert(Received(holder,owner).supersededBy>earlier)
-    owner.online=false;filter=nil;holder=Reload(holder)
-    local reader=Client("Withdrawal Reader Example");reader:Login();Step(90)
-    assert(not Received(reader,owner),"known superseded inventory must not be advertised after a holder reload")
+    local reader,owner,direct=Client("Upgrade Reader Example"),Client("Upgrade Owner Example"),Client("Direct History Example")
+    reader:Login();owner:Login();direct:Login();Step(90)
+    local saved=Copy(reader.env.GuildStockDB)
+    saved.settings={shareInventory=false,language="enUS"};saved.hiddenItems={[2589]=true};saved.favorites={[2770]=true}
+    saved.guildHistory.version=version
+    local poisoned=saved.guildHistory.characters[owner.name]
+    poisoned.relayed=true;poisoned.revision=999999999999;poisoned.supersededBy=999999999999
+    poisoned.snapshot.items[2770].count=999
+    -- Retired direct-only metadata may coexist with a valid record and must not erase it.
+    saved.guildHistory.characters[direct.name].supersededBy=999999999999
+    local retained=Copy(saved.guildHistory.characters[direct.name])
+    owner.online=false;direct.online=false
+    reader=Reload(reader,saved)
+    assert(not Received(reader,owner) and not reader.env.GuildStockDB.guildHistory.characters[owner.name])
+    assert(Received(reader,direct).snapshot.items[2770].count==retained.snapshot.items[2770].count)
+    assert(Received(reader,direct).snapshot.observedAt==retained.snapshot.observedAt
+        and Received(reader,direct).receivedAt==retained.receivedAt and Received(reader,direct).professionRanks[1]==52)
+    assert(reader.env.GuildStockDB.settings.shareInventory==false and reader.env.GuildStockDB.settings.language=="enUS")
+    assert(reader.env.GuildStockDB.hiddenItems[2589] and reader.env.GuildStockDB.favorites[2770]
+        and reader.env.GuildStockDB.own.items[2770].count==saved.own.items[2770].count)
+    Step(90);reader=Reload(reader);Step(90)
+    assert(not Received(reader,owner) and Received(reader,direct),"removed relays stay absent after another reload")
+    owner.online=true;owner.inventory[2770].count=11;owner:Event("PLAYER_ENTERING_WORLD")
+    reader:Event("CLUB_MEMBERS_UPDATED",42);Step(90)
+    assert(Received(reader,owner).snapshot.items[2770].count==11 and Received(reader,owner).revision<999999999999,
+        "the owner's ordinary direct revision recovers from poisoned saved history")
+    assert(not reader.env.GuildStockDB.guildHistory.characters[owner.name].relayed)
+    saved.guildHistory.version=99
+    reader=Reload(reader,saved)
+    assert(reader.env.GuildStockDB.guildHistory.characters[owner.name].relayed
+        and reader.env.GuildStockDB.guildHistory.characters[owner.name].revision==999999999999
+        and not Received(reader,owner),"unsupported schemas remain untouched and are not displayed")
+    saved.guildHistory.version=2;saved.version=99
+    reader=Reload(reader,saved)
+    assert(reader.addon.temporary and reader.env.GuildStockDB.guildHistory.characters[owner.name].relayed,
+        "an unsupported root schema must not be migrated")
 end
 
--- Old history remains readable but has no invented relay version; future schemas survive untouched.
+-- Old direct history remains readable without invented revisions; future schemas survive untouched.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
     local owner,holder=Client("Legacy Owner Example"),Client("Legacy Holder Example")
@@ -775,30 +794,14 @@ do
         "an exclusion is not held behind incomplete inventory reads or the normal batch")
 end
 
--- Native IDs stay opaque, including large numeric IDs and punctuation in string IDs.
-for _,nativeID in ipairs({9007199254740991,"member|opaque,with%;punctuation"}) do
+-- Direct history retains opaque member IDs without encoding or truncating them.
+for _,nativeID in ipairs({9007199254740991,"member|opaque,with%;punctuation",string.rep("x",150)}) do
     clients,bus,log,clock,filter = {},{},{},0,nil
-    local owner,holder=Client("Opaque Owner Example"),Client("Opaque Holder Example")
-    owner.memberID=nativeID;owner:Login();holder:Login();Step(60);owner.online=false
-    local reader=Client("Opaque Reader Example");reader:Login();Step(60)
-    assert(Received(reader,owner) and Received(reader,owner).memberID==nativeID,
-        "relay identities must retain the exact native guild member ID")
-end
-
--- Exhausted relay retries stay quiet; local rediscovery can request the same missing revision again.
-do
-    clients,bus,log,clock,filter = {},{},{},0,nil
-    local owner,holder=Client("Lost Owner Example"),Client("Lost Holder Example")
-    owner:Login();holder:Login();Step(60);owner.online=false
-    local reader=Client("Lost Reader Example")
-    filter=function(packet,client) return not (client==reader and packet.message:match("^2|T|")) end
-    reader:Login();Step(180)
-    local requests=0
-    for _,packet in ipairs(log) do if packet.sender==reader.name and packet.message:match("^2|R|") then requests=requests+1 end end
-    assert(requests==3 and not Received(reader,owner))
-    local quiet=#log;Step(120);assert(#log==quiet)
-    filter=nil;reader.addon.SyncDiscover();Step(60)
-    assert(Received(reader,owner),"explicit bounded rediscovery recovers after exhausted history retries")
+    local owner,reader=Client("Opaque Owner Example"),Client("Opaque Reader Example")
+    owner.memberID=nativeID;owner:Login();reader:Login();Step(60);owner.online=false
+    assert(Received(reader,owner).memberID==nativeID)
+    reader=Reload(reader);Step(60)
+    assert(Received(reader,owner).memberID==nativeID,"local history preserves the exact native member ID")
 end
 
 -- A verified replacement native member ID cannot inherit the old member's transport/version.
@@ -957,11 +960,31 @@ if os.getenv("GUILDSTOCK_LEGACY_SYNC") then
     local new=Client("Updated Example")
     old:Login();new:Login();Step(120)
     assert(Received(old,new).snapshot.items[2770].count==7 and Received(new,old).snapshot.items[2770].count==7)
-    assert(not Received(new,old).professionRanks,"old owners supply inventory normally and unknown levels")
+    local ranks=Received(new,old).professionRanks
+    assert(not ranks or ranks[1]==52,"optional levels remain compatible when supplied by the older owner")
     new.inventory[2770].count=15;new.ranks={300,300};new.addon.Observe();Step(90)
     assert(Received(old,new).snapshot.items[2770].count==15,"old clients keep receiving inventory changes")
     old.inventory[2770].count=9;old.addon.Observe();Step(90)
     assert(Received(new,old).snapshot.items[2770].count==9,"new clients keep receiving old inventory changes")
+    new.addon.SetSharingEnabled(false);Step(30)
+    assert(next(Received(old,new).snapshot.items)==nil,"older clients still accept direct privacy withdrawals")
+    new.addon.SetSharingEnabled(true);Step(90)
+    assert(Received(old,new).snapshot.items[2770].count==15)
+    local offline=Client("Legacy Offline Example",os.getenv("GUILDSTOCK_LEGACY_SYNC"))
+    offline.inventory[2770].count=77;offline:Login();Step(90)
+    assert(Received(old,offline) and Received(new,offline))
+    offline.online=false
+    local newcomer=Client("Mixed Newcomer Example");newcomer:Login();Step(120)
+    local advertised=false
+    for _,packet in ipairs(log) do
+        if packet.sender==old.name and packet.message:match("^2|D|") then advertised=true end
+    end
+    assert(advertised and not Received(newcomer,offline),"real legacy relay advertisements are ignored")
+    assert(Received(newcomer,old).snapshot.items[2770].count==9
+        and Received(old,newcomer).snapshot.items[2770].count==7,"legacy relay traffic cannot interrupt direct discovery")
+    offline.online=true;offline:Event("PLAYER_ENTERING_WORLD")
+    newcomer:Event("CLUB_MEMBERS_UPDATED",42);Step(90)
+    assert(Received(newcomer,offline).snapshot.items[2770].count==77,"older owners still refresh new readers directly")
 end
 
-print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, optional profession levels and bounded traffic OK")
+print("GuildStock sync: fast login, 30-second batching, frozen snapshots, direct-only history, relay rejection/migration, durable versions, privacy, repair, optional profession levels and bounded traffic OK")

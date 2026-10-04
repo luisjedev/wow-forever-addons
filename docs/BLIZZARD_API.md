@@ -13,11 +13,23 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 4, 2026; GuildStock message security review |
+| Last review of this log | October 4, 2026; GuildStock direct-owner synchronization |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock 0.5.1 direct-owner synchronization · October 4, 2026
+
+**Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001` is unchanged. **Affected addon:** GuildStock 0.5.1. This supersedes 0.4.0's offline-history forwarding and addresses the relay revision poisoning reproduced in the security review below.
+
+**Implementation:** remove history advertisements, requests, transfers, provider selection and their queues/timers. Ignore retired `D`/`R`/`T` packets from older clients. Keep protocol 2, prefix `GuildStockS2`, GUILD-only transport and the exact direct `H`/`O`/`Q`/`A`/`P`/`S` formats, startup delays/retries, challenge checks, fragment packing, atomic replacements, 30-second batching, privacy withdrawals and send limits. No Blizzard API or addressing changes are introduced; the existing matching-build [chat API reference](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua#L489) still applies. Each owner supplies only its own inventory.
+
+**Saved data:** retain dated direct observations for offline members, including their profession levels. In supported history schemas, remove only records explicitly marked `relayed = true`, including potentially poisoned revisions, before restoring runtime history. Existing direct records retain their normal revision/session protections. Guild-history schema 2 and the publication clock are unchanged; schema-1 direct records still migrate without invented revisions. Unknown root/history schemas remain untouched. Own inventory, local prices, settings, exclusions and favorites are unaffected. A reader that missed an owner's change or privacy withdrawal keeps its older direct observation until a complete direct replacement arrives; a reader with no direct history waits for the owner. Older installations can still relay among themselves, so all participants must update to remove that behavior throughout a guild.
+
+**Automated validation:** syntax and all eight repository suites pass. Regression coverage checks returning/new readers, preserved direct observation ages, rejection of the previously successful forged high-revision relay, no relay responses, migration of marked records in both supported schemas, recovery by ordinary owner revisions, unrelated-data and unknown-schema preservation, and opaque member IDs. The direct suite retains packet loss/reordering, empty withdrawals, combat/lockdown, reconnect/shard transitions, bounded retries, forty simultaneous clients and optional profession metadata. It also passed with `GUILDSTOCK_LEGACY_SYNC` pointing to the unmodified pre-change 0.5.0 module: both directions exchanged stock changes, the old client accepted a privacy withdrawal, actual legacy history advertisements were ignored, and a returning older owner supplied its inventory directly. All names and inventories in these tests are synthetic.
+
+**Native verification pending:** computer control twice stopped before a reload could be confirmed because it detected concurrent user activity. No successful native reload or new delivery result is claimed. Verify loading, direct history after reload/full restart, two-client delivery in both directions, mixed versions, reconnects, privacy withdrawals and cross-shard behavior in build 70205. No live hostile packets or personal SavedVariables were used.
 
 ### GuildStock message security review · October 4, 2026
 
