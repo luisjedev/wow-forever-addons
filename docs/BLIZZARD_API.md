@@ -33,6 +33,12 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 
 **Reproduced in the game:** successful reloads loaded the module and displayed the dash and neutral transparent clock in Materials, its selected header and My inventory, without visible overlap or an error dialog. **Pending:** fresh server auction reception and coverage, native money amounts and orange/red tooltips, physical hover, Characters/Not shared rendering, translated layouts, other scales, actual price persistence through reload/full restart, and combat/throttle behavior. Initial auctioneer/tooltip attempts were interrupted by desktop activity. The user then reported that the auction service was down and explicitly deferred the real test; no acquisition or price-persistence result is claimed. The historical SavedVariables limitation remains open. No screenshots or player records are published.
 
+### GuildStock material-owner status labels · October 4, 2026
+
+**Reference:** existing WoW Forever `wow_classic_beta` reference, `1.60.1.70205`, interface `16001`. **Affected addon:** GuildStock. The Materials owner table now labels its presence column Status and displays Online when the existing online flag is true, otherwise Offline, as requested. Offline is this table's binary display fallback, including unconfirmed presence; it is not new evidence of a native disconnection. All supported locale tables translate Status. Presence detection, Characters grouping, Whisper eligibility, saved data and transport are unchanged.
+
+**Validation:** Lua syntax and repository regression suites pass, including the existing online/offline owner-row and Whisper checks. A native reload was attempted, but concurrent desktop activity interrupted navigation to Materials; the new column rendering remains pending verification.
+
 ### GuildStock character presence sections · October 4, 2026
 
 **Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`, interface `16001` from the existing native reference. **Affected addon:** GuildStock. Characters groups the existing inventory participants under localized Online and Offline headings, with online first and alphabetical order within each group. Unconfirmed/mobile presence uses the existing Unknown label instead of asserting disconnection. Empty groups hide. Selection survives presence changes; searches and scroll height include the headings.

@@ -1881,7 +1881,7 @@ characterWhisper.scripts.OnClick(characterWhisper)
 assert(draft == nil, "cleared selection cannot whisper the previous character")
 characterInput:SetText(""); Click("Materials")
 owner.whisper.scripts.OnClick(owner.whisper); assert(draft == nil, "click rechecks current presence")
-addon.Refresh(); assert(owner.presence:GetText() == "Unknown" and not owner.whisper.enabled)
+addon.Refresh(); assert(owner.presence:GetText() == "Offline" and not owner.whisper.enabled)
 saved.settings.showOffline = false; addon.Refresh(); assert(not owner:IsShown())
 saved.settings.showOffline = true
 addon.guildData.characters["Peer Fullname"].snapshot.items = {}; addon.Refresh()

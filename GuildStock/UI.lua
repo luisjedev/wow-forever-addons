@@ -23,7 +23,7 @@ local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interfac
 local viewLabels = { all = "All materials", favorites = "Favorites" }
 local playerColumns = {
     {"Player", 15, 144}, {"Skills", 176, 64}, {"Units", 251, 68},
-    {"Last online", 321, 113},
+    {"Status", 321, 113},
 }
 
 local function Preferences()
@@ -742,7 +742,7 @@ function addon.RenderOwners()
         row.name:SetText(entry.name)
         addon.SetPlayerRace(row, entry.race, 15)
         row.count:SetText(entry.snapshot.items[selected].count)
-        row.presence:SetText(L[entry.online and "Online" or "Unknown"])
+        row.presence:SetText(L[entry.online and "Online" or "Offline"])
         row.whisper.characterID = entry.id
         row.whisper:SetEnabled(entry.online == true)
         Tip(row.whisper, L[entry.online and "Whisper" or "Whisper requires confirmed online presence."])
