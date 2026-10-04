@@ -143,7 +143,15 @@ local function Roster()
             local online = info.presence == presence.Online or info.presence == presence.Away or info.presence == presence.Busy
             found[info.name] = {id = id, isSelf = info.isSelf, online = online,
                 offline = info.presence == presence.Offline,
-                race = addon.Integer(info.race, 1, 2147483647) and info.race or nil}
+                race = addon.Integer(info.race, 1, 2147483647) and info.race or nil,
+                primaryProfessions = {}}
+            for slot = 1, 2 do
+                local skillID, rank = info["profession" .. slot .. "ID"], info["profession" .. slot .. "Rank"]
+                if addon.Integer(skillID, 1, 2147483647) then
+                    found[info.name].primaryProfessions[slot] = {id = skillID,
+                        rank = addon.Integer(rank, 0, 10000) and rank or nil}
+                end
+            end
             if info.isSelf then own = info.name end
         end
     end
@@ -707,7 +715,7 @@ end
 local events = CreateFrame("Frame")
 for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD", "PLAYER_GUILD_UPDATE", "SHARD_TRANSFER",
     "CLUB_MEMBERS_UPDATED", "CLUB_MEMBER_ADDED", "CLUB_MEMBER_REMOVED", "CLUB_MEMBER_UPDATED",
-    "CLUB_MEMBER_PRESENCE_UPDATED", "CHAT_MSG_ADDON", "SKILL_LINES_CHANGED"}) do events:RegisterEvent(event) end
+    "CLUB_MEMBER_PRESENCE_UPDATED", "GUILD_ROSTER_UPDATE", "CHAT_MSG_ADDON", "SKILL_LINES_CHANGED"}) do events:RegisterEvent(event) end
 local elapsedTime = 0
 events:SetScript("OnUpdate", function(_, elapsed)
     elapsedTime = elapsedTime + elapsed
@@ -730,6 +738,9 @@ events:SetScript("OnEvent", function(_, event, a, b, c, d)
         members, memberUntil = nil, nil
         ClearTransport() -- Retain dated same-guild records through shard/world transitions.
         if world and addon.ScheduleScan then addon.ScheduleScan() end
+    elseif event == "GUILD_ROSTER_UPDATE" then
+        members, memberUntil = nil, nil
+        Refresh() -- Native profession metadata changes do not request addon traffic.
     elseif event == "SKILL_LINES_CHANGED" then addon.SyncChanged()
     else
         members, memberUntil = nil, nil

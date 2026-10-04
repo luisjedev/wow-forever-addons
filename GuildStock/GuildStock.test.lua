@@ -75,6 +75,10 @@ function methods:SetCustomOnMouseUpHandler(handler) self.customMouseUpHandler = 
 function methods:GetChecked() return self.checked end
 function methods:SetHeight(value) self.height = value end
 function methods:SetWidth(value) self.width = value end
+function methods:GetStringWidth() return #(self.text or "") * 10 end
+function methods:SetColorTexture(...) self.color = {...} end
+function methods:SetStatusBarTexture(value) self.barTexture = value end
+function methods:SetStatusBarColor(...) self.barColor = {...} end
 function methods:GetStringHeight() return #(self.text or "") end
 function methods:GetFrameLevel() return 1 end
 function methods:GetWidth() return self.width or 160 end
@@ -348,6 +352,22 @@ do
     C_TradeSkillUI.GetProfessionInfoBySkillLineID = nil
     assert(addon.LearnedProfessions() == nil, "missing APIs are tolerated")
     C_TradeSkillUI.GetProfessionInfoBySkillLineID = getBySkillLine
+end
+
+do
+    local details = addon.GuildProfessionDetails({{id = 100, rank = 180}, {id = 200, rank = 0}})
+    assert(details[1].key == "Mining" and details[1].rank == 180 and details[2].rank == 0)
+    for _, rank in ipairs({secret, -1, "20", 1.5}) do
+        details = addon.GuildProfessionDetails({{id = 100, rank = rank}})
+        assert(details[1].rank == nil, "invalid or restricted ranks stay unknown")
+    end
+    assert(not addon.GuildProfessionDetails({{id = secret, rank = 50}})[1])
+    assert(not addon.GuildProfessionDetails({{id = 300, rank = 50}})[1], "secondary skills are excluded")
+    local getInfo = C_TradeSkillUI.GetProfessionInfoBySkillLineID
+    C_TradeSkillUI.GetProfessionInfoBySkillLineID = function() return {profession = 1, skillLevel = 1, maxSkillLevel = 75} end
+    assert(addon.GuildProfessionDetails({{id = 100, rank = 180}})[1].rank == 180,
+        "local skill metadata never supplies another guild member's rank")
+    C_TradeSkillUI.GetProfessionInfoBySkillLineID = getInfo
 end
 
 local complete = addon.snapshot
@@ -1654,6 +1674,33 @@ assert(characterRow.label.point[2] + characterRow.label.width < characterRow.ski
     "character names reserve space before the profession icons")
 assert(characterRow.skillSlots[2].point[2] + characterRow.skillSlots[2].width <= characterRow.width - 10,
     "both profession slots fit inside the character row")
+do
+    local panel = characterInput.parent.parent.parent
+    local group = panel.professions
+    local getMember = addon.SyncMember
+    assert(group and #group.slots == 2 and group.slots[1].rank:GetText() == "?")
+    local primary = {{id = 100, rank = 180}, {id = 200, rank = 0}}
+    addon.SyncMember = function(id) local member = getMember(id); if member then member.primaryProfessions = primary end; return member end
+    addon.Refresh()
+    assert(group.slots[1].icon.texture == "Interface\\Icons\\Trade_Mining")
+    assert(group.slots[1].bar.value == 180 and group.slots[1].bar.minimum == 0 and group.slots[1].bar.maximum == 300)
+    assert(group.slots[2].rank:GetText() == "0 / 300" and group.slots[2].bar.value == 0)
+    assert(group.slots[1].point[2] == group.slots[2].point[2] and group.slots[2].point[3] == -30,
+        "the two main professions form a vertical column")
+    group.slots[1].scripts.OnEnter(group.slots[1])
+    assert(GameTooltip:GetText() == "Mining\n180 / 300")
+    assert(group.point[2] + group.width < 740, "bars stay clear of Whisper")
+    primary = {{id = 100, rank = 300}}; addon.Refresh()
+    assert(group.slots[1].bar.value == 300 and group.slots[2].rank:GetText() == "?" and group.slots[2].bar.value == 0)
+    primary = {{id = 100, rank = 315}}; addon.Refresh()
+    assert(group.slots[1].bar.value == 300 and group.slots[1].rank:GetText() == "315 / 300", "bonuses do not overfill the bar")
+    primary = {}; addon.Refresh()
+    assert(group.slots[1].rank:GetText() == "?" and group.slots[1].bar.value == 0, "missing native data clears old ranks")
+    characterInput:SetText("no character matches this"); Drain(); addon.Refresh()
+    assert(not group:IsShown(), "empty selection hides both profession bars")
+    characterInput:SetText(""); Drain(); addon.Refresh()
+    addon.SyncMember = getMember
+end
 addon.guildData.characters["Peer Fullname"].skills = {"Engineering"}; addon.Refresh()
 assert(characterRow.skillSlots[1].icon.texture == "Interface\\Icons\\Trade_Engineering"
     and not characterRow.skillSlots[2].icon:IsShown(), "refresh replaces skills and clears a missing second profession")

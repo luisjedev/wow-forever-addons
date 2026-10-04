@@ -18,6 +18,23 @@ local function ProfessionKey(value)
     end
 end
 
+-- The guild roster supplies the other member's rank. Profession metadata is
+-- used only for its stable identity, never for the local character's skill rank.
+function addon.GuildProfessionDetails(primary)
+    local result = {}
+    for slot = 1, 2 do
+        local entry = primary and primary[slot]
+        if entry and addon.Integer(entry.id, 1, 2147483647) then
+            local info = addon.Read(C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID, entry.id)
+            local key = Table(info) and ProfessionKey(info.profession)
+            if key and key ~= "Cooking" and key ~= "Fishing" and key ~= "FirstAid" then
+                result[slot] = {key = key, rank = addon.Integer(entry.rank, 0, 10000) and entry.rank or nil}
+            end
+        end
+    end
+    return result
+end
+
 function addon.LearnedProfessions()
     if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return end
     local indices = { pcall(GetProfessions) }

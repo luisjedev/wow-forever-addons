@@ -157,6 +157,32 @@ local function SetSlotItem(slot, itemID)
     slot.itemID = itemID
 end
 
+local function SetCharacterProfessions(character)
+    characters.professions:SetShown(character ~= nil)
+    if not character then return end
+    local details = addon.GuildProfessionDetails(character.primaryProfessions)
+    characters.professions:ClearAllPoints()
+    characters.professions:SetPoint("TOPLEFT", math.min(characterName:GetStringWidth(), 380) + 40, -12)
+    for i, slot in ipairs(characters.professions.slots) do
+        local detail = details[i]
+        local key = detail and detail.key
+        if not key and addon.Accessible(character.skills) and type(character.skills) == "table" then key = character.skills[i] end
+        local texture, title
+        for _, entry in ipairs(addon.professions) do
+            if addon.Accessible(key) and key == entry[1] and key ~= "Cooking" and key ~= "Fishing" and key ~= "FirstAid" then
+                texture, title = "Interface\\Icons\\" .. entry[2], L[entry[1]]
+            end
+        end
+        slot.icon:SetTexture(texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+        local rank = detail and detail.rank
+        local maximum = 300 -- Forever's fixed base cap, not the member's trained tier.
+        slot.bar:SetMinMaxValues(0, maximum)
+        slot.bar:SetValue(rank and math.min(rank, maximum) or 0)
+        slot.rank:SetText(rank and (rank .. " / " .. maximum) or "?")
+        Tip(slot, (title or L["Professions"]) .. "\n" .. (rank and slot.rank:GetText() or L["Unavailable"]))
+    end
+end
+
 local function SyncAge(observedAt)
     local age = math.max(0, time() - observedAt)
     local count, key
@@ -601,6 +627,7 @@ local function RefreshCharacters()
     characterList.empty:SetShown(#entries == 0)
     characterList.empty:SetText(L[(characterSearch.appliedText or "") == "" and "No character data yet." or "No matching characters."])
     characterName:SetText(current and current.name or L["Select a character"])
+    SetCharacterProfessions(current)
     local characterWhisper = characters.inventoryWhisper
     characterWhisper.characterID = nextID
     characterWhisper:SetShown(current ~= nil)
@@ -919,8 +946,29 @@ local function CreateWindow(colors)
     characterList.empty = Label(characterSidebar, "", 18, 225, 264, 16, muted)
     characterList.empty:SetJustifyH("CENTER")
     local characterDetail = Panel(characters, 311, 77, 862, 566)
-    characterName = Label(characterDetail, "", 22, 18, 708, 25, cream, true)
+    characterName = Label(characterDetail, "", 22, 18, 380, 25, cream, true)
     characterName:SetWordWrap(false)
+    characters.professions = CreateFrame("Frame", nil, characterDetail)
+    characters.professions:SetSize(280, 56)
+    characters.professions.slots = {}
+    for i = 1, 2 do
+        local slot = CreateFrame("Frame", nil, characters.professions)
+        slot:SetPoint("TOPLEFT", 0, -(i - 1) * 30)
+        slot:SetSize(280, 26)
+        slot:EnableMouse(true)
+        slot.icon = Icon(slot, nil, 0, 0, 26)
+        slot.bar = CreateFrame("StatusBar", nil, slot)
+        slot.bar:SetPoint("TOPLEFT", 34, -3)
+        slot.bar:SetSize(246, 20)
+        slot.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        slot.bar:SetStatusBarColor(0.45, 0.34, 0.15)
+        local background = slot.bar:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.05, 0.04, 0.02, 1)
+        slot.rank = Label(slot.bar, "", 0, 2, 246, 13, cream)
+        slot.rank:SetJustifyH("CENTER")
+        characters.professions.slots[i] = slot
+    end
     local characterWhisper = CreateFrame("Button", nil, characterDetail, "UIPanelButtonTemplate")
     characters.inventoryWhisper = characterWhisper
     characterWhisper:SetPoint("TOPRIGHT", -22, -16)

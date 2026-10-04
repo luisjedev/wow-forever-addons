@@ -61,7 +61,9 @@ local function Client(name)
             for index, value in ipairs(clients) do if (value.memberID or index) == id then peer = value; break end end
             if not peer then return end
             if client.unreadable == id then return {isSelf = false, presence = 4} end
-            return {name = peer.name, isSelf = peer == client, presence = peer.online and 1 or 4, race = peer.race}
+            return {name = peer.name, isSelf = peer == client, presence = peer.online and 1 or 4, race = peer.race,
+                profession1ID = peer.profession1ID, profession1Rank = peer.profession1Rank,
+                profession2ID = peer.profession2ID, profession2Rank = peer.profession2Rank}
         end,
     }
     local addon = {}
@@ -835,6 +837,29 @@ do
     owner:Event("SHARD_TRANSFER");Step(60)
     assert(Received(reader,owner).snapshot.items[99900].count==5 and not Received(reader,owner).snapshot.items[2770],
         "world transitions rebuild the current privacy-filtered inventory")
+end
+
+-- Native guild profession metadata updates independently of inventory packets.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Native Profession Example"),Client("Native Reader Example")
+    owner.profession1ID,owner.profession1Rank,owner.profession2ID,owner.profession2Rank=1,175,2,200
+    owner:Login();reader:Login();Step(90)
+    owner.disabled=true -- No further addon responses from this guild member.
+    local function Details()
+        return reader.addon.GuildProfessionDetails(reader.addon.GuildCharacters()[1].primaryProfessions)
+    end
+    local details=Details()
+    assert(details[1].key=="Alchemy" and details[1].rank==175 and details[2].key=="Mining" and details[2].rank==200)
+    local quiet=#log
+    owner.profession1Rank=180;reader:Event("GUILD_ROSTER_UPDATE",true)
+    assert(Details()[1].rank==180 and #log==quiet,"native rank changes need no addon traffic")
+    owner.profession1Rank=secret;reader:Event("GUILD_ROSTER_UPDATE",true)
+    assert(Details()[1].rank==nil and Details()[2].rank==200,"restricted ranks stay unknown without hiding readable slots")
+    owner.online=false;owner.profession1Rank=190;reader:Event("CLUB_MEMBER_UPDATED",42,1)
+    assert(Details()[1].rank==190,"accessible offline metadata remains usable")
+    assert(reader.env.GuildStockDB.guildHistory.characters[owner.name].primaryProfessions==nil,
+        "native ranks are runtime metadata, not new saved or relayed data")
 end
 
 print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, migrations and bounded traffic OK")

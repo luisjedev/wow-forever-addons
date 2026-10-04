@@ -1,3 +1,10 @@
+# GuildStock 0.4.3
+
+- Show the selected character's two primary professions beside their name in two stacked rows, with icons and progress bars on a fixed 0–300 scale.
+- Read profession ranks directly from the native guild roster. Missing or restricted data shows `?`; secondary professions are omitted. No new synchronization packets, SavedVariables fields or remote addon update are required for these ranks.
+
+Lua syntax and all seven repository suites pass. Target: WoW Forever 1.60.1, build 70205, interface 16001. Existing inventory protocol and persistence limitations remain unchanged.
+
 # GuildStock 0.4.2
 
 - Reuse the prepared inventory between changes and check sharing permissions without copying items, reducing temporary memory allocation while idle. Preserve the 30-second change batch, immediate privacy withdrawals and bounded discovery retries.
