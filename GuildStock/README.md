@@ -1,4 +1,4 @@
-# GuildStock · Automatic synchronization preview 0.4.0
+# GuildStock · Automatic synchronization preview 0.4.2
 
 <img src="Assets/Logo.png" alt="GuildStock supply chest" width="160">
 
@@ -63,7 +63,7 @@ Hints use the existing partial catalog and update when bags, learned professions
 
 ## Automatic guild synchronization
 
-Install **0.4.0 or later on every participating client** and reload the UI after updating. There are no manual publishing controls. Current membership, a fresh complete local inventory (unless sharing is disabled), and messaging permission gate startup. Login/reload starts discovery after a 1–3-second readiness delay. The current repository revision retries that announcement about 15 and 45 seconds later to recover from delayed member presence or lost initial messages, then stops. Combat/chat lockdown can defer these retries; native failures retain the existing bounded failure budget. Cached records appear as soon as their current guild membership can be verified; new complete observations replace them in the background.
+Install **0.4.2 on every participating client** and reload the UI after updating. There are no manual publishing controls. Current membership, a fresh complete local inventory (unless sharing is disabled), and messaging permission gate startup. Login/reload starts discovery after a 1–3-second readiness delay. Version 0.4.2 retries that announcement about 15 and 45 seconds later to recover from delayed member presence or lost initial messages, then stops. Combat/chat lockdown can defer these retries; native failures retain the existing bounded failure budget. Cached records appear as soon as their current guild membership can be verified; new complete observations replace them in the background.
 
 The shared inventory contains **known materials in the current character's bags and personal bank**, filtered through the general sharing setting and Share checkboxes. A material has one total: 2 in bags plus 1 in the bank appears as 3. Counts include bound items and are observations of ownership, not certified exchangeable stock or offers to trade. The retained `bound` field counts confirmed carried bound units only. Account/guild banks, separate reagent-bank storage and other characters' local inventories are excluded. Two accessible primary-profession slots accompany each observation.
 
@@ -89,10 +89,10 @@ Combat and chat messaging lockdown are checked before sending; inaccessible memb
 
 ## Test with several clients
 
-1. Everyone installs the same **0.4.0 ZIP** and logs in. Your friend needs no commands, setup or remote-control access.
+1. Everyone installs the same **0.4.2 ZIP** and logs in. Your friend needs no commands, setup or remote-control access.
 2. Open GuildStock. Look for each participating character in Characters and for their shared material counts in Materials. Compare combined bag and character-bank quantities between the consenting players.
 3. Change a shared quantity, wait 30 seconds from the first change (plus transfer time), and check the final count on another client. Repeat with the final stack removed and with Share unchecked; old quantities should disappear after the complete replacement arrives.
-4. Check Settings and `/guildstock diagnostics` if no data arrives. Install 0.4.0 on every participant; older automatic-sync protocols are intentionally incompatible. Compare actual send results and completed-inventory counts; `sync received` includes complete direct and relayed inventories. The older probe counters belong to a separate diagnostic. An accepted send alone does not prove delivery. Do not interpret an empty list as proof that nobody has materials.
+4. Check Settings and `/guildstock diagnostics` if no data arrives. Install 0.4.2 on every participant; 0.3.x automatic-sync protocols are incompatible. Compare actual send results and completed-inventory counts; `sync received` includes complete direct and relayed inventories. The older probe counters belong to a separate diagnostic. An accepted send alone does not prove delivery. Do not interpret an empty list as proof that nobody has materials.
 5. Repeat after reload and a world/shard transition. A dated historical inventory survived two local reloads with 0.4.0; full-restart persistence, cross-client identity matching, delivery across shards, Windows/macOS rendering coverage and real API throughput remain pending. Automated multi-client simulations do not certify them.
 6. With three clients, disconnect the reader, change the owner's stock, and verify the holder receives it. Disconnect the owner and reconnect the reader: the holder must supply the newer inventory with its original age. Repeat after a holder reload, with an empty inventory and with sharing disabled. An older holder must not restore withdrawn quantities.
 
