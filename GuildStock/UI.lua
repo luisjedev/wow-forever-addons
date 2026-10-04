@@ -137,25 +137,25 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local function SyncAge(receivedAt)
-    local age = math.max(0, time() - receivedAt)
+local function SyncAge(observedAt)
+    local age = math.max(0, time() - observedAt)
     local count, key
     if age >= 3600 then
         count = math.floor(age / 3600)
-        key = count == 1 and "Last synced %s hour ago" or "Last synced %s hours ago"
+        key = count == 1 and "Inventory observed %s hour ago" or "Inventory observed %s hours ago"
     elseif age >= 60 then
         count = math.floor(age / 60)
-        key = count == 1 and "Last synced %s minute ago" or "Last synced %s minutes ago"
+        key = count == 1 and "Inventory observed %s minute ago" or "Inventory observed %s minutes ago"
     else
         count = math.floor(age)
-        key = count == 1 and "Last synced %s second ago" or "Last synced %s seconds ago"
+        key = count == 1 and "Inventory observed %s second ago" or "Inventory observed %s seconds ago"
     end
     return string.format(L[key], count)
 end
 
 local function SyncTip(frame, entry)
     local function Update()
-        GameTooltip:SetText(entry.name .. "\n" .. SyncAge(entry.receivedAt or entry.snapshot.observedAt), 1, 1, 1, 1, true)
+        GameTooltip:SetText(entry.name .. "\n" .. SyncAge(entry.snapshot.observedAt), 1, 1, 1, 1, true)
     end
     local function Hide(self)
         self:SetScript("OnUpdate", nil)
@@ -585,14 +585,14 @@ local function RefreshCharacters()
     characterWhisper:SetShown(current ~= nil)
     characterWhisper:SetEnabled(current ~= nil and current.online == true)
     Tip(characterWhisper, L[current and current.online and "Whisper" or "Whisper requires confirmed online presence."])
-    characters.receivedAt = current and (current.receivedAt or current.snapshot.observedAt)
-    characterNote:SetText(characters.receivedAt and SyncAge(characters.receivedAt) or "")
+    characters.observedAt = current and current.snapshot.observedAt
+    characterNote:SetText(characters.observedAt and SyncAge(characters.observedAt) or "")
     local ageElapsed = 0
     characters:SetScript("OnUpdate", current and function(self, elapsed)
         ageElapsed = ageElapsed + elapsed
         if ageElapsed >= 1 then
             ageElapsed = 0
-            characterNote:SetText(SyncAge(self.receivedAt))
+            characterNote:SetText(SyncAge(self.observedAt))
         end
     end or nil)
     local items = addon.CharacterItems(current, (characterItemSearch.appliedText or ""))

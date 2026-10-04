@@ -60,7 +60,7 @@ function addon.SetSharingEnabled(enabled)
     if addon.db.settings == nil then addon.db.settings = {} end
     if type(addon.db.settings) ~= "table" then return end
     addon.db.settings.shareInventory = enabled
-    if addon.SyncChanged then addon.SyncChanged() end
+    if addon.SyncChanged then addon.SyncChanged(not enabled) end
 end
 
 function addon.SetItemHidden(id, hidden)
@@ -69,7 +69,7 @@ function addon.SetItemHidden(id, hidden)
     if addon.db.hiddenItems == nil then addon.db.hiddenItems = {} end
     if type(addon.db.hiddenItems) ~= "table" then return end -- Preserve unsupported saved data.
     addon.db.hiddenItems[id] = hidden or nil
-    if addon.SyncChanged then addon.SyncChanged() end
+    if addon.SyncChanged then addon.SyncChanged(hidden) end
 end
 
 -- GUILD inventory senders build from this copy at send time, never db.own.

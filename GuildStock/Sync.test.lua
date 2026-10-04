@@ -53,11 +53,13 @@ local function Client(name)
         AreMembersReady = function() return client.rosterReady end,
         GetClubMembers = function()
             local ids = {}
-            for id, peer in ipairs(clients) do if peer.guild == client.guild and not peer.removed then ids[#ids + 1] = id end end
+            for id, peer in ipairs(clients) do if peer.guild == client.guild and not peer.removed then ids[#ids + 1] = peer.memberID or id end end
             return ids
         end,
         GetMemberInfo = function(_, id)
-            local peer = clients[id]
+            local peer
+            for index, value in ipairs(clients) do if (value.memberID or index) == id then peer = value; break end end
+            if not peer then return end
             if client.unreadable == id then return {isSelf = false, presence = 4} end
             return {name = peer.name, isSelf = peer == client, presence = peer.online and 1 or 4, race = peer.race}
         end,
@@ -101,7 +103,7 @@ local function Step(seconds)
 end
 local function Received(client, owner) return client.addon.guildData and client.addon.guildData.characters[owner.name] end
 local function Receive(client, sender, message, channel)
-    client:Event("CHAT_MSG_ADDON", "GuildStockS1", message, channel or "GUILD", sender.name)
+    client:Event("CHAT_MSG_ADDON", "GuildStockS2", message, channel or "GUILD", sender.name)
 end
 local a, b = Client("Alpha Example"), Client("Beta Example")
 a.race, b.race = 1, 7
@@ -125,21 +127,21 @@ assert(a.addon.GuildCharacters()[1].race == nil, "optional race may be absent")
 b.race = 5; a:Event("CLUB_MEMBER_UPDATED", 42, 2)
 assert(a.addon.GuildCharacters()[1].race == 5 and #log == quiet, "roster changes update badges without new traffic")
 
--- Fixed five-minute batch; multiple loots do not reset its deadline.
+-- Fixed thirty-second batch; multiple loots do not reset its deadline.
 a.inventory[2770].count = 8; a.addon.Observe(); local changedAt = clock
-Step(200); a.inventory[2770].count = 12; a.addon.Observe(); Step(99)
+Step(20); a.inventory[2770].count = 12; a.addon.Observe(); Step(9)
 assert(#log == quiet and Received(b,a).snapshot.items[2770].count == 7)
 Step(80)
 assert(Received(b,a).snapshot.items[2770].count == 12 and clock - changedAt < 400)
 quiet = #log
-a.inventory[2770].count = 13; a.addon.Observe(); Step(100)
+a.inventory[2770].count = 13; a.addon.Observe(); Step(10)
 a.inventory[2770].count = 12; a.addon.Observe(); Step(300)
 assert(#log == quiet, "a reverted change produces no publication")
 
 -- A temporary return to the published quantity cannot restart an existing batch window.
 a.inventory[2770].count = 14; a.addon.Observe(); changedAt = clock
-Step(200); a.inventory[2770].count = 12; a.addon.Observe()
-Step(99); a.inventory[2770].count = 15; a.addon.Observe(); Step(80)
+Step(20); a.inventory[2770].count = 12; a.addon.Observe()
+Step(9); a.inventory[2770].count = 15; a.addon.Observe(); Step(80)
 assert(Received(b,a).snapshot.items[2770].count == 15 and clock-changedAt < 400)
 a.inventory[2770].count = 12; a.addon.Observe(); Step(380)
 
@@ -154,27 +156,27 @@ a.incomplete = false; a.addon.Observe(); Step(380); assert(Received(b,a).snapsho
 
 -- Invalid, wrong-channel, unknown and self traffic cannot affect a complete record.
 local before = Received(b,a)
-for _, message in ipairs({"bad", "2|H|1-2|1", "1|S|1-2|1|0|1|0|0,0|2770,9,0", string.rep("x",241)}) do Receive(b,a,message) end
-Receive(b,a,"1|H|1-2|999", "WHISPER")
-Receive(b,{name="Unknown Example"},"1|H|1-2|999")
-Receive(b,b,"1|H|1-2|999")
-b.addon.ReceiveSync("GuildStockS1", secret, "GUILD", a.name)
+for _, message in ipairs({"bad", "1|H|1-2|1", "2|S|1-2|1|0|1|0|0,0|2770,9,0", string.rep("x",241)}) do Receive(b,a,message) end
+Receive(b,a,"2|H|1-2|999", "WHISPER")
+Receive(b,{name="Unknown Example"},"2|H|1-2|999")
+Receive(b,b,"2|H|1-2|999")
+b.addon.ReceiveSync("GuildStockS2", secret, "GUILD", a.name)
 assert(Received(b,a) == before)
 
 -- Lost fragment repair retains the previous snapshot until all replacement parts arrive.
 a.inventory = {}
 local n = 0
-for id in pairs(a.addon.catalogSeed) do n=n+1; a.inventory[id]={count=n,bound=0}; if n==12 then break end end
+for id in pairs(a.addon.catalogSeed) do n=n+1; a.inventory[id]={count=n,bound=0}; if n==60 then break end end
 local held, lost = {}, false
 filter = function(packet, client)
-    if client == b and packet.sender == a.name and packet.message:match("^1|S|") then
+    if client == b and packet.sender == a.name and packet.message:match("^2|S|") then
         held[#held + 1] = packet.message
-        local part = packet.message:match("^1|S|[^|]+|%d+|(%d+)|")
+        local part = packet.message:match("^2|S|[^|]+|%d+|(%d+)|")
         if part == "2" and not lost then lost = true; return false end
     end
     return true
 end
-a.addon.Observe(); Step(315)
+a.addon.Observe(); Step(38)
 assert(lost and Received(b,a) == before, "a partial transfer must not erase the previous complete inventory")
 Step(360); filter = nil
 assert(Received(b,a) ~= before and Received(b,a).snapshot.items[next(a.inventory)])
@@ -191,7 +193,7 @@ clients = {a,b} -- A new process with the same full regional identity.
 a.inventory = {[2770]={count=42,bound=0}}; a:Login(); Step(240)
 assert(Received(b,a).session ~= oldSession and Received(b,a).snapshot.items[2770].count == 42)
 for _, message in ipairs(oldPackets) do Receive(b,a,message) end
-Receive(b,a,"1|H|"..oldSession.."|999")
+Receive(b,a,"2|H|"..oldSession.."|999")
 Step(40)
 assert(Received(b,a).snapshot.items[2770].count == 42)
 
@@ -239,11 +241,11 @@ c.inventory={}; local num=0
 for id in pairs(c.addon.catalogSeed) do num=num+1; c.inventory[id]={count=num,bound=0}; if num==20 then break end end
 local reverse={}
 filter=function(packet, receiver)
-    if receiver==d and packet.sender==c.name and packet.message:match("^1|S|") then reverse[#reverse+1]=packet.message; return false end
+    if receiver==d and packet.sender==c.name and packet.message:match("^2|S|") then reverse[#reverse+1]=packet.message; return false end
     return true
 end
 c:Login();d:Login();Step(90)
-assert(#reverse>=5 and not Received(d,c))
+assert(#reverse>=2 and not Received(d,c))
 for i=#reverse,2,-1 do Receive(d,c,reverse[i]) end
 -- Repeated resends may contain part 1: finish all packets and verify exact absolute counts.
 for i=#reverse,1,-1 do Receive(d,c,reverse[i]) end
@@ -294,7 +296,7 @@ for _=1,120 do
     Step(0.5)
     if not hidden then
         for _,packet in ipairs(log) do
-            if packet.sender==m.name and packet.message:match("^1|S|") then
+            if packet.sender==m.name and packet.message:match("^2|S|") then
                 m.addon.SetItemHidden(ids[#ids],true);quiet=#log;hidden=true;break
             end
         end
@@ -361,12 +363,12 @@ local historian,source=Client("History Example"),Client("Source Example")
 historian:Login();source:Login();Step(90)
 local history=historian.env.GuildStockDB.guildHistory
 local original=Copy(history)
-assert(history.version==1 and history.guildID==42)
+assert(history.version==2 and history.guildID==42)
 assert(history.characters[source.name].receivedAt==Received(historian,source).receivedAt)
-assert(not history.characters[source.name].session and not history.characters[source.name].revision)
+assert(not history.characters[source.name].session and history.characters[source.name].revision)
 local accepted=Received(historian,source)
-Receive(historian,source,"1|O|"..accepted.session.."|"..(accepted.revision+1))
-Receive(historian,source,"1|S|"..accepted.session.."|"..(accepted.revision+1).."|1|2|"..historian.env.time().."|0,0|2589,99,0")
+Receive(historian,source,"2|O|"..accepted.session.."|"..(accepted.revision+1))
+Receive(historian,source,"2|S|"..accepted.session.."|"..(accepted.revision+1).."|1|2|"..historian.env.time().."|0,0|2589,99,0")
 assert(history.characters[source.name].receivedAt==original.characters[source.name].receivedAt
     and not history.characters[source.name].snapshot.items[2589], "partial transfers cannot replace saved history or its age")
 local function Reload(client, saved)
@@ -375,7 +377,7 @@ local function Reload(client, saved)
     local replacement=Client(client.name)
     clients[#clients]=nil;clients[index]=replacement
     replacement.env.GuildStockDB=Copy(saved or client.env.GuildStockDB)
-    replacement.guild=client.guild
+    replacement.guild, replacement.memberID=client.guild, client.memberID
     replacement:Login();replacement.addon.SyncTick()
     return replacement
 end
@@ -436,13 +438,13 @@ private:Login();reader:Login();Step(90)
 assert(Received(reader,private).snapshot.items[2770] and not Received(reader,private).snapshot.items[2589])
 private.incomplete=true;private.addon.Observe()
 private.addon.SetSharingEnabled(false);quiet=#log;Step(60)
-assert(next(Received(reader,private).snapshot.items)==nil, "opt-out bypasses the five-minute batch even with incomplete bags")
+assert(next(Received(reader,private).snapshot.items)==nil, "opt-out bypasses the thirty-second batch even with incomplete bags")
 assert(next(reader.env.GuildStockDB.guildHistory.characters[private.name].snapshot.items)==nil)
 local function AssertNoItemsSince(client, first)
     local snapshots=0
     for i=first+1,#log do
         local packet=log[i]
-        if packet.sender==client.name and packet.message:match("^1|S|") then
+        if packet.sender==client.name and packet.message:match("^2|S|") then
             assert(packet.message:match("|$"), "disabled sharing must send no item IDs or quantities")
             snapshots=snapshots+1
         end
@@ -476,7 +478,7 @@ for _=1,120 do
     Step(0.5)
     if not stopped then
         for _,packet in ipairs(log) do
-            if packet.sender==private.name and packet.message:match("^1|S|") then
+            if packet.sender==private.name and packet.message:match("^2|S|") then
                 private.addon.SetSharingEnabled(false);quiet=#log;stopped=true;break
             end
         end
@@ -527,4 +529,209 @@ do
     assert(next(Received(reader,owner).snapshot.items) == nil)
 end
 
-print("GuildStock sync: automatic exchange, fixed batching, privacy, zero, repair, sessions, transitions, restrictions and bounded traffic OK")
+-- Newcomers bypass the ordinary batch, including an existing participant's roster cache.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    math.randomseed(17)
+    local owner=Client("Quick Owner Example");owner:Login();Step(90)
+    owner.inventory[2770].count=18;owner.addon.Observe()
+    local reader=Client("Quick Reader Example");reader:Login()
+    local joined=clock
+    while not Received(reader,owner) and clock-joined<20 do Step(0.5) end
+    assert(Received(reader,owner) and Received(reader,owner).snapshot.items[2770].count==18,
+        "joining during a pending change must receive the current inventory within 20 seconds")
+    assert(clock-joined<30)
+end
+
+-- Ordinary gameplay cannot starve a frozen multipart snapshot, even beyond the batch deadline.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Busy Owner Example"),Client("Busy Reader Example")
+    owner.inventory={};owner.addon.Initialize();owner.addon.db.catalog={}
+    for id=100000,101399 do owner.inventory[id]={count=2147483647,bound=2147483647};owner.addon.db.catalog[id]={Mining=true} end
+    owner:Login();reader:Login()
+    local started
+    for _=1,520 do
+        Step(0.5)
+        for _,packet in ipairs(log) do if packet.sender==owner.name and packet.message:match("^2|S|") then started=true;break end end
+        if started then owner.inventory[100000].count=100;owner.inventory[100000].bound=0;owner.addon.Observe() end
+        if Received(reader,owner) then break end
+    end
+    assert(Received(reader,owner) and Received(reader,owner).snapshot.items[100000].count==2147483647,
+        "a complete frozen revision must arrive while ordinary quantities change")
+    Step(260)
+    assert(Received(reader,owner).snapshot.items[100000].count==100)
+    for _,packet in ipairs(log) do assert(#packet.message<=240) end
+end
+
+-- Recover the newest offline-owner record, persist it, and relay it through another hop.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local reader,owner,holder=Client("Returning Example"),Client("Offline Owner Example"),Client("Holder Example")
+    reader:Login();owner:Login();holder:Login();Step(60)
+    local old=Copy(reader.env.GuildStockDB)
+    reader.online=false
+    owner.inventory[2770].count=40;owner.addon.Observe();Step(60)
+    local original=Copy(Received(holder,owner))
+    assert(original.snapshot.items[2770].count==40)
+    owner.online=false
+    reader=Reload(reader,old);Step(60)
+    local recovered=Received(reader,owner)
+    assert(recovered and recovered.relayed and recovered.revision==original.revision and recovered.snapshot.items[2770].count==40)
+    assert(recovered.snapshot.observedAt==original.snapshot.observedAt and recovered.receivedAt>original.receivedAt,
+        "relay reception must not rejuvenate the owner's observation")
+    holder.online=false;reader=Reload(reader);Step(30)
+    local newcomer=Client("Later Example");newcomer:Login();Step(60)
+    assert(Received(newcomer,owner) and Received(newcomer,owner).snapshot.items[2770].count==40)
+    assert(Received(newcomer,owner).snapshot.observedAt==original.snapshot.observedAt,
+        "a second hop after reloading the holder preserves the original observation")
+    assert(newcomer.addon.SyncMember(owner.name).offline)
+    for _, entry in ipairs(newcomer.addon.MaterialOwners(2770,false)) do assert(entry.id~=owner.name) end
+    local accepted=Received(newcomer,owner)
+    Receive(newcomer,reader,"2|D|1-2|n2,"..old.guildHistory.characters[owner.name].revision)
+    Receive(newcomer,reader,"2|T|1-2|n2|"..old.guildHistory.characters[owner.name].revision.."|1|1|"..reader.env.time().."|0,0|2770,7,0")
+    Step(5)
+    assert(Received(newcomer,owner)==accepted,"old data with a newer receipt timestamp cannot override a newer owner revision")
+    newcomer:Event("CLUB_MEMBER_REMOVED",42,2)
+    Receive(newcomer,reader,"2|D|1-2|n2,"..original.revision)
+    Step(30);assert(not Received(newcomer,owner),"a confirmed departed owner cannot be resurrected by a relay")
+end
+
+-- Relayed empty withdrawals supersede stock; a stale holder cannot resurrect excluded items.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local reader,owner,holder=Client("Private Returning Example"),Client("Private Owner Example"),Client("Private Holder Example")
+    reader:Login();owner:Login();holder:Login();Step(60)
+    local old=Copy(reader.env.GuildStockDB);reader.online=false
+    owner.incomplete=true;owner.addon.Observe();owner.addon.SetSharingEnabled(false);Step(15)
+    local withdrawal=Copy(Received(holder,owner))
+    assert(next(withdrawal.snapshot.items)==nil)
+    owner.online=false;reader=Reload(reader,old);Step(60)
+    assert(Received(reader,owner).revision==withdrawal.revision and next(Received(reader,owner).snapshot.items)==nil)
+    holder=Reload(holder,old);Step(60) -- old belongs to the same synthetic guild; includes the stale owner's record
+    assert(next(Received(reader,owner).snapshot.items)==nil)
+end
+
+-- Missing history fragments repair with bounded attempts and atomic replacement.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,holder=Client("Repair Owner Example"),Client("Repair Holder Example")
+    owner.inventory={};local n=0
+    for id in pairs(owner.addon.catalogSeed) do n=n+1;owner.inventory[id]={count=n,bound=0};if n==100 then break end end
+    owner:Login();holder:Login();Step(60);assert(Received(holder,owner))
+    owner.online=false
+    local reader=Client("Repair Reader Example")
+    local lost,partial=false,false
+    filter=function(packet,client)
+        if client==reader and packet.message:match("^2|T|") then
+            local part=packet.message:match("^2|T|[^|]+|[^|]+|%d+|(%d+)|")
+            if part=="2" and not lost then lost=true;return false end
+            if lost and not Received(reader,owner) then partial=true end
+        end
+        return true
+    end
+    reader:Login();Step(20)
+    assert(lost and partial and not Received(reader,owner),"partial relays are never visible")
+    Step(60);filter=nil
+    assert(Received(reader,owner) and Received(reader,owner).snapshot.items[next(owner.inventory)])
+    local requests=0
+    for _,packet in ipairs(log) do if packet.sender==reader.name and packet.message:match("^2|R|") then requests=requests+1 end end
+    assert(requests==2,"one missing fragment repairs once after an inactivity timeout")
+    local quiet=#log;Step(600);assert(#log==quiet,"relaying settles without an idle network heartbeat")
+end
+
+-- A donor announcement invalidates its older cached copy even if the replacement never arrives.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,holder=Client("Withdrawal Owner Example"),Client("Withdrawal Holder Example")
+    owner:Login();holder:Login();Step(60)
+    local earlier=Received(holder,owner).revision
+    filter=function(packet,client) return not (client==holder and packet.sender==owner.name and packet.message:match("^2|S|")) end
+    owner.addon.SetSharingEnabled(false);Step(15)
+    assert(Received(holder,owner).supersededBy>earlier)
+    owner.online=false;filter=nil;holder=Reload(holder)
+    local reader=Client("Withdrawal Reader Example");reader:Login();Step(90)
+    assert(not Received(reader,owner),"known superseded inventory must not be advertised after a holder reload")
+end
+
+-- Old history remains readable but has no invented relay version; future schemas survive untouched.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,holder=Client("Legacy Owner Example"),Client("Legacy Holder Example")
+    owner:Login();holder:Login();Step(60);owner.online=false
+    local saved=Copy(holder.env.GuildStockDB);saved.guildHistory.version=1
+    saved.guildHistory.characters[owner.name].revision=nil
+    holder=Reload(holder,saved)
+    assert(Received(holder,owner) and not Received(holder,owner).revision and holder.env.GuildStockDB.guildHistory.version==2)
+    local reader=Client("Legacy Reader Example");reader:Login();Step(60)
+    assert(not Received(reader,owner),"v1 history is display-only until refreshed directly")
+    local before=holder.env.GuildStockDB.syncClock.revision
+    holder=Reload(holder);Step(20)
+    assert(holder.env.GuildStockDB.syncClock.revision>before,"owner revisions advance across reload")
+    saved=Copy(holder.env.GuildStockDB);saved.syncClock={version=99,revision=12,preserve=true}
+    holder=Reload(holder,saved);local first=#log;Step(60)
+    assert(holder.env.GuildStockDB.syncClock.version==99 and holder.env.GuildStockDB.syncClock.preserve)
+    for i=first+1,#log do assert(log[i].sender~=holder.name,"unsupported publication clocks fail closed") end
+end
+
+-- Forty simultaneous logins must drain their control queues without losing challenges.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    math.randomseed(17)
+    local group={}
+    for i=1,40 do group[i]=Client("Crowded Guild Example "..i);group[i]:Login() end
+    Step(180)
+    for _,client in ipairs(group) do assert(#client.addon.GuildCharacters()==39,"every simultaneous participant eventually receives every other inventory") end
+    assert(#log<12800,"retry and control traffic remain bounded during simultaneous joins")
+    local quiet=#log;Step(90);assert(#log==quiet)
+end
+
+-- Per-item privacy changes can withdraw data using the last complete observation.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Excluded Owner Example"),Client("Excluded Reader Example")
+    owner.inventory[2589]={count=3,bound=0};owner:Login();reader:Login();Step(60)
+    owner.incomplete=true;owner.addon.Observe();owner.addon.SetItemHidden(2770,true);Step(15)
+    local record=Received(reader,owner)
+    assert(not record.snapshot.items[2770] and record.snapshot.items[2589].count==3,
+        "an exclusion is not held behind incomplete inventory reads or the normal batch")
+end
+
+-- Native IDs stay opaque, including large numeric IDs and punctuation in string IDs.
+for _,nativeID in ipairs({9007199254740991,"member|opaque,with%;punctuation"}) do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,holder=Client("Opaque Owner Example"),Client("Opaque Holder Example")
+    owner.memberID=nativeID;owner:Login();holder:Login();Step(60);owner.online=false
+    local reader=Client("Opaque Reader Example");reader:Login();Step(60)
+    assert(Received(reader,owner) and Received(reader,owner).memberID==nativeID,
+        "relay identities must retain the exact native guild member ID")
+end
+
+-- Exhausted relay retries stay quiet; local rediscovery can request the same missing revision again.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,holder=Client("Lost Owner Example"),Client("Lost Holder Example")
+    owner:Login();holder:Login();Step(60);owner.online=false
+    local reader=Client("Lost Reader Example")
+    filter=function(packet,client) return not (client==reader and packet.message:match("^2|T|")) end
+    reader:Login();Step(180)
+    local requests=0
+    for _,packet in ipairs(log) do if packet.sender==reader.name and packet.message:match("^2|R|") then requests=requests+1 end end
+    assert(requests==3 and not Received(reader,owner))
+    local quiet=#log;Step(120);assert(#log==quiet)
+    filter=nil;reader.addon.SyncDiscover();Step(60)
+    assert(Received(reader,owner),"explicit bounded rediscovery recovers after exhausted history retries")
+end
+
+-- A verified replacement native member ID cannot inherit the old member's transport/version.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Rejoined Owner Example"),Client("Rejoined Reader Example")
+    owner:Login();reader:Login();Step(60)
+    owner.memberID="new-membership"
+    owner.inventory[2770].count=14;owner:Event("PLAYER_ENTERING_WORLD")
+    reader:Event("CLUB_MEMBERS_UPDATED",42);Step(30)
+    assert(Received(reader,owner).memberID=="new-membership" and Received(reader,owner).snapshot.items[2770].count==14)
+end
+
+print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, migrations and bounded traffic OK")
