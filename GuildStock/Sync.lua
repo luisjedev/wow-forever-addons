@@ -6,6 +6,7 @@ addon.sync = state
 local world, registered, guild, session, published, revision, dirtyAt, fresh
 local ownerNames = {}
 local members, memberUntil, readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot
+local discoveryAt, discoveryRetries
 local queue, outgoing, peers, removed = {}, nil, {}, {}
 local nextSend, retries, retryAt = 0, 0, 0
 local privacyPending, requested
@@ -25,6 +26,7 @@ local function ClearTransport()
     session, published, revision, dirtyAt, fresh = Token(), nil, 0, nil, false
     queue, outgoing, peers = {}, nil, {}
     readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot = nil, nil, nil, nil, nil, nil
+    discoveryAt, discoveryRetries = nil, 0
     retries, retryAt = 0, 0
     privacyPending, requested, summaryAt, summary, relayOut, download = nil, nil, nil, nil, nil, nil
     candidates, relayQueue, relayServed = {}, {}, {}
@@ -253,6 +255,7 @@ local function Publish(current)
     current.withdrawal = privacyPending == true
     published, dirtyAt, privacyPending = current, nil, nil
     Offer(first)
+    if first then discoveryAt, discoveryRetries = GetTime() + 15, 2 end
     ScheduleSnapshot()
     return true
 end
@@ -628,6 +631,7 @@ local function Flush()
         retryAt, state.status = GetTime() + math.min(30, 2 ^ retries), "failed"
         if retries >= 3 then
             queue, outgoing, snapshotAt, offerAt = {}, nil, nil, nil
+            discoveryAt, discoveryRetries = nil, 0
             retries = 0; retryAt = GetTime() + 60
             summaryAt, summary, relayOut, download = nil, nil, nil, nil
             candidates, relayQueue = {}, {}
@@ -652,6 +656,13 @@ function addon.SyncTick()
         if (dirtyAt or privacyPending) and (privacyPending or ((now - dirtyAt >= 30 or requested) and not outgoing)) then
             if current.key ~= published.key then Publish(current) else dirtyAt, privacyPending = nil, nil end
         end
+    end
+    -- Initial presence can lag behind AreMembersReady, or early accepted sends
+    -- can be lost. Retry discovery twice, then return to event-driven silence.
+    if discoveryAt and now >= discoveryAt then
+        Offer(true)
+        discoveryRetries = discoveryRetries - 1
+        discoveryAt = discoveryRetries > 0 and now + 30 or nil
     end
     if offerAt and now >= offerAt then offerAt = nil; Offer(false) end
     if snapshotAt and now >= snapshotAt and not outgoing then

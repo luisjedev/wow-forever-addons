@@ -357,6 +357,67 @@ slow.rosterReady=true;Step(180)
 assert(Received(fast,slow) and Received(slow,fast), "late roster readiness must recover both directions")
 quiet=#log;Step(600);assert(#log==quiet)
 
+-- Members-ready can precede a peer's presence/name data. Fast startup must not
+-- exhaust every announcement before that peer can be verified.
+for _, scenario in ipairs({{delay=5}, {delay=20}, {delay=40}, {delay=20, missingName=true}}) do
+    local delay=scenario.delay
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    math.randomseed(1)
+    local first,second=Client("Delayed First Example"),Client("Delayed Second Example")
+    for _,client in ipairs(clients) do
+        local native=client.env.C_Club.GetMemberInfo
+        client.env.C_Club.GetMemberInfo=function(...)
+            local info=native(...)
+            if not info.isSelf and clock<delay then
+                if scenario.missingName then info.name=nil else info.presence=4 end
+            end
+            return info
+        end
+        client:Login()
+    end
+    Step(delay)
+    for _,client in ipairs(clients) do client:Event("CLUB_MEMBER_PRESENCE_UPDATED",42,1,1) end
+    Step(70-delay)
+    assert(Received(first,second) and Received(second,first),
+        "startup discovery must recover when native peer presence arrives late")
+    quiet=#log;Step(600);assert(#log==quiet,"startup discovery retries must finish, not become a heartbeat")
+end
+
+-- Native send Success does not ensure delivery; lose all early peer traffic.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local first,second=Client("Lost Hello First Example"),Client("Lost Hello Second Example")
+    filter=function(packet,client) return packet.sender==client.name or clock>=20 end
+    first:Login();second:Login();Step(70)
+    assert(Received(first,second) and Received(second,first),"lost initial announcements must recover without manual discovery")
+    quiet=#log;Step(600);assert(#log==quiet)
+    filter=nil
+end
+
+-- An unanswered startup has a fixed announcement budget even with native Success.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local alone=Client("Alone Example")
+    alone:Login();Step(90)
+    local hellos=0
+    for _,packet in ipairs(log) do if packet.message:match("^2|H|") then hellos=hellos+1 end end
+    assert(hellos==3,"startup must send one initial hello and only two delayed retries")
+    quiet=#log;Step(600);assert(#log==quiet)
+end
+
+-- Delayed discovery still pauses during combat, and native denials cancel it.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local alone=Client("Paused Discovery Example")
+    alone:Login();Step(10)
+    alone.combat=true;quiet=#log;Step(50);assert(#log==quiet)
+    alone.combat=false;alone.lockdown=true;Step(20);assert(#log==quiet)
+    alone.lockdown=false;alone.result=11;Step(100)
+    assert(#log==quiet+3 and alone.addon.sync.status=="failed",
+        "native rejection cancels startup discovery after the existing failure budget")
+    quiet=#log;Step(600);assert(#log==quiet)
+end
+
 -- Complete peer history survives a fresh Lua environment without trusting old sessions.
 clients,bus,log,clock = {},{},{},0
 local historian,source=Client("History Example"),Client("Source Example")
