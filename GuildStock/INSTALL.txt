@@ -1,36 +1,52 @@
-GuildStock 0.3.4 - automatic synchronization testing build
-WoW Forever beta 1.60.1, build 70205, interface 16001
+GuildStock 0.4.1 - Release
+For World of Warcraft: Forever 1.60.1 (interface 16001)
 
-Install the same version on every participating client.
-Extract this ZIP inside World of Warcraft/_classic_beta_/Interface/AddOns/.
+INSTALLATION
+Extract the GuildStock folder into your Forever client's Interface/AddOns folder.
 The resulting path must be Interface/AddOns/GuildStock/GuildStock.toc.
-Restart the game after installing this version, then enable GuildStock and log in.
-No commands, profession scans or remote access to another PC are needed.
+Restart the game, enable GuildStock, and install the same current version on
+all participating guildmates' clients.
 
-The base catalog includes 589 materials and 1083 associations across 12 professions.
-Names and icons use each client's game data. The catalog is not exhaustive.
+OPEN GUILDSTOCK
+Use /guildstock, the chest minimap button, or the native Professions shortcut.
+Left-click the minimap button to open/close; drag it to change its position.
 
-Guild inventory discovery starts automatically after guild and inventory are ready.
-Open GuildStock to see received Characters and material-owner rows.
-Discovery replies wait for the offer cooldown instead of being discarded.
-Later changes are grouped for five minutes from the first pending change.
-No periodic network heartbeat is sent while inventories remain unchanged.
-Uncheck Share to exclude an item from the next complete replacement.
-Observed material IDs are remembered per character, including across reloads.
-Visit the character bank once to discover materials already stored only there.
-Known material counts combine bags and the character bank in one total.
-Only known IDs are counted at login; changes refresh affected materials.
-The addon does not query every material in the catalog.
-Counts include owned bound items; they are not guarantees of tradeability.
+FEATURES
+- Search profession materials, filter by profession, and save favorites.
+- Find participating guildmates who have a material and see their quantities,
+  primary professions, online status, and last-online information when available.
+- Browse and search each participating character's shared inventory.
+- Start a whisper to an online guildmate; you write and send the message.
+- View dated offline inventory history and choose whether to show offline members.
+- See combined known material quantities from your bags and personal bank.
+- Choose which materials to share, or disable your own sharing in Settings.
+- Automatically synchronize shared inventories with players in the same guild.
+- Find recipe materials through chest shortcuts in the native Professions window.
+- Mark materials useful for your learned professions in native bags and your
+  character bank, with profession names in the item tooltip.
+- Adjust window scale, opening view, minimap visibility, and material-hint size.
+- Use automatic or manually selected interface language. Supported languages:
+  English, Spanish, French, German, Italian, Brazilian Portuguese, Russian,
+  Korean, Simplified Chinese and Traditional Chinese. Use /reload after changing
+  language. Item names keep the game language; included translated names can
+  also be used to search for hundreds of materials.
 
-All addon traffic uses GUILD. Settings reports messaging restrictions or waiting.
-If the beta blocks addon messages, local inventory remains available and the
-addon does not bypass that restriction. Local peer reception has been observed;
-remote display and cross-shard delivery still need independent verification.
-Complete peer inventories are saved per character and restored after guild membership
-can be verified. New synchronization refreshes the dated history in the background.
-Hover a player name for the age of its last complete update above the cursor.
-Quantity columns now read Units. Login timing and five-minute change batches are unchanged.
+GETTING STARTED
+Sharing is enabled by default. Review My inventory and Settings to choose what
+you share. Visit your personal bank once to discover materials stored only there.
+The starting catalog includes 589 materials across 12 professions and can grow
+as you open profession windows. It is not exhaustive.
 
-Includes the dark interface and animated profession-section dividers.
-FILES.sha256 identifies the exact packaged source files and Git commit.
+GOOD TO KNOW
+Quantities include bound items and do not guarantee that items can be traded.
+Offline inventories show last-known stock and can be out of date. Empty results
+are not proof that nobody owns a material. Hints show known profession uses,
+not learned recipes or skill requirements. Account/guild banks are not included.
+Bag and bank hints target Blizzard's native interface.
+The Forever beta client can delay synchronization or affect saved data. Broader
+multiplayer and full-restart checks remain ongoing. Retail and Classic Era are
+not supported targets.
+
+Source: https://github.com/luisjedev/wow-forever-addons/tree/main/GuildStock
+Issues: https://github.com/luisjedev/wow-forever-addons/issues
+See THIRD_PARTY_NOTICES.md for translated item-name data attribution.
