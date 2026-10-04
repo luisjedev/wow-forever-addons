@@ -1,3 +1,11 @@
+# GuildStock 1.0.0
+
+- Fix the Characters header so primary-profession information cannot overlap the inventory subtitle when a character has a short name.
+- Replace the brown profession bars with an original blue-gradient texture and the native profession progress border. Keep the fixed 0–300 scale and unknown-level display.
+- Retain the direct-owner inventory synchronization, sharing controls, local auction estimates and saved-data behavior from 0.5.1.
+
+Lua syntax and all eight repository suites pass. The updated profession bars and short-name layout were verified in the game after `/reload`. Multi-client validation of direct-owner synchronization, cross-shard delivery, full-restart persistence and other scales/locales remain pending. Target: WoW Forever 1.60.1, build 70205, interface 16001.
+
 # GuildStock 0.5.1
 
 - Each character now sends only its own inventory. Remove offline-inventory forwarding through other guild members and ignore legacy relay traffic.
