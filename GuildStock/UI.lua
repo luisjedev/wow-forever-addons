@@ -936,7 +936,11 @@ local function CreateWindow(colors)
     inventoryNote = Label(inventory, "", 26, 534, 1090, 13, muted)
 
     settings = Panel(window, 7, 77, 1166, 566)
-    Label(settings, L["Settings"], 27, 20, 1000, 29, cream, true)
+    Label(settings, L["Settings"], 27, 20, 780, 29, cream, true)
+    local version = addon.Read(C_AddOns and C_AddOns.GetAddOnMetadata, "GuildStock", "Version")
+    local versionLabel = Label(settings, "GuildStock " .. (type(version) == "string" and version ~= "" and version or L["Unknown"]),
+        840, 30, 300, 15, muted)
+    versionLabel:SetJustifyH("RIGHT")
     local display = Panel(settings, 26, 76, 1114, 224)
     Label(display, L["Material view"], 16, 14, 1040, 20, cream, true)
     local function Check(parent, key, title, y, callback, labelWidth)

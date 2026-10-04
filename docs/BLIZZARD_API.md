@@ -19,6 +19,10 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock version in Settings · October 4, 2026
+
+**Reference:** WoW Forever `wow_classic_beta`, `1.60.1.70205`, interface `16001`, from the existing client reference. **Affected addon:** GuildStock. Settings now displays the installed addon version beside its heading, using the manifest's `Version` metadata. The matching-build [addon API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/AddOnsDocumentation.lua#L155) documents `C_AddOns.GetAddOnMetadata`. Missing or inaccessible metadata displays the existing localized Unknown label. Lua syntax and all seven repository suites pass, including a synthetic metadata version check. Native rendering after `/reload`, translated headings and other scales remain pending verification.
+
 ### GuildStock startup discovery regression · October 4, 2026
 
 **Reference:** `wow_classic_beta` / `1.60.1.70205` / interface `16001`, as observed in the earlier session. **Affected addon:** GuildStock. The user reports that 0.3.2 worked the previous day and requested code-only investigation while native testing is unavailable. The earlier disconnect was subsequently attributed by the user to a server outage; it is not evidence of an addon defect.

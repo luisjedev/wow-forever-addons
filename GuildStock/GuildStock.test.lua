@@ -5,6 +5,10 @@ time = function() return epoch end
 date = function(_, value) return tostring(value) end
 InCombatLockdown = function() return combat end
 GetLocale = function() return "enUS" end
+C_AddOns = { GetAddOnMetadata = function(name, field)
+    assert(name == "GuildStock" and field == "Version")
+    return "9.8.7-test"
+end }
 local secret = setmetatable({}, { __tostring = function() error("secret used") end })
 canaccessvalue = function(value) return value ~= secret end
 local timers, frames, fontStrings = {}, {}, {}
@@ -114,6 +118,7 @@ function methods:Play() self.playing = true; self.playCount = (self.playCount or
 function methods:Stop() self.playing = false end
 function methods:CreateFontString()
     local label = Frame()
+    label.parent = self
     fontStrings[#fontStrings + 1] = label
     return label
 end
@@ -1034,6 +1039,11 @@ addon.ToggleFavorite(20)
 assert(saved.favorites[20] == nil and saved.favorites[10])
 Click("Settings")
 local checks = {}
+local versionLabel
+for _, label in ipairs(fontStrings) do
+    if label:GetText() == "GuildStock 9.8.7-test" then versionLabel = label end
+end
+assert(versionLabel and versionLabel.parent:IsShown(), "Settings displays the installed addon metadata version")
 for _, f in ipairs(frames) do if f.checked ~= nil and not f.parent.itemID then checks[#checks + 1] = f end end
 assert(#checks == 4)
 checks[2]:SetChecked(false)
