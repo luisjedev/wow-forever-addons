@@ -1,4 +1,4 @@
-GuildStock 0.3.3 - automatic synchronization testing build
+GuildStock 0.3.4 - automatic synchronization testing build
 WoW Forever beta 1.60.1, build 70205, interface 16001
 
 Install the same version on every participating client.
@@ -16,6 +16,11 @@ Discovery replies wait for the offer cooldown instead of being discarded.
 Later changes are grouped for five minutes from the first pending change.
 No periodic network heartbeat is sent while inventories remain unchanged.
 Uncheck Share to exclude an item from the next complete replacement.
+Observed material IDs are remembered per character, including across reloads.
+Visit the character bank once to discover materials already stored only there.
+Known material counts combine bags and the character bank in one total.
+Only known IDs are counted at login; changes refresh affected materials.
+The addon does not query every material in the catalog.
 Counts include owned bound items; they are not guarantees of tradeability.
 
 All addon traffic uses GUILD. Settings reports messaging restrictions or waiting.

@@ -140,26 +140,37 @@ Constants = { InventoryConstants = { NumBagSlots = 4, NumReagentBagSlots = 1 } }
 Enum = {
     CraftingReagentType = {Basic = 1, Modifying = 2},
     Profession = {Mining = 1, Engineering = 2, FirstAid = 3, Cooking = 4, Fishing = 5},
-    BagIndex = { Backpack = 0, ReagentBag = 5 },
+    BagIndex = { Backpack = 0, ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 },
+    BankType = {Character = 0, Account = 2},
     RegisterAddonMessagePrefixResult = { Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2 },
     SendAddonMessageResult = { Success = 0, AddonMessageThrottle = 3, AddOnMessageLockdown = 11 },
     ClubMemberPresence = { Online = 1, OnlineMobile = 2, Offline = 3, Away = 4, Busy = 5 },
 }
 local function Item(id, count, bound) return { itemID = id, stackCount = count, isBound = bound, isLocked = false } end
 local bags, sizes, equipped = {}, {}, {}
+local bank, bankSizes, bankVisible, countCalls = {}, {}, false, {}
+local bankTabs = {{ID = 6}}
+C_Bank = {
+    CanViewBank = function(kind) assert(kind == Enum.BankType.Character); return bankVisible end,
+    FetchPurchasedBankTabData = function(kind)
+        assert(kind == Enum.BankType.Character and bankVisible)
+        return bankTabs
+    end,
+}
 local reads = {}
 C_Container = {
     GetContainerNumSlots = function(bag)
-        assert(bag >= 0 and bag <= 5, "never scan bank storage")
+        assert((bag >= 0 and bag <= 5) or (bankVisible and bag >= 6 and bag <= 14), "bank reads require a visit")
         reads[bag] = true
+        if bag >= 6 then return bankSizes[bag] end
         return sizes[bag] or 0
     end,
     GetContainerNumFreeSlots = function(bag)
         local occupied = 0
-        for _ in pairs(bags[bag] or {}) do occupied = occupied + 1 end
-        return sizes[bag] - occupied
+        for _ in pairs((bag >= 6 and bank[bag] or bags[bag]) or {}) do occupied = occupied + 1 end
+        return (bag >= 6 and bankSizes[bag] or sizes[bag]) - occupied
     end,
-    GetContainerItemInfo = function(bag, slot) return (bags[bag] or {})[slot] end,
+    GetContainerItemInfo = function(bag, slot) return ((bag >= 6 and bank[bag] or bags[bag]) or {})[slot] end,
     ContainerIDToInventoryID = function(bag) return 19 + bag end,
 }
 GetInventoryItemID = function(_, slot) return equipped[slot] end
@@ -168,6 +179,17 @@ GetProfessionInfo = function(index) return index == 2 and "Engineering" or "Cook
 C_Item = { GetItemInfo = function(id)
     if id == 10 then return "Sample item", nil, nil, nil, nil, nil, nil, nil, nil, 123, nil, nil, nil, nil, nil, nil, true end
 end }
+C_Item.GetItemCount = function(id, includeBank, uses, reagentBank, accountBank)
+    assert(includeBank == true and uses == false and reagentBank == false and accountBank == false)
+    countCalls[id] = (countCalls[id] or 0) + 1
+    local count = 0
+    for _, storage in ipairs({bags, bank}) do
+        for _, slots in pairs(storage) do
+            for _, item in pairs(slots) do if item.itemID == id then count = count + item.stackCount end end
+        end
+    end
+    return count
+end
 C_TradeSkillUI = {
     GetAllRecipeIDs = function() return {1, 2} end,
     GetProfessionInfoBySkillLineID = function(id)
@@ -361,6 +383,108 @@ assert(addon.snapshot.items[10].count == 1 and not addon.snapshot.items[20], "ab
 bags[0] = {}
 addon.Observe()
 assert(next(addon.snapshot.items) == nil and not addon.incomplete, "successful empty observation")
+
+-- Learn owned material IDs once; native count work is proportional to changed IDs.
+do
+    local itemData, getInfo, getCount = addon.itemData, C_Item.GetItemInfo, C_Item.GetItemCount
+    local testDB = {version = 1, catalog = {[10] = {}, [20] = {}, [30] = {}}}
+    GuildStockDB, addon.db, addon.snapshot, addon.itemData = testDB, nil, nil, {}
+    addon.Initialize()
+    bags[0] = {Item(10, 2, true), Item(40, 1, false)} -- 40 is equipment, not a material.
+    bank[6], bankSizes[6] = {Item(10, 1, false), Item(20, 20, false), Item(50, 4, false), Item(60, 1, false)}, 8
+    countCalls, reads = {}, {}
+    Event("PLAYER_LOGIN"); Event("PLAYER_ENTERING_WORLD"); Drain()
+    local known = testDB.knownMaterials
+    assert(known == addon.knownMaterials and known[10] and not known[20] and not known[30] and not known[40])
+    assert(countCalls[10] == 1 and countCalls[20] == nil and countCalls[30] == nil and countCalls[40] == nil)
+    assert(addon.snapshot.items[10].count == 3 and addon.snapshot.items[10].bound == 2 and not reads[6],
+        "known carried materials include the bank before a visit, without double counting")
+    countCalls = {}; addon.Observe()
+    assert(next(countCalls) == nil, "unchanged bags do not requery known IDs")
+    bank[6][1].stackCount = 2
+    Event("ITEM_COUNT_CHANGED", 10); Event("ITEM_COUNT_CHANGED", 10); Drain()
+    assert(countCalls[10] == 1 and addon.snapshot.items[10].count == 4, "item events coalesce even when bags do not change")
+
+    bankVisible = true; countCalls = {}
+    Event("BANKFRAME_OPENED"); Drain()
+    assert(known[20] and not known[30] and not known[40] and not known[50] and not known[60])
+    assert(countCalls[20] == 1 and countCalls[30] == nil and addon.snapshot.items[20].count == 20)
+    assert(addon.snapshot.items[20].bound == 0, "bank binding is unknown, not proof of tradeability")
+    bags[0][1].stackCount, bank[6][1].stackCount = 1, 3
+    countCalls = {}
+    Event("BAG_UPDATE", 6); Event("BAG_UPDATE_DELAYED"); Event("ITEM_COUNT_CHANGED", 10)
+    assert(#timers == 1); Drain()
+    assert(countCalls[10] == 1 and countCalls[20] == nil and addon.snapshot.items[10].count == 4,
+        "a transfer refreshes only affected material totals")
+    local previous = addon.snapshot
+    bank[6][2].isLocked = true; addon.Observe()
+    assert(addon.incomplete and testDB.own == previous, "a locked bank read retains the whole observation")
+    bank[6][2].isLocked = false
+    local tabs = bankTabs
+    for _, badTabs in ipairs({false, {{ID = 15}}, {{ID = secret}}, {{ID = 6}, {ID = 6}}}) do
+        bankTabs = badTabs; addon.Observe()
+        assert(addon.incomplete and testDB.own == previous, "unknown, account or duplicate bank tabs cannot overwrite observations")
+    end
+    bankTabs = tabs
+    bank[6][2] = nil; bankVisible = false; reads, countCalls = {}, {}
+    Event("BANKFRAME_CLOSED"); Drain()
+    assert(not reads[6] and not addon.snapshot.items[20] and known[20], "closing reconciles totals without rereading bank slots or forgetting IDs")
+
+    C_Item.GetItemInfo = function(id)
+        if id == 50 then return "Bank reagent", nil, nil, nil, nil, nil, nil, nil, nil, 50, nil, nil, nil, nil, nil, nil, true end
+        return getInfo(id)
+    end
+    countCalls = {}; Event("GET_ITEM_INFO_RECEIVED", 50, true); Drain()
+    assert(known[50] and countCalls[50] == 1 and addon.snapshot.items[50].count == 4,
+        "late bank-item metadata learns material IDs even after closing")
+    local getSchematic = C_TradeSkillUI.GetRecipeSchematic
+    C_TradeSkillUI.GetRecipeSchematic = function() return {reagentSlotSchematics = {{reagents = {{itemID = 60}, {itemID = 70}}}}} end
+    countCalls = {}; Event("TRADE_SKILL_LIST_UPDATE"); Drain()
+    assert(known[60] and not known[70] and countCalls[60] == 1 and countCalls[70] == nil,
+        "recipe discoveries only count IDs previously observed on the character")
+    C_TradeSkillUI.GetRecipeSchematic = getSchematic
+    testDB.catalog[80], bank[6][5] = {}, Item(80, 2, false)
+    countCalls = {}; Event("ITEM_COUNT_CHANGED", 80); Event("ITEM_COUNT_CHANGED", 40); Drain()
+    assert(known[80] and addon.snapshot.items[80].count == 2 and countCalls[80] == 1 and countCalls[40] == nil,
+        "a material count event preserves discovery when a rapid deposit precedes the delayed bag scan")
+    addon.SetItemHidden(50, true)
+    assert(not addon.ShareableSnapshot().items[50] and addon.snapshot.items[50].count == 4)
+    addon.SetSharingEnabled(false); assert(next(addon.ShareableSnapshot().items) == nil)
+    addon.SetSharingEnabled(true)
+
+    -- Loading the same saved registry counts remembered bank-only IDs without another visit.
+    addon.db, addon.snapshot = nil, nil; addon.Initialize()
+    countCalls, reads = {}, {}; Event("PLAYER_LOGIN"); Drain()
+    assert(addon.knownMaterials == known and known[20] and not reads[6])
+    assert(countCalls[10] == 1 and countCalls[20] == 1 and countCalls[50] == 1 and countCalls[60] == 1 and countCalls[30] == nil)
+    assert(addon.snapshot.items[50].count == 4 and not addon.ShareableSnapshot().items[50])
+    previous = addon.snapshot
+    for _, query in ipairs({function() end, function() error("not ready") end, function() return secret end,
+        function() return -1 end, function() return 1.5 end, function() return 2147483648 end, function() return 0 end}) do
+        C_Item.GetItemCount = query
+        Event("PLAYER_ENTERING_WORLD"); Drain()
+        assert(addon.incomplete and addon.snapshot == previous and testDB.own == previous,
+            "missing, restricted, invalid or smaller-than-carried counts never partially commit")
+    end
+    C_Item.GetItemCount = nil; addon.Observe(); assert(addon.incomplete and testDB.own == previous)
+    C_Item.GetItemCount = getCount
+    combat = true; Event("PLAYER_REGEN_ENABLED"); Drain(); assert(testDB.own == previous)
+    combat = false; Event("PLAYER_REGEN_ENABLED"); Drain(); assert(not addon.incomplete)
+    bank[6][3].stackCount = 9; countCalls = {}; combat = true
+    Event("ITEM_COUNT_CHANGED", 50); Drain(); assert(next(countCalls) == nil)
+    combat = false; Event("PLAYER_REGEN_ENABLED"); Drain()
+    assert(countCalls[50] == 1 and countCalls[10] == nil and addon.snapshot.items[50].count == 9,
+        "combat deferral retains affected IDs without requerying every material")
+
+    for _, unsupported in ipairs({"future", {[10] = "unknown"}, {["10"] = true}}) do
+        testDB.knownMaterials = unsupported; addon.db, addon.snapshot = nil, nil; addon.Initialize(); addon.Observe()
+        assert(testDB.knownMaterials == unsupported and addon.knownMaterials ~= unsupported and addon.knownMaterials[10],
+            "unsupported registries are preserved and discoveries use RAM")
+    end
+    bags[0], bank, bankSizes = {}, {}, {}
+    GuildStockDB, addon.db, addon.snapshot, addon.itemData, C_Item.GetItemInfo = saved, nil, nil, itemData, getInfo
+    addon.Initialize(); addon.Observe()
+end
 
 -- Unknown schemas are never reset, including after new successful bag observations.
 for _, unknown in ipairs({ {version = 2, own = old, favorites = {10}}, {legacy = true}, "damaged" }) do

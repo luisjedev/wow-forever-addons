@@ -9,7 +9,7 @@ local function Copy(value)
 end
 local function Client(name)
     local client = {name = name, guild = 42, rosterReady = true, online = true, restricted = false,
-        lockdown = false, inventory = {[2770] = {count = 7, bound = 1}}, frames = {}, timers = {}, result = 0}
+        lockdown = false, inventory = {[2770] = {count = 7, bound = 1}}, bank = {}, frames = {}, timers = {}, result = 0}
     local env = setmetatable({}, {__index = _G})
     env._G, env.SlashCmdList = env, {}
     env.GetLocale = function() return "enUS" end
@@ -20,6 +20,10 @@ local function Client(name)
     env.GetProfessions = function() return 1, 2 end
     env.GetProfessionInfo = function(i) return "Synthetic", nil, nil, nil, nil, nil, i end
     env.C_TradeSkillUI = {GetProfessionInfoBySkillLineID = function(i) return {profession = i} end}
+    env.C_Item = {GetItemCount = function(id, includeBank, uses, reagentBank, accountBank)
+        assert(includeBank == true and uses == false and reagentBank == false and accountBank == false)
+        return (client.inventory[id] and client.inventory[id].count or 0) + (client.bank[id] or 0)
+    end}
     env.Enum = {RegisterAddonMessagePrefixResult = {Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2},
         SendAddonMessageResult = {Success = 0, AddonMessageThrottle = 3, AddOnMessageLockdown = 11},
         ClubMemberPresence = {Online = 1, Away = 2, Busy = 3, Offline = 4, OnlineMobile = 5},
@@ -498,5 +502,29 @@ private.combat=false;private.lockdown=true;Step(60)
 for i=quiet+1,#log do assert(log[i].sender~=private.name, "privacy withdrawal respects messaging lockdown") end
 private.lockdown=false;Step(90)
 assert(AssertNoItemsSince(private,quiet)>0 and next(Received(reader,private).snapshot.items)==nil)
+
+-- The saved material registry supplies bank-only stock; storage moves do not add units.
+clients,bus,log,clock = {},{},{},0
+filter = nil
+do
+    local owner, reader = Client("Bank Owner Example"), Client("Bank Reader Example")
+    owner.inventory, owner.bank = {[2840] = {count = 2, bound = 0}}, {[2840] = 1, [2589] = 20}
+    owner.env.GuildStockDB = {version = 1, knownMaterials = {[2589] = true}}
+    owner:Login(); reader:Login(); Step(90)
+    local stock = Received(reader,owner).snapshot.items
+    assert(stock[2840].count == 3 and stock[2589].count == 20)
+    local before = #log
+    owner.inventory[2840].count, owner.bank[2840] = 1, 2
+    owner:Event("BAG_UPDATE_DELAYED"); owner:Event("ITEM_COUNT_CHANGED", 2840); Step(380)
+    assert(#log == before, "moving unbound units between bags and bank does not republish the same total")
+    owner.bank[2589] = 0; owner:Event("ITEM_COUNT_CHANGED", 2589); Step(380)
+    assert(not Received(reader,owner).snapshot.items[2589] and owner.addon.knownMaterials[2589])
+    owner.addon.SetItemHidden(2840, true); Step(380)
+    assert(next(Received(reader,owner).snapshot.items) == nil and owner.addon.snapshot.items[2840].count == 3)
+    owner.addon.SetItemHidden(2840, false); Step(380)
+    assert(Received(reader,owner).snapshot.items[2840].count == 3)
+    owner.addon.SetSharingEnabled(false); Step(90)
+    assert(next(Received(reader,owner).snapshot.items) == nil)
+end
 
 print("GuildStock sync: automatic exchange, fixed batching, privacy, zero, repair, sessions, transitions, restrictions and bounded traffic OK")

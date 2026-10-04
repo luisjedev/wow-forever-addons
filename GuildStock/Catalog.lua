@@ -68,7 +68,7 @@ function addon.InvalidateMaterials()
     sortedMaterials, filteredMaterials = nil, {}
 end
 
-function addon.Catalog()
+function addon.Catalog(observation)
     if addon.db.catalog == nil then addon.db.catalog = {} end
     local catalog = type(addon.db.catalog) == "table" and addon.db.catalog or runtimeCatalog
     if seededCatalog ~= catalog then
@@ -83,8 +83,9 @@ function addon.Catalog()
         seededCatalog = catalog
         addon.InvalidateMaterials()
     end
-    if addon.snapshot then
-        for id in pairs(addon.snapshot.items) do
+    observation = observation or addon.snapshot
+    if observation then
+        for id in pairs(observation.items) do
             if addon.ItemData(id).reagent and catalog[id] == nil then
                 catalog[id] = {}
                 addon.InvalidateMaterials()
@@ -111,7 +112,10 @@ function addon.DiscoverRecipes()
                         for _, reagent in ipairs(slot.reagents) do
                             if Table(reagent) and addon.Integer(reagent.itemID, 1, 2147483647) then
                                 local itemID = reagent.itemID
-                                if catalog[itemID] == nil then catalog[itemID] = {} end
+                                if catalog[itemID] == nil then
+                                    catalog[itemID] = {}
+                                    addon.InventoryMaterialLoaded(itemID)
+                                end
                                 if type(catalog[itemID]) == "table" and catalog[itemID][key] ~= true then
                                     catalog[itemID][key] = true
                                     addon.InvalidateMaterials()

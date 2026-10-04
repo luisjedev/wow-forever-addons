@@ -40,6 +40,7 @@ function addon.Initialize()
         addon.db = saved
         if ValidSnapshot(saved.own) then addon.snapshot = saved.own end
     end
+    addon.ResetInventory()
     addon.ApplyLanguage(type(addon.db.settings) == "table" and addon.db.settings.language or nil)
 end
 
@@ -137,6 +138,32 @@ function addon.WhisperCharacter(id)
     end
 end
 
+-- Both bags and purchased character-bank tabs use the same complete-read checks.
+local function ScanContainer(bag, slots, items)
+    local api = C_Container
+    local free = addon.Read(api.GetContainerNumFreeSlots, bag)
+    if not addon.Integer(free, 0, slots) then return end
+    local occupied = 0
+    for slot = 1, slots do
+        if type(api.GetContainerItemInfo) ~= "function" then return end
+        local ok, info = pcall(api.GetContainerItemInfo, bag, slot)
+        if not ok or not addon.Accessible(info) then return end
+        if info ~= nil then
+            if type(info) ~= "table" or not addon.Integer(info.itemID, 1, 2147483647)
+                or not addon.Integer(info.stackCount, 1, 2147483647)
+                or not addon.Accessible(info.isBound) or type(info.isBound) ~= "boolean"
+                or not addon.Accessible(info.isLocked) or info.isLocked ~= false then return end
+            occupied = occupied + 1
+            local item = items[info.itemID] or {count = 0, bound = 0}
+            item.count = item.count + info.stackCount
+            if not addon.Integer(item.count, 1, 2147483647) then return end
+            if info.isBound then item.bound = item.bound + info.stackCount end
+            items[info.itemID] = item
+        end
+    end
+    return occupied + free == slots -- A nil occupied slot is not zero stock.
+end
+
 function addon.ScanBags()
     local api = C_Container
     local constants = Constants and Constants.InventoryConstants
@@ -153,38 +180,122 @@ function addon.ScanBags()
             if not addon.Integer(inventorySlot, 1, 100) or type(GetInventoryItemID) ~= "function" then return nil end
             local ok, equipped = pcall(GetInventoryItemID, "player", inventorySlot)
             if not ok or not addon.Accessible(equipped) or equipped ~= nil then return nil end
-        else
-            local free = addon.Read(api.GetContainerNumFreeSlots, bag)
-            if not addon.Integer(free, 0, slots) then return nil end
-            local occupied = 0
-            for slot = 1, slots do
-                if type(api.GetContainerItemInfo) ~= "function" then return nil end
-                local ok, info = pcall(api.GetContainerItemInfo, bag, slot)
-                if not ok or not addon.Accessible(info) then return nil end
-                if info ~= nil then
-                    if type(info) ~= "table" or not addon.Integer(info.itemID, 1, 2147483647)
-                        or not addon.Integer(info.stackCount, 1, 2147483647)
-                        or not addon.Accessible(info.isBound) or type(info.isBound) ~= "boolean"
-                        or not addon.Accessible(info.isLocked) or info.isLocked ~= false then return nil end
-                    occupied = occupied + 1
-                    local item = items[info.itemID] or { count = 0, bound = 0 }
-                    item.count = item.count + info.stackCount
-                    if not addon.Integer(item.count, 1, 2147483647) then return nil end
-                    if info.isBound then item.bound = item.bound + info.stackCount end
-                    items[info.itemID] = item
-                end
-            end
-            -- A nil occupied slot is not an observation of zero stock.
-            if occupied + free ~= slots then return nil end
+        elseif not ScanContainer(bag, slots, items) then
+            return nil
         end
     end
-    return { items = items, observedAt = time() }
+    return {items = items, observedAt = time()}
+end
+
+local bankOpen, allCounts, previousBags, previousBank
+local observedIDs, dirty = {}, {}
+function addon.ResetInventory()
+    local known = addon.db.knownMaterials
+    if known == nil then known = {}; addon.db.knownMaterials = known end
+    local valid = type(known) == "table"
+    if valid then
+        for id, value in pairs(known) do
+            if not addon.Integer(id, 1, 2147483647) or value ~= true then valid = false; break end
+        end
+    end
+    -- Keep unsupported saved data intact; new discoveries can still work in RAM.
+    addon.knownMaterials = valid and known or {}
+    bankOpen, allCounts, previousBags, previousBank = false, true, nil, nil
+    observedIDs, dirty = {}, {}
+end
+
+local function CharacterTab(id)
+    local index = Enum and Enum.BagIndex
+    return index and addon.Integer(index.CharacterBankTab_1, 0, 100)
+        and addon.Integer(index.CharacterBankTab_9, index.CharacterBankTab_1, 100)
+        and addon.Integer(id, index.CharacterBankTab_1, index.CharacterBankTab_9)
+end
+
+local function ScanBank()
+    local bankType = Enum and Enum.BankType and Enum.BankType.Character
+    if bankType == nil or not C_Container then return end
+    local visible = addon.Read(C_Bank and C_Bank.CanViewBank, bankType)
+    if visible == false then return {} end -- An account-only visit is outside our scope.
+    if visible ~= true then return end
+    local tabs = addon.Read(C_Bank and C_Bank.FetchPurchasedBankTabData, bankType)
+    if type(tabs) ~= "table" then return end
+    local items, seenTabs = {}, {}
+    for _, tab in pairs(tabs) do
+        if not addon.Accessible(tab) or type(tab) ~= "table" or not CharacterTab(tab.ID) or seenTabs[tab.ID] then return end
+        seenTabs[tab.ID] = true
+        local slots = addon.Read(C_Container.GetContainerNumSlots, tab.ID)
+        if not addon.Integer(slots, 1, 200) or not ScanContainer(tab.ID, slots, items) then return end
+    end
+    return items
+end
+
+local function Remember(items)
+    local catalog = addon.Catalog({items = items})
+    for id in pairs(items) do
+        observedIDs[id] = true
+        if type(catalog[id]) == "table" and not addon.knownMaterials[id] then
+            addon.knownMaterials[id], dirty[id] = true, true
+        end
+    end
+end
+
+-- Metadata and recipe discovery only refresh IDs actually observed on this character.
+function addon.InventoryMaterialLoaded(id)
+    if observedIDs[id] then dirty[id] = true; addon.ScheduleScan() end
+end
+
+local function MarkChanged(before, after)
+    for id, item in pairs(before or {}) do
+        local current = after[id]
+        if not current or current.count ~= item.count or current.bound ~= item.bound then dirty[id] = true end
+    end
+    for id, item in pairs(after) do
+        local old = before and before[id]
+        if not old or old.count ~= item.count or old.bound ~= item.bound then dirty[id] = true end
+    end
+end
+
+function addon.ScanInventory()
+    local bags = addon.ScanBags()
+    if not bags then return end
+    if not previousBags and addon.snapshot then Remember(addon.snapshot.items) end
+    Remember(bags.items)
+    MarkChanged(previousBags, bags.items)
+    local bank
+    if bankOpen then
+        bank = ScanBank()
+        if not bank then return end
+        Remember(bank)
+        MarkChanged(previousBank, bank)
+    end
+    for id in pairs(dirty) do
+        if observedIDs[id] then Remember({[id] = true}) end
+    end
+    local items = {}
+    for id, item in pairs(bags.items) do items[id] = item end
+    for id in pairs(addon.knownMaterials) do
+        local carried = items[id]
+        local old = addon.snapshot and addon.snapshot.items[id]
+        if allCounts or dirty[id] then
+            local minimum = (carried and carried.count or 0) + (bank and bank[id] and bank[id].count or 0)
+            local count = addon.Read(C_Item and C_Item.GetItemCount, id, true, false, false, false)
+            if not addon.Integer(count, minimum, 2147483647) then return end
+            -- bound is a confirmed minimum from carried bags, not a tradeability calculation.
+            items[id] = count > 0 and {count = count, bound = carried and carried.bound or 0} or nil
+        else
+            items[id] = old
+        end
+    end
+    -- Keep the carried observation separate from the absolute native totals.
+    previousBags = bags.items
+    previousBank, dirty, allCounts = bank or previousBank, {}, false
+    return {items = items, observedAt = time()}
 end
 
 function addon.Observe()
     if not addon.db then return end
     local snapshot
-    if not InCombatLockdown() then snapshot = addon.ScanBags() end
+    if not InCombatLockdown() then snapshot = addon.ScanInventory() end
     addon.incomplete = snapshot == nil
     if snapshot then
         addon.snapshot = snapshot
@@ -235,7 +346,8 @@ end
 
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED",
-    "PLAYER_REGEN_ENABLED", "ITEM_LOCK_CHANGED", "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_GUILD_UPDATE" }) do
+    "PLAYER_REGEN_ENABLED", "ITEM_LOCK_CHANGED", "ITEM_COUNT_CHANGED", "BAG_UPDATE",
+    "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "BANK_TABS_CHANGED", "PLAYERBANKSLOTS_CHANGED", "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_GUILD_UPDATE" }) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, loadedName, success)
@@ -249,13 +361,32 @@ events:SetScript("OnEvent", function(_, event, loadedName, success)
     elseif event == "GET_ITEM_INFO_RECEIVED" then
         if addon.Integer(loadedName, 1, 2147483647) and addon.Accessible(success) and success == true
             and addon.itemData[loadedName] ~= nil then
+            addon.InventoryMaterialLoaded(loadedName)
             addon.itemData[loadedName] = nil
             addon.InvalidateMaterials()
             addon.ScheduleRefresh()
         end
+    elseif event == "ITEM_COUNT_CHANGED" then
+        if addon.Integer(loadedName, 1, 2147483647) then
+            -- A material can move out of bags before the coalesced slot scan runs.
+            observedIDs[loadedName], dirty[loadedName] = true, true
+            addon.ScheduleScan()
+        end
+    elseif event == "BANKFRAME_OPENED" then
+        bankOpen = true
+        addon.ScheduleScan()
+    elseif event == "BANKFRAME_CLOSED" then
+        bankOpen = false
+        for id in pairs(previousBank or {}) do dirty[id] = true end
+        addon.ScheduleScan()
+    elseif event == "BAG_UPDATE" then
+        if bankOpen and CharacterTab(loadedName) then addon.ScheduleScan() end
+    elseif event == "BANK_TABS_CHANGED" or event == "PLAYERBANKSLOTS_CHANGED" then
+        if bankOpen then addon.ScheduleScan() end
     elseif event == "SKILL_LINES_CHANGED" or event == "PLAYER_GUILD_UPDATE" then
         if addon.Refresh then addon.Refresh() end
     else
+        if event == "PLAYER_ENTERING_WORLD" then allCounts = true end
         addon.ScheduleScan()
     end
 end)
