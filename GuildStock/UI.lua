@@ -160,13 +160,10 @@ end
 local function SetCharacterProfessions(character)
     characters.professions:SetShown(character ~= nil)
     if not character then return end
-    local details = addon.GuildProfessionDetails(character.primaryProfessions)
     characters.professions:ClearAllPoints()
     characters.professions:SetPoint("TOPLEFT", math.min(characterName:GetStringWidth(), 380) + 40, -12)
     for i, slot in ipairs(characters.professions.slots) do
-        local detail = details[i]
-        local key = detail and detail.key
-        if not key and addon.Accessible(character.skills) and type(character.skills) == "table" then key = character.skills[i] end
+        local key = addon.Accessible(character.skills) and type(character.skills) == "table" and character.skills[i]
         local texture, title
         for _, entry in ipairs(addon.professions) do
             if addon.Accessible(key) and key == entry[1] and key ~= "Cooking" and key ~= "Fishing" and key ~= "FirstAid" then
@@ -174,7 +171,9 @@ local function SetCharacterProfessions(character)
             end
         end
         slot.icon:SetTexture(texture or "Interface\\Icons\\INV_Misc_QuestionMark")
-        local rank = detail and detail.rank
+        local ranks = character.professionRanks
+        local rank = texture and addon.Accessible(ranks) and type(ranks) == "table" and ranks[i]
+        rank = addon.Integer(rank, 0, 10000) and rank or nil
         local maximum = 300 -- Forever's fixed base cap, not the member's trained tier.
         slot.bar:SetMinMaxValues(0, maximum)
         slot.bar:SetValue(rank and math.min(rank, maximum) or 0)

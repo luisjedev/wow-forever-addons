@@ -7,7 +7,7 @@ local function Copy(value)
     if type(value) ~= "table" then return value end
     local result = {}; for k, v in pairs(value) do result[k] = Copy(v) end; return result
 end
-local function Client(name)
+local function Client(name, syncPath)
     local client = {name = name, guild = 42, rosterReady = true, online = true, restricted = false,
         lockdown = false, inventory = {[2770] = {count = 7, bound = 1}}, bank = {}, frames = {}, timers = {}, result = 0}
     local env = setmetatable({}, {__index = _G})
@@ -18,7 +18,7 @@ local function Client(name)
     env.InCombatLockdown = function() return client.combat or false end
     env.IsInGuild = function() return client.guild ~= nil end
     env.GetProfessions = function() return 1, 2 end
-    env.GetProfessionInfo = function(i) return "Synthetic", nil, nil, nil, nil, nil, i end
+    env.GetProfessionInfo = function(i) return "Synthetic", nil, (client.ranks or {52, 1})[i], 75, nil, nil, i end
     env.C_TradeSkillUI = {GetProfessionInfoBySkillLineID = function(i) return {profession = i} end}
     env.C_Item = {GetItemCount = function(id, includeBank, uses, reagentBank, accountBank)
         assert(includeBank == true and uses == false and reagentBank == false and accountBank == false)
@@ -68,7 +68,7 @@ local function Client(name)
     }
     local addon = {}
     for _, file in ipairs({"Locales", "GuildStock", "Probe", "ItemNames", "CatalogSeed", "Catalog", "Sync"}) do
-        local fn = assert(loadfile("GuildStock/" .. file .. ".lua")); setfenv(fn, env); fn("GuildStock", addon)
+        local fn = assert(loadfile(file == "Sync" and syncPath or "GuildStock/" .. file .. ".lua")); setfenv(fn, env); fn("GuildStock", addon)
     end
     client.addon, client.env = addon, env
     addon.CreateMinimapButton = function() end
@@ -839,27 +839,114 @@ do
         "world transitions rebuild the current privacy-filtered inventory")
 end
 
--- Native guild profession metadata updates independently of inventory packets.
+-- Optional levels belong to the remote owner, independent of unreliable roster ranks.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
-    local owner,reader=Client("Native Profession Example"),Client("Native Reader Example")
-    owner.profession1ID,owner.profession1Rank,owner.profession2ID,owner.profession2Rank=1,175,2,200
+    local owner,reader=Client("Profession Owner Example"),Client("Profession Reader Example")
+    owner.ranks,reader.ranks={175,0},{52,1}
+    owner.profession1ID,owner.profession1Rank,owner.profession2ID,owner.profession2Rank=2,1,1,1
     owner:Login();reader:Login();Step(90)
-    owner.disabled=true -- No further addon responses from this guild member.
-    local function Details()
-        return reader.addon.GuildProfessionDetails(reader.addon.GuildCharacters()[1].primaryProfessions)
-    end
-    local details=Details()
-    assert(details[1].key=="Alchemy" and details[1].rank==175 and details[2].key=="Mining" and details[2].rank==200)
-    local quiet=#log
-    owner.profession1Rank=180;reader:Event("GUILD_ROSTER_UPDATE",true)
-    assert(Details()[1].rank==180 and #log==quiet,"native rank changes need no addon traffic")
-    owner.profession1Rank=secret;reader:Event("GUILD_ROSTER_UPDATE",true)
-    assert(Details()[1].rank==nil and Details()[2].rank==200,"restricted ranks stay unknown without hiding readable slots")
-    owner.online=false;owner.profession1Rank=190;reader:Event("CLUB_MEMBER_UPDATED",42,1)
-    assert(Details()[1].rank==190,"accessible offline metadata remains usable")
-    assert(reader.env.GuildStockDB.guildHistory.characters[owner.name].primaryProfessions==nil,
-        "native ranks are runtime metadata, not new saved or relayed data")
+    local function Ranks() return Received(reader,owner).professionRanks end
+    assert(Ranks()[1]==175 and Ranks()[2]==0, "remote levels must not come from the local player or roster slot order")
+    assert(reader.addon.GuildCharacters()[1].professionRanks[1]==175)
+    assert(Received(owner,reader).professionRanks[1]==52)
+    local quiet=#log;Step(300);assert(#log==quiet,"levels do not add idle polling or heartbeats")
+    owner.ranks={180,1};owner:Event("SKILL_LINES_CHANGED");Step(29)
+    assert(Ranks()[1]==175,"profession-only updates retain the thirty-second batch")
+    Step(70);assert(Ranks()[1]==180 and Ranks()[2]==1)
+    local record=Received(reader,owner)
+    local head="2|P|"..record.session.."|"..record.revision.."|1,10|"
+    for _,payload in ipairs({"-1,1","1.5,1","10001,1","bad","1,1,1","?,"}) do Receive(reader,owner,head..payload) end
+    Receive(reader,owner,head.."9,9","WHISPER")
+    Receive(reader,owner,"2|P|1-2|"..record.revision.."|1,10|9,9")
+    Receive(reader,owner,"2|P|"..record.session.."|"..(record.revision-1).."|1,10|9,9")
+    assert(Ranks()[1]==180 and record.snapshot.items[2770].count==7,"bad, stale and unauthorized metadata cannot change the inventory or levels")
+    Receive(reader,owner,"2|P|"..record.session.."|"..record.revision.."|10,1|9,9")
+    assert(Ranks()[1]==180,"metadata for different professions cannot attach by slot alone")
+    local stale=head.."9,9"
+    owner=Reload(owner);owner.ranks={180,1};owner:Event("SKILL_LINES_CHANGED");Step(90)
+    Receive(reader,owner,stale)
+    assert(Ranks()[1]==180,"old-session metadata cannot replace the owner's new session")
+    owner.ranks={secret,300};owner:Event("SKILL_LINES_CHANGED");Step(90)
+    assert(Ranks()[1]==nil and Ranks()[2]==300,"inaccessible ranks clear only their slot")
+    owner.online=false;reader=Reload(reader);Step(60)
+    assert(Ranks()[1]==nil and Ranks()[2]==300,"last received ranks survive reload for an offline member")
+    local saved=Copy(reader.env.GuildStockDB)
+    saved.guildHistory.characters[owner.name].professionRanks={"bad",-1}
+    reader=Reload(reader,saved);Step(10)
+    assert(Received(reader,owner).snapshot.items[2770].count==7 and not Ranks()[1] and not Ranks()[2],
+        "invalid optional saved levels cannot discard a valid inventory")
 end
 
-print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, migrations and bounded traffic OK")
+-- Lost levels never block inventory completion; normal existing offers can repair them.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Loss Owner Example"),Client("Loss Reader Example")
+    local dropped=0
+    filter=function(packet,client)
+        if packet.sender==owner.name and client==reader and packet.message:match("^2|P|") and dropped<2 then
+            dropped=dropped+1;return false
+        end
+        return true
+    end
+    owner:Login();reader:Login();Step(120)
+    assert(dropped==2 and Received(reader,owner).professionRanks[1]==52)
+    filter=function(packet,client) return not (client==reader and packet.message:match("^2|P|")) end
+    owner.ranks={200,200};owner.inventory[2770].count=8;owner.addon.Observe();Step(90)
+    assert(Received(reader,owner).snapshot.items[2770].count==8 and not Received(reader,owner).professionRanks,
+        "missing optional levels never hold up the new inventory or reuse stale ranks")
+end
+
+-- Metadata received before S/A waits for that exact authenticated snapshot.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Order Owner Example"),Client("Order Reader Example")
+    local held,metadata={},nil
+    filter=function(packet,client)
+        if packet.sender==owner.name and client==reader then
+            if packet.message:match("^2|S|") or packet.message:match("^2|A|") then held[#held+1]=packet.message;return false end
+            if packet.message:match("^2|P|") then metadata=packet.message end
+        end
+        return true
+    end
+    owner:Login();reader:Login();Step(10)
+    assert(metadata and not Received(reader,owner),"metadata alone cannot create a character inventory")
+    for _,message in ipairs(held) do Receive(reader,owner,message) end
+    assert(Received(reader,owner).professionRanks[1]==52)
+    filter=nil
+end
+
+-- Unlearning or replacing a profession must not reuse the previous profession's level.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Skills Owner Example"),Client("Skills Reader Example")
+    owner:Login();reader:Login();Step(90)
+    owner.env.GetProfessions=function() return nil,2 end
+    owner.ranks={52,200};owner:Event("SKILL_LINES_CHANGED");Step(90)
+    local record=Received(reader,owner)
+    assert(not record.skills[1] and not record.professionRanks[1] and record.professionRanks[2]==200)
+    owner.env.GetProfessions=function() return 2 end
+    owner:Event("SKILL_LINES_CHANGED");Step(90)
+    record=Received(reader,owner)
+    assert(record.skills[1]=="Mining" and record.professionRanks[1]==200 and not record.professionRanks[2])
+    owner.env.GetProfessions=function() return nil end
+    owner:Event("SKILL_LINES_CHANGED");Step(90)
+    record=Received(reader,owner)
+    assert(not next(record.skills) and not next(record.professionRanks) and record.snapshot.items[2770].count==7)
+end
+
+-- Run with a saved pre-change Sync.lua to exercise actual protocol-2 compatibility.
+if os.getenv("GUILDSTOCK_LEGACY_SYNC") then
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local old=Client("Legacy Example",os.getenv("GUILDSTOCK_LEGACY_SYNC"))
+    local new=Client("Updated Example")
+    old:Login();new:Login();Step(120)
+    assert(Received(old,new).snapshot.items[2770].count==7 and Received(new,old).snapshot.items[2770].count==7)
+    assert(not Received(new,old).professionRanks,"old owners supply inventory normally and unknown levels")
+    new.inventory[2770].count=15;new.ranks={300,300};new.addon.Observe();Step(90)
+    assert(Received(old,new).snapshot.items[2770].count==15,"old clients keep receiving inventory changes")
+    old.inventory[2770].count=9;old.addon.Observe();Step(90)
+    assert(Received(new,old).snapshot.items[2770].count==9,"new clients keep receiving old inventory changes")
+end
+
+print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, optional profession levels and bounded traffic OK")

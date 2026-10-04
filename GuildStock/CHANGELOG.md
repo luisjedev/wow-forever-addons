@@ -1,3 +1,9 @@
+# GuildStock 0.4.4
+
+- Show the selected guildmate’s actual primary-profession levels shared by their own GuildStock, using the existing vertical 0–300 bars. Stop using unreliable native guild ranks.
+- Add optional level metadata while retaining protocol 2, its prefix, all existing inventory message formats, GUILD transport, batching, acknowledgements and retries. Older protocol-2 versions continue exchanging inventories; unavailable levels show `?`.
+- Save received levels with the owner’s matching inventory revision for offline display. Offline inventory relay behavior is unchanged; relays do not forward levels.
+
 # GuildStock 0.4.3
 
 - Show the selected character's two primary professions beside their name in two stacked rows, with icons and progress bars on a fixed 0–300 scale.

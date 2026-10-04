@@ -57,6 +57,14 @@ local function History()
     if type(history) == "table" and (history.version == 1 or history.version == 2) and SavedID(history.guildID)
         and type(history.characters) == "table" then return history end
 end
+local function CopyRanks(skills, ranks)
+    if not addon.Accessible(ranks) or type(ranks) ~= "table" then return end
+    local result = {}
+    for i = 1, 2 do
+        if skills[i] and addon.Integer(ranks[i], 0, 10000) then result[i] = ranks[i] end
+    end
+    return result
+end
 local function HistoricalCopy(name, character)
     if type(name) ~= "string" or #name == 0 or #name > 200 or type(character) ~= "table"
         or character.name ~= name or not SavedID(character.memberID)
@@ -81,6 +89,7 @@ local function HistoricalCopy(name, character)
     end
     -- Durable owner revisions survive reload; transport sessions never authorize saved data.
     return {name = name, memberID = character.memberID, skills = skills, receivedAt = character.receivedAt,
+        professionRanks = CopyRanks(skills, character.professionRanks),
         revision = addon.Integer(character.revision, 1, MAX_REVISION) and character.revision or nil,
         relayed = character.relayed == true or nil,
         supersededBy = addon.Integer(character.supersededBy, 1, MAX_REVISION) and character.supersededBy or nil,
@@ -143,15 +152,7 @@ local function Roster()
             local online = info.presence == presence.Online or info.presence == presence.Away or info.presence == presence.Busy
             found[info.name] = {id = id, isSelf = info.isSelf, online = online,
                 offline = info.presence == presence.Offline,
-                race = addon.Integer(info.race, 1, 2147483647) and info.race or nil,
-                primaryProfessions = {}}
-            for slot = 1, 2 do
-                local skillID, rank = info["profession" .. slot .. "ID"], info["profession" .. slot .. "Rank"]
-                if addon.Integer(skillID, 1, 2147483647) then
-                    found[info.name].primaryProfessions[slot] = {id = skillID,
-                        rank = addon.Integer(rank, 0, 10000) and rank or nil}
-                end
-            end
+                race = addon.Integer(info.race, 1, 2147483647) and info.race or nil}
             if info.isSelf then own = info.name end
         end
     end
@@ -189,10 +190,10 @@ local function Enqueue(message, recipient)
     return true
 end
 local function PrimarySkills()
-    local skills = {0, 0}
-    if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return "0,0" end
+    local skills, ranks = {0, 0}, {"?", "?"}
+    if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return "0,0", "?,?" end
     local indices = {pcall(GetProfessions)}
-    if not indices[1] then return "0,0" end
+    if not indices[1] then return "0,0", "?,?" end
     for i = 1, 2 do
         if addon.Integer(indices[i + 1], 1, 1000) then
             local info = {pcall(GetProfessionInfo, indices[i + 1])}
@@ -201,13 +202,16 @@ local function PrimarySkills()
                 if type(data) == "table" and addon.Integer(data.profession, 0, 100) then
                     for index, profession in ipairs(addon.professions) do
                         if index ~= 7 and index ~= 8 and index ~= 9 and Enum.Profession
-                            and Enum.Profession[profession[1]] == data.profession then skills[i] = index end
+                            and Enum.Profession[profession[1]] == data.profession then
+                            skills[i] = index
+                            if addon.Integer(info[4], 0, 10000) then ranks[i] = info[4] end
+                        end
                     end
                 end
             end
         end
     end
-    return table.concat(skills, ",")
+    return table.concat(skills, ","), table.concat(ranks, ",")
 end
 local function Build()
     if addon.IsSharingEnabled() and not privacyPending and (not fresh or addon.incomplete) then return end
@@ -223,9 +227,9 @@ local function Build()
         local item = snapshot.items[id]
         values[#values + 1] = string.format("%d,%d,%d", id, item.count, item.bound)
     end
-    local skills = PrimarySkills()
-    prepared = {values = values, skills = skills, observedAt = snapshot.observedAt,
-        key = skills .. ":" .. table.concat(values, ";")}
+    local skills, ranks = PrimarySkills()
+    prepared = {values = values, skills = skills, ranks = ranks, observedAt = snapshot.observedAt,
+        key = skills .. ":" .. ranks .. ":" .. table.concat(values, ";")}
     return prepared
 end
 function addon.SyncChanged(withdrawal)
@@ -247,6 +251,10 @@ end
 local function Offer(discovery)
     if not published then return end
     Enqueue("2|" .. (discovery and "H" or "O") .. "|" .. session .. "|" .. revision)
+    -- Optional metadata: old protocol-2 clients ignore P; inventory messages stay identical.
+    if not discovery then
+        Enqueue("2|P|" .. session .. "|" .. revision .. "|" .. published.skills .. "|" .. published.ranks)
+    end
     lastOffer = GetTime()
     if discovery then lastHello = GetTime() end
 end
@@ -301,6 +309,9 @@ local function Commit(name, peer)
     end
     addon.guildData.characters[name] = {name = name, memberID = peer.memberID, session = transfer.session,
         revision = transfer.revision, skills = transfer.skills, receivedAt = time(),
+        professionRanks = peer.professions and peer.professions.session == transfer.session
+            and peer.professions.revision == transfer.revision and peer.professions.skills == transfer.skillText
+            and CopyRanks(transfer.skills, peer.professions.ranks) or nil,
         snapshot = {items = transfer.items, observedAt = math.min(time(), transfer.observedAt)}}
     local history = History()
     if history and history.guildID == guild then
@@ -315,6 +326,32 @@ local function DecodeSkills(value)
     a, b = Integer(a, 0, 12), Integer(b, 0, 12)
     if not a or not b or a == 7 or a == 8 or a == 9 or b == 7 or b == 8 or b == 9 then return end
     return {[1] = a > 0 and addon.professions[a][1] or nil, [2] = b > 0 and addon.professions[b][1] or nil}
+end
+-- Levels are optional and can arrive before or after the existing inventory handshake.
+-- They never authorize or replace an inventory and are tied to its exact session/revision/skills.
+local function ProfessionRanks(name, peer, fields)
+    local remote, rev = fields[3], Integer(fields[4], 1, MAX_REVISION)
+    local skills = fields[5] and DecodeSkills(fields[5])
+    if #fields ~= 6 or not rev or not skills or (remote ~= peer.allowed and remote ~= peer.wanted)
+        or (peer.minimum and rev < peer.minimum) or (peer.offered and rev < peer.offered) then return end
+    local a, b = fields[6]:match("^([^,]+),([^,]+)$")
+    local ranks = {}
+    for i, value in ipairs({a or "", b or ""}) do
+        if value ~= "?" then
+            ranks[i] = Integer(value, 0, 10000)
+            if not ranks[i] or not skills[i] then return end
+        end
+    end
+    if peer.professions and peer.professions.session == remote and peer.professions.revision > rev then return end
+    peer.professions = {session = remote, revision = rev, skills = fields[5], ranks = ranks}
+    local record = addon.guildData.characters[name]
+    if record and record.memberID == peer.memberID and record.session == remote and record.revision == rev
+        and peer.allowed == remote and record.skills[1] == skills[1] and record.skills[2] == skills[2] then
+        record.professionRanks = CopyRanks(record.skills, ranks)
+        local history = History()
+        if history and history.guildID == guild then history.characters[name] = HistoricalCopy(name, record) end
+        Refresh()
+    end
 end
 local function Snapshot(name, peer, fields)
     local remote, rev = fields[3], Integer(fields[4], 1, MAX_REVISION)
@@ -605,6 +642,7 @@ function addon.ReceiveSync(prefix, message, channel, sender)
         peer.minimum = Integer(fields[4], 1, MAX_REVISION)
         peer.timeout = GetTime() + 20
         Commit(sender, peer)
+    elseif kind == "P" then ProfessionRanks(sender, peer, fields)
     elseif kind == "S" then Snapshot(sender, peer, fields)
     elseif kind == "D" then Digest(sender, fields)
     elseif kind == "R" then RelayRequest(fields)
@@ -740,7 +778,7 @@ events:SetScript("OnEvent", function(_, event, a, b, c, d)
         if world and addon.ScheduleScan then addon.ScheduleScan() end
     elseif event == "GUILD_ROSTER_UPDATE" then
         members, memberUntil = nil, nil
-        Refresh() -- Native profession metadata changes do not request addon traffic.
+        Refresh() -- Roster refreshes do not request addon traffic.
     elseif event == "SKILL_LINES_CHANGED" then addon.SyncChanged()
     else
         members, memberUntil = nil, nil

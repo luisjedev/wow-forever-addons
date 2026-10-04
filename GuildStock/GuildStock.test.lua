@@ -354,21 +354,6 @@ do
     C_TradeSkillUI.GetProfessionInfoBySkillLineID = getBySkillLine
 end
 
-do
-    local details = addon.GuildProfessionDetails({{id = 100, rank = 180}, {id = 200, rank = 0}})
-    assert(details[1].key == "Mining" and details[1].rank == 180 and details[2].rank == 0)
-    for _, rank in ipairs({secret, -1, "20", 1.5}) do
-        details = addon.GuildProfessionDetails({{id = 100, rank = rank}})
-        assert(details[1].rank == nil, "invalid or restricted ranks stay unknown")
-    end
-    assert(not addon.GuildProfessionDetails({{id = secret, rank = 50}})[1])
-    assert(not addon.GuildProfessionDetails({{id = 300, rank = 50}})[1], "secondary skills are excluded")
-    local getInfo = C_TradeSkillUI.GetProfessionInfoBySkillLineID
-    C_TradeSkillUI.GetProfessionInfoBySkillLineID = function() return {profession = 1, skillLevel = 1, maxSkillLevel = 75} end
-    assert(addon.GuildProfessionDetails({{id = 100, rank = 180}})[1].rank == 180,
-        "local skill metadata never supplies another guild member's rank")
-    C_TradeSkillUI.GetProfessionInfoBySkillLineID = getInfo
-end
 
 local complete = addon.snapshot
 local realInfo = C_Container.GetContainerItemInfo
@@ -1677,10 +1662,10 @@ assert(characterRow.skillSlots[2].point[2] + characterRow.skillSlots[2].width <=
 do
     local panel = characterInput.parent.parent.parent
     local group = panel.professions
-    local getMember = addon.SyncMember
+    local record = addon.guildData.characters["Peer Fullname"]
+    local oldSkills = record.skills
     assert(group and #group.slots == 2 and group.slots[1].rank:GetText() == "?")
-    local primary = {{id = 100, rank = 180}, {id = 200, rank = 0}}
-    addon.SyncMember = function(id) local member = getMember(id); if member then member.primaryProfessions = primary end; return member end
+    record.skills, record.professionRanks = {"Mining", "Alchemy"}, {180, 0}
     addon.Refresh()
     assert(group.slots[1].icon.texture == "Interface\\Icons\\Trade_Mining")
     assert(group.slots[1].bar.value == 180 and group.slots[1].bar.minimum == 0 and group.slots[1].bar.maximum == 300)
@@ -1690,16 +1675,20 @@ do
     group.slots[1].scripts.OnEnter(group.slots[1])
     assert(GameTooltip:GetText() == "Mining\n180 / 300")
     assert(group.point[2] + group.width < 740, "bars stay clear of Whisper")
-    primary = {{id = 100, rank = 300}}; addon.Refresh()
+    record.professionRanks = {300}; addon.Refresh()
     assert(group.slots[1].bar.value == 300 and group.slots[2].rank:GetText() == "?" and group.slots[2].bar.value == 0)
-    primary = {{id = 100, rank = 315}}; addon.Refresh()
+    record.professionRanks = {315}; addon.Refresh()
     assert(group.slots[1].bar.value == 300 and group.slots[1].rank:GetText() == "315 / 300", "bonuses do not overfill the bar")
-    primary = {}; addon.Refresh()
-    assert(group.slots[1].rank:GetText() == "?" and group.slots[1].bar.value == 0, "missing native data clears old ranks")
+    record.professionRanks = {}; addon.Refresh()
+    assert(group.slots[1].rank:GetText() == "?" and group.slots[1].bar.value == 0, "missing shared data clears old ranks")
     characterInput:SetText("no character matches this"); Drain(); addon.Refresh()
     assert(not group:IsShown(), "empty selection hides both profession bars")
     characterInput:SetText(""); Drain(); addon.Refresh()
-    addon.SyncMember = getMember
+    for _, rank in ipairs({secret, -1, "20", 1.5}) do
+        record.professionRanks = {rank}; addon.Refresh()
+        assert(group.slots[1].rank:GetText() == "?", "invalid shared levels stay unknown")
+    end
+    record.skills, record.professionRanks = oldSkills, nil
 end
 addon.guildData.characters["Peer Fullname"].skills = {"Engineering"}; addon.Refresh()
 assert(characterRow.skillSlots[1].icon.texture == "Interface\\Icons\\Trade_Engineering"

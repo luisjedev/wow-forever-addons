@@ -1,4 +1,4 @@
-# GuildStock · Automatic synchronization preview 0.4.3
+# GuildStock · Automatic synchronization preview 0.4.4
 
 <img src="Assets/Logo.png" alt="GuildStock supply chest" width="160">
 
@@ -22,7 +22,7 @@ Excluded items stay excluded across inventory changes, including using the last 
 
 Hover any item icon in Materials, Favorites, the selected material detail, My inventory, Not shared or Characters to see the game’s native item tooltip, including effects, requirements and vendor value when available. Content follows the game language and describes the item type, not a particular stack or the total value of shared quantities.
 
-The selected **Characters** header shows the two primary professions in a vertical column beside the name, each with an icon and a progress bar labeled `rank / 300`. The scale uses Forever's fixed base cap, not that character's currently trained tier. Ranks come directly from the native guild roster, so this feature does not need another member to update GuildStock or send profession data. Missing or restricted ranks show `?` with an empty bar; hover for the localized profession name. Values above the base cap remain visible in text without overfilling the bar. Secondary professions are not displayed. Characters still lists members with inventory history; this change does not add a roster-only directory.
+The selected **Characters** header shows the two primary professions in a vertical column beside the name, each with an icon and a progress bar labeled `rank / 300`. The scale uses Forever's fixed base cap, not that character's currently trained tier. Ranks are read on each owner’s client and shared as optional data through the existing GUILD synchronization. Both you and the owner need version 0.4.4 or later for levels; older protocol-2 versions still exchange inventories normally. Native roster ranks are not used because build 70205 returned 1 for a known level of 52. Missing or restricted ranks show `?` with an empty bar; hover for the localized profession name. Values above the base cap remain visible in text without overfilling the bar. Secondary professions are not displayed. Received levels are saved with that character’s inventory revision and remain visible while they are offline. Existing offline inventory relays are unchanged and do not forward this optional metadata: a newly received relay has unknown levels until the owner sends them directly. Characters still lists members with inventory history; this change does not add a roster-only directory.
 
 Both inventory tables use **Material, Used by, Units** columns. Used by shows the catalog's known consuming-profession icons, including secondary professions, with localized names on hover over each icon. There is no tooltip for the whole cell. A dash means the profession has not yet been identified; it does not mean the object has no profession use.
 

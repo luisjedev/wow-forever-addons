@@ -116,7 +116,7 @@ function addon.GuildCharacters(search)
                 and (character.memberID == nil or character.memberID == member.id)))
             and character.name:lower():find(search, 1, true) then
             result[#result + 1] = {id = id, name = character.name:gsub("|", "||"), snapshot = character.snapshot,
-                primaryProfessions = member and member.primaryProfessions,
+                professionRanks = character.professionRanks,
                 skills = character.skills, online = member and member.online, offline = member and member.offline,
                 race = member and member.race, receivedAt = character.receivedAt}
         end
