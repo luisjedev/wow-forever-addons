@@ -13,11 +13,21 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 4, 2026; GuildStock local auction price estimates |
+| Last review of this log | October 4, 2026; GuildStock message security review |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock message security review · October 4, 2026
+
+**Reference:** existing client reference `wow_classic_beta`, version `1.60.1.70205`, interface `16001`. **Affected addon:** GuildStock 0.5.0, protocol 2. This was a source review and isolated simulation, not a native multiplayer test. The matching-build [ChatInfo documentation](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua#L489) defines addon messages as text payloads and provides the sender separately in `CHAT_MSG_ADDON`.
+
+**Documented in addon source:** the runtime has no received-text Lua evaluation path. Synchronization requires GUILD, verified current peer membership/presence, bounded packet sizes, numeric fields and bounded reassembly. These checks do not authenticate an offline owner's data supplied by another member. TDL and Revenge have no addon-message receivers in the reviewed source.
+
+**Reproduced in an isolated simulation — unresolved integrity issue:** an online guild peer can advertise and supply a fabricated inventory for a verified offline member through `Digest` and `RelaySnapshot` in `Sync.lua`. A fabricated high revision is accepted and copied into guild history. `Snapshot` and `Commit` subsequently reject the real owner's lower direct revision, even after the owner reconnects. The scenario used three synthetic clients: a legitimate count of 7 was replaced by 999, a later direct count of 11 did not repair it, and the fabricated revision survived a simulated SavedVariables reload. This changes GuildStock's recorded inventory, not actual bags or executable addon files. No messages were sent to the game and no personal data was read.
+
+**Validation and release follow-up:** syntax and all eight existing repository suites pass; a separate in-memory adversarial scenario reproduced the issue they do not cover. Correct the trust/precedence of relayed records before a stable release, including recovery of already-poisoned history, and add regression coverage. A directly authenticated owner update must be able to recover from an untrusted relay revision without weakening direct-session replay protection. Offline relays must remain explicitly indirect claims unless owner authentication is added. Native multi-client recovery, persistence and hostile-traffic performance remain pending; current queue/send limits alone do not establish resistance to incoming message floods. No runtime fix was made in this review.
 
 ### GuildStock local auction price estimates · October 4, 2026
 
