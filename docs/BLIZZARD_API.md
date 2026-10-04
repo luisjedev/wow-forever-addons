@@ -13,11 +13,21 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 4, 2026; GuildStock startup regression comparison against 0.3.2 |
+| Last review of this log | October 4, 2026; GuildStock idle allocation investigation |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock idle allocation investigation · October 4, 2026
+
+**Reference:** WoW Forever `wow_classic_beta`, `1.60.1.70205`, interface `16001`, from the existing client reference. **Affected addon:** GuildStock 0.4.2. **User report:** addon memory rose toward 30 MB and periodically fell again. That pattern is compatible with temporary allocations and garbage collection; it does not establish an unbounded retained-memory leak.
+
+**Documented in addon source:** the half-second synchronization tick rebuilt the serialized inventory even without changes. `CanSend` also called `ShareableSnapshot` merely to test eligibility, allocating and discarding copies of every carried item, including non-materials; flushing repeated that check. The network's 30-second change batch did not limit these local allocations. The correction retains one prepared representation until an inventory observation, privacy/profession change, catalog invalidation or transport reset. Sharing validation now checks the same settings without copying items. Per-packet privacy, combat/chat gates, membership validation, GUILD-only transport, observation timestamps, discovery retries and send batching remain in place. No API, SavedVariables schema or protocol change is introduced; the existing matching-build [chat](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua) and [club](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ClubDocumentation.lua) restrictions still apply.
+
+**Reproduced in simulation:** reuse the synthetic client/timer harness in `Sync.test.lua`, one client with 100 inventory IDs, warm up for 90 seconds, collect garbage, deliberately stop collection for 300 simulated seconds, then collect again. Before the correction, the LuaJIT process rose from 1.21 to 26.78 MB and returned to 1.21 MB. Afterward it rose from 1.18 to 1.31 MB and returned to 1.19 MB; another 300 seconds followed by collection remained at 1.19 MB. These are whole-harness measurements with collection artificially disabled, not native addon RAM measurements or evidence about the client's collector schedule. The existing five-second roster refresh and harness timer allocations still contribute temporary memory.
+
+**Validation:** Lua syntax and all seven repository suites pass. The new idle regression fails against the previous implementation. It checks zero inventory exports/profession reads during five minutes of idle ticks and no additional packets, then checks normal batching, profession changes, recipe discovery without quantity changes, malformed privacy settings, immediate exclusions and shard reset. Existing synchronization tests cover incomplete observations, frozen transfers, sharing opt-out, relay/history and forty simultaneous clients. Native RAM behavior after `/reload`, two-client delivery during looting/crafting and privacy changes, and cross-shard delivery remain pending; no native performance or persistence fix is claimed.
 
 ### GuildStock version in Settings · October 4, 2026
 

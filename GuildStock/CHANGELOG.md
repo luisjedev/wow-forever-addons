@@ -1,5 +1,6 @@
 # GuildStock 0.4.2
 
+- Reuse the prepared inventory between changes and check sharing permissions without copying items, reducing temporary memory allocation while idle. Preserve the 30-second change batch, immediate privacy withdrawals and bounded discovery retries.
 - Retry startup discovery after approximately 15 and 45 seconds so delayed guild presence or lost initial messages do not leave clients permanently undiscovered in the reproduced cases. Retries are bounded and preserve the existing messaging restrictions.
 - Extend the optional `/guildstock probe` diagnostic to five minutes with 15-second retries, remaining-time and request counters, and recovery from lost acknowledgements.
 - Preserve protocol-2 compatibility with 0.4.0 and 0.4.1, saved inventories, sharing preferences and offline history. Install 0.4.2 on all participants to receive the startup correction on each client; 0.3.x uses an incompatible protocol.

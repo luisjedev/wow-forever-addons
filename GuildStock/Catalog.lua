@@ -66,6 +66,7 @@ local sortedMaterials, sortedCatalog, filteredMaterials = nil, nil, {}
 local filterSnapshot, filterFavorites
 function addon.InvalidateMaterials()
     sortedMaterials, filteredMaterials = nil, {}
+    if addon.InvalidateSync then addon.InvalidateSync() end
 end
 
 function addon.Catalog(observation)

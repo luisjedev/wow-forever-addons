@@ -795,4 +795,46 @@ do
     assert(Received(reader,owner).memberID=="new-membership" and Received(reader,owner).snapshot.items[2770].count==14)
 end
 
+-- Idle transport must not rebuild/export unchanged inventories on its half-second timer.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    local owner,reader=Client("Idle Owner Example"),Client("Idle Reader Example")
+    owner:Login();reader:Login();Step(90)
+    local exports,skills=0,0
+    local shareable,getProfessions=owner.addon.ShareableSnapshot,owner.env.GetProfessions
+    owner.addon.ShareableSnapshot=function(...) exports=exports+1;return shareable(...) end
+    owner.env.GetProfessions=function(...) skills=skills+1;return getProfessions(...) end
+    local quiet=#log;Step(300)
+    assert(exports==0 and skills==0,"idle ticks must reuse the prepared inventory without copying or reading professions")
+    assert(#log==quiet,"idle transport stays silent")
+    owner.inventory[2770].count=19;owner.addon.Observe();Step(20)
+    assert(Received(reader,owner).snapshot.items[2770].count==7,"changes still wait for the normal batch")
+    Step(25)
+    assert(Received(reader,owner).snapshot.items[2770].count==19,"a changed observation replaces the prepared inventory")
+    exports,skills=0,0;Step(60);assert(exports==0 and skills==0)
+    owner.env.GetProfessions=function() return 2 end
+    owner:Event("SKILL_LINES_CHANGED");Step(45)
+    assert(Received(reader,owner).skills[1]=="Mining" and Received(reader,owner).skills[2]==nil,
+        "profession events invalidate the prepared inventory")
+    owner.inventory[99900]={count=5,bound=0};owner.addon.Observe();Step(45)
+    assert(not Received(reader,owner).snapshot.items[99900])
+    owner.env.C_TradeSkillUI.GetAllRecipeIDs=function() return {1} end
+    owner.env.C_TradeSkillUI.GetProfessionInfoByRecipeID=function() return {profession=2} end
+    owner.env.C_TradeSkillUI.GetRecipeSchematic=function()
+        return {reagentSlotSchematics={{reagents={{itemID=99900}}}}}
+    end
+    owner:Event("TRADE_SKILL_LIST_UPDATE");Step(45)
+    assert(Received(reader,owner).snapshot.items[99900].count==5,
+        "recipe discovery invalidates prepared material selection without a bag quantity change")
+    owner.addon.db.hiddenItems="unsupported"
+    quiet=#log;owner.addon.SyncDiscover();Step(10)
+    for i=quiet+1,#log do assert(log[i].sender~=owner.name,"cached inventories cannot bypass unsupported privacy data") end
+    owner.addon.db.hiddenItems=nil
+    owner.addon.SetItemHidden(2770,true);Step(15)
+    assert(not Received(reader,owner).snapshot.items[2770],"exclusions still withdraw cached stock promptly")
+    owner:Event("SHARD_TRANSFER");Step(60)
+    assert(Received(reader,owner).snapshot.items[99900].count==5 and not Received(reader,owner).snapshot.items[2770],
+        "world transitions rebuild the current privacy-filtered inventory")
+end
+
 print("GuildStock sync: fast login, 30-second batching, frozen snapshots, offline relays, durable versions, privacy, repair, migrations and bounded traffic OK")

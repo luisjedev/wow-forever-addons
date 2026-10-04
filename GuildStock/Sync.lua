@@ -13,6 +13,13 @@ local privacyPending, requested
 local summaryAt, summary, relayOut, download
 local candidates, relayQueue, relayServed = {}, {}, {}
 local MAX_REVISION = 999999999999
+-- Observations, privacy/profession changes, catalog invalidation and session resets
+-- discard this representation. Timer ticks only need to compare its key.
+local prepared
+
+function addon.InvalidateSync()
+    prepared = nil
+end
 
 local function Refresh() if addon.ScheduleRefresh then addon.ScheduleRefresh() end end
 local function Token() return string.format("%d-%d", time(), math.random(1, 2147483647)) end
@@ -23,6 +30,7 @@ local function Integer(value, low, high)
     if addon.Integer(value, low, high) then return value end
 end
 local function ClearTransport()
+    addon.InvalidateSync()
     session, published, revision, dirtyAt, fresh = Token(), nil, 0, nil, false
     queue, outgoing, peers = {}, nil, {}
     readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot = nil, nil, nil, nil, nil, nil
@@ -161,7 +169,7 @@ local function CanSend()
     -- Forever 70205 can report restricted=true while the native GUILD send returns Success.
     -- The native send result is authoritative; retain combat/lockdown gates and bounded retries.
     if not Roster() then state.status = "waiting"; return false end
-    if addon.temporary or not addon.ShareableSnapshot() then state.status = "waiting"; return false end
+    if not addon.CanShareSnapshot() then state.status = "waiting"; return false end
     return true
 end
 local function Enqueue(message, recipient)
@@ -195,6 +203,7 @@ local function PrimarySkills()
 end
 local function Build()
     if addon.IsSharingEnabled() and not privacyPending and (not fresh or addon.incomplete) then return end
+    if prepared then return prepared end
     local snapshot = addon.ShareableSnapshot()
     if not snapshot then return end
     local ids, catalog = {}, addon.Catalog()
@@ -207,10 +216,12 @@ local function Build()
         values[#values + 1] = string.format("%d,%d,%d", id, item.count, item.bound)
     end
     local skills = PrimarySkills()
-    return {values = values, skills = skills, observedAt = snapshot.observedAt,
+    prepared = {values = values, skills = skills, observedAt = snapshot.observedAt,
         key = skills .. ":" .. table.concat(values, ";")}
+    return prepared
 end
 function addon.SyncChanged(withdrawal)
+    addon.InvalidateSync()
     if world then Scope() end
     fresh = not addon.incomplete
     if withdrawal then
@@ -599,8 +610,7 @@ local function Flush()
     local message = queue[1] and queue[1].message
     local sending
     if not message and outgoing then
-        local allowed = addon.ShareableSnapshot()
-        if not allowed then outgoing = nil; return end
+        if not addon.CanShareSnapshot() then outgoing = nil; return end
         for id in pairs(outgoing.itemIDs) do
             if not addon.IsSharingEnabled() or addon.IsItemHidden(id) then outgoing = nil; return end
         end

@@ -72,17 +72,24 @@ function addon.SetItemHidden(id, hidden)
     if addon.SyncChanged then addon.SyncChanged(hidden) end
 end
 
--- GUILD inventory senders build from this copy at send time, never db.own.
--- Local observations retain all bag contents; hidden IDs and quantities never enter this copy.
-function addon.ShareableSnapshot()
+-- Validate sharing without allocating an inventory copy for each transport check.
+function addon.CanShareSnapshot()
     if not addon.db or addon.temporary
         or (addon.db.hiddenItems ~= nil and type(addon.db.hiddenItems) ~= "table") then return nil end
-    for id, hidden in pairs(addon.db.hiddenItems or {}) do
-        if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return nil end
+    if addon.db.hiddenItems then
+        for id, hidden in pairs(addon.db.hiddenItems) do
+            if not addon.Integer(id, 1, 2147483647) or type(hidden) ~= "boolean" then return nil end
+        end
     end
     local settings = addon.db.settings
     if settings ~= nil and (type(settings) ~= "table"
         or (settings.shareInventory ~= nil and type(settings.shareInventory) ~= "boolean")) then return nil end
+    return not addon.IsSharingEnabled() or not not addon.snapshot
+end
+
+-- Local observations retain all bag contents; hidden IDs and quantities never enter this copy.
+function addon.ShareableSnapshot()
+    if not addon.CanShareSnapshot() then return nil end
     -- An explicit opt-out withdraws old stock even before bags can be read.
     if not addon.IsSharingEnabled() then return {items = {}, observedAt = time()} end
     if not addon.snapshot then return nil end
