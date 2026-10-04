@@ -2,7 +2,7 @@
 ## Title: GuildStock
 ## IconTexture: Interface\AddOns\GuildStock\Assets\Icon
 ## Notes: Browse profession materials and automatically share inventories with your guild.
-## Version: 0.4.0
+## Version: 0.4.1
 ## SavedVariablesPerCharacter: GuildStockDB
 
 Locales.lua
@@ -11,5 +11,6 @@ Probe.lua
 ItemNames.lua
 CatalogSeed.lua
 Catalog.lua
+Bags.lua
 Sync.lua
 UI.lua

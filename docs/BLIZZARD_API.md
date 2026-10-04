@@ -13,11 +13,25 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 3, 2026; Forever rulesets, shards, identity and addon communications |
+| Last review of this log | October 4, 2026; GuildStock native bag profession hints |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock 0.4.1 native bag profession hints · October 4, 2026
+
+**Reference:** `wow_classic_beta`, installed `1.60.1.70205`, interface `16001`. **Affected addon:** GuildStock. A per-character `settings.bagHints` preference defaults to enabled. Known uses intersect with the existing learned-profession reader, including secondary professions. Native carried-bag buttons receive a small profession-goods badge, and their item tooltip gains a localized Useful for line with profession icons and names. Sharing exclusions do not suppress personal hints. Unsupported saved data is preserved; no inventory, catalog schema or communication protocol changes are introduced.
+
+**Documented in matching-build source:** the [UI manifest](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_UIPanels_Game/Blizzard_UIPanels_Game.toc) loads the family container implementation and Camelot override. The [native container code](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua) enumerates individual/combined frames and buttons, refreshes items and searches, uses `bags-icon-profession-goods`, and calls `GameTooltip:SetBagItem`. The [tooltip processor](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua) supplies `AddTooltipPostCall` and processing information. GuildStock post-hooks existing frame instances, owns only cosmetic textures, and leaves native click handlers, bag IDs, borders and counts intact. The tooltip callback requires a tracked native bag owner, a primary GetBagItem request and matching accessible item IDs; appended item data cannot duplicate the line.
+
+**Restrictions and limits:** attachment and item/profession reads require accessible false combat lockdown; hints hide during combat and refresh afterward. Forbidden frames and inaccessible IDs/mappings are skipped. Native update bursts share one 50-ms refresh; no polling loop, item movement or network traffic is added. The partial catalog establishes known profession uses, not recipe ownership, skill eligibility or exhaustive coverage. Unmarked objects are not declared useless. Bank and third-party bag interfaces are excluded.
+
+**Automated:** the documented syntax check and all seven repository suites pass. New bag fixtures cover missing/late native UI, individual and combined containers, secondary/multiple professions, defaults and opt-out, unsupported settings, searches, sorted/reused/empty slots, secret reads, catalog discovery, skill changes, duplicate callbacks, tooltip ownership, excluded bank slots, combat deferral/recovery and preserved native handlers. Existing interface/locale tests include the setting and all supported translations.
+
+**Reproduced in the game:** `/reload` loaded the added module. Combined bags displayed badges while leaving native quality/quest decorations and quantities visible. Invoking the native bag button's hover handler for Raw Longjaw Mud Snapper displayed Useful for with the Cooking icon and name. Settings showed the enabled checkbox and explanation without overlap. Clicking it removed badges immediately; the disabled preference survived another `/reload`, and the same native item tooltip then omitted the added line. Re-enabling restored badges and the option was left enabled. No Lua error dialog was observed. No item was intentionally moved or consumed, and no screenshots, identities or private saved files are published.
+
+**Pending native verification:** individual bags, physical pointer hover, multiple professions in one tooltip, sorting/stack splitting/loot, bag search, actual learning/unlearning, combat transitions, translated rendering, other scales and a full client restart. The checks above do not resolve the historical beta persistence limitation or extend guild synchronization claims.
 
 ### GuildStock 0.4.0 startup synchronization and offline history · October 4, 2026
 

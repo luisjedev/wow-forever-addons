@@ -222,7 +222,7 @@ C_Club = {
     GetMemberInfo = function(_, id) return members[id] end,
 }
 local addon = {}
-for _, file in ipairs({ "Locales", "GuildStock", "Probe", "ItemNames", "Catalog", "UI" }) do
+for _, file in ipairs({ "Locales", "GuildStock", "Probe", "ItemNames", "Catalog", "Bags", "UI" }) do
     assert(loadfile("GuildStock/" .. file .. ".lua"))("GuildStock", addon)
 end
 local function Event(event, ...)
@@ -1033,13 +1033,18 @@ assert(saved.favorites[20] == nil and saved.favorites[10])
 Click("Settings")
 local checks = {}
 for _, f in ipairs(frames) do if f.checked ~= nil and not f.parent.itemID then checks[#checks + 1] = f end end
-assert(#checks == 3)
+assert(#checks == 4)
 checks[2]:SetChecked(false)
 checks[2].scripts.OnClick(checks[2])
 assert(saved.settings.showMinimap == false and not GuildStockMinimapButton:IsShown())
 checks[2]:SetChecked(true)
 checks[2].scripts.OnClick(checks[2])
 assert(GuildStockMinimapButton:IsShown())
+assert(checks[4]:GetChecked(), "bag hints default to enabled")
+checks[4]:SetChecked(false); checks[4].scripts.OnClick(checks[4])
+assert(saved.settings.bagHints == false and not addon.BagHintsEnabled())
+checks[4]:SetChecked(true); checks[4].scripts.OnClick(checks[4])
+assert(addon.BagHintsEnabled())
 -- Exercise the dropdown callbacks separately from the identically named navigation buttons.
 local choices
 for _, f in ipairs(frames) do
@@ -1113,7 +1118,7 @@ do
     end
     GetLocale = previousLocale
     -- Include literal lookups so a new untranslated label fails even if absent from every table.
-    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "Sync", "UI"}) do
+    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "Bags", "Sync", "UI"}) do
         local sourceFile = assert(io.open("GuildStock/" .. file .. ".lua", "r"))
         local source = sourceFile:read("*a")
         sourceFile:close()

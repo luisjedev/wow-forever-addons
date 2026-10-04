@@ -1,6 +1,9 @@
 local _, addon = ...
 local translations = {
     esES = {
+        ["Useful for:"] = "Útil para:",
+        ["Mark materials useful for my professions"] = "Marcar materiales útiles para mis profesiones",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Muestra una insignia y las profesiones en las bolsas originales. Solo usos conocidos; no comprueba recetas ni nivel de habilidad.",
         ["Find this material in GuildStock"] = "Buscar este material en GuildStock",
         ["Online"] = "Conectado",
         ["Unknown"] = "Desconocido",
@@ -126,6 +129,9 @@ local translations = {
         ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
+        ["Useful for:"] = "Utile pour :",
+        ["Mark materials useful for my professions"] = "Marquer les composants utiles à mes métiers",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Affiche un symbole et les métiers dans les sacs natifs. Usages connus uniquement ; recettes et niveau de compétence non vérifiés.",
         ["Find this material in GuildStock"] = "Rechercher ce composant dans GuildStock",
         ["Online"] = "En ligne",
         ["Unknown"] = "Inconnu",
@@ -251,6 +257,9 @@ local translations = {
         ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
+        ["Useful for:"] = "Nützlich für:",
+        ["Mark materials useful for my professions"] = "Nützliche Materialien für meine Berufe markieren",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Zeigt ein Symbol und Berufsnamen in den Standardtaschen. Nur bekannte Verwendungen; Rezepte und Fertigkeitsstufe werden nicht geprüft.",
         ["Find this material in GuildStock"] = "Dieses Material in GuildStock suchen",
         ["Online"] = "Online",
         ["Unknown"] = "Unbekannt",
@@ -376,6 +385,9 @@ local translations = {
         ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
+        ["Useful for:"] = "Utile per:",
+        ["Mark materials useful for my professions"] = "Segnala i materiali utili alle mie professioni",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Mostra un simbolo e i nomi delle professioni nelle borse originali. Solo usi noti; ricette e livello di competenza non vengono verificati.",
         ["Find this material in GuildStock"] = "Cerca questo materiale in GuildStock",
         ["Online"] = "Online",
         ["Unknown"] = "Sconosciuto",
@@ -501,6 +513,9 @@ local translations = {
         ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
+        ["Useful for:"] = "Útil para:",
+        ["Mark materials useful for my professions"] = "Marcar materiais úteis para minhas profissões",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Mostra um símbolo e as profissões nas bolsas originais. Apenas usos conhecidos; receitas e nível de habilidade não são verificados.",
         ["Find this material in GuildStock"] = "Buscar este material no GuildStock",
         ["Online"] = "Online",
         ["Unknown"] = "Desconhecido",
@@ -626,6 +641,9 @@ local translations = {
         ["Drag: Move"] = "Arrastar: mover",
     },
     ruRU = {
+        ["Useful for:"] = "Полезно для:",
+        ["Mark materials useful for my professions"] = "Отмечать материалы для моих профессий",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "Показывает значок и названия профессий в стандартных сумках. Только известные применения; рецепты и уровень навыка не проверяются.",
         ["Find this material in GuildStock"] = "Найти этот материал в GuildStock",
         ["Online"] = "В сети",
         ["Unknown"] = "Неизвестно",
@@ -751,6 +769,9 @@ local translations = {
         ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
+        ["Useful for:"] = "유용한 전문 기술:",
+        ["Mark materials useful for my professions"] = "내 전문 기술에 유용한 재료 표시",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "기본 가방에 표시와 전문 기술 이름을 보여 줍니다. 알려진 용도만 표시하며 제조법과 숙련도는 확인하지 않습니다.",
         ["Find this material in GuildStock"] = "GuildStock에서 이 재료 찾기",
         ["Online"] = "온라인",
         ["Unknown"] = "알 수 없음",
@@ -876,6 +897,9 @@ local translations = {
         ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
+        ["Useful for:"] = "适用专业：",
+        ["Mark materials useful for my professions"] = "标记对我的专业有用的材料",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "在默认背包中显示标记和专业名称。仅显示已知用途，不检查配方或技能等级。",
         ["Find this material in GuildStock"] = "在GuildStock中查找此材料",
         ["Online"] = "在线",
         ["Unknown"] = "未知",
@@ -1001,6 +1025,9 @@ local translations = {
         ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
+        ["Useful for:"] = "適用專業：",
+        ["Mark materials useful for my professions"] = "標記對我的專業有用的材料",
+        ["Show a badge and profession names in native bags. Known uses only; recipes and skill level are not checked."] = "在預設背包中顯示標記和專業名稱。僅顯示已知用途，不檢查配方或技能等級。",
         ["Find this material in GuildStock"] = "在GuildStock中尋找此材料",
         ["Online"] = "在線",
         ["Unknown"] = "未知",
