@@ -20,12 +20,40 @@ function addon.BagHintSize()
     return addon.Integer(size, 10, 24) and size or 14
 end
 
-local function CarriedItem(button)
+local function CharacterBankPanel()
+    if not BankFrame or addon.Read(BankFrame.IsForbidden, BankFrame) ~= false then return end
+    local panel = BankFrame.BankPanel
+    if not panel or addon.Read(panel.IsForbidden, panel) ~= false then return end
+    return panel
+end
+
+local function BankVisible()
+    local panel = CharacterBankPanel()
+    local character = Enum and Enum.BankType and Enum.BankType.Character
+    return panel and character ~= nil and addon.Read(BankFrame.IsShown, BankFrame) == true
+        and addon.Read(panel.IsShown, panel) == true
+        and addon.Read(panel.GetActiveBankType, panel) == character
+        and addon.Read(C_Bank and C_Bank.CanViewBank, character) == true
+end
+
+local function ButtonItem(button)
     if addon.Read(button.IsForbidden, button) ~= false then return end
-    local bag, slot = addon.Read(button.GetBagID, button), addon.Read(button.GetID, button)
-    local counts = Constants and Constants.InventoryConstants
-    local lastBag = counts and counts.NumBagSlots + (counts.NumReagentBagSlots or 0)
-    if not addon.Integer(bag, 0, lastBag or 0) or not addon.Integer(slot, 1, 1000) then return end
+    local bank = buttons[button] and buttons[button].bank
+    local bag, slot
+    if bank then
+        if not BankVisible() then return end
+        bag, slot = addon.Read(button.GetBankTabID, button), addon.Read(button.GetContainerSlotID, button)
+        local index = Enum and Enum.BagIndex
+        if not index or not addon.Integer(index.CharacterBankTab_1, 0, 100)
+            or not addon.Integer(index.CharacterBankTab_9, index.CharacterBankTab_1, 100)
+            or not addon.Integer(bag, index.CharacterBankTab_1, index.CharacterBankTab_9) then return end
+    else
+        bag, slot = addon.Read(button.GetBagID, button), addon.Read(button.GetID, button)
+        local counts = Constants and Constants.InventoryConstants
+        local lastBag = counts and counts.NumBagSlots + (counts.NumReagentBagSlots or 0)
+        if not addon.Integer(bag, 0, lastBag or 0) then return end
+    end
+    if not addon.Integer(slot, 1, 1000) then return end
     local info = addon.Read(C_Container and C_Container.GetContainerItemInfo, bag, slot)
     if type(info) == "table" and addon.Integer(info.itemID, 1, 2147483647)
         and addon.Accessible(info.isFiltered) and not info.isFiltered then return info.itemID end
@@ -66,7 +94,7 @@ local function TooltipHint(tooltip, data)
     if type(info) ~= "table" or not addon.Accessible(info.getterName) or info.getterName ~= "GetBagItem"
         or not addon.Accessible(info.append) or info.append then return end
     if not addon.Accessible(data) or type(data) ~= "table" or not addon.Integer(data.id, 1, 2147483647) then return end
-    local id = CarriedItem(owner)
+    local id = ButtonItem(owner)
     if id ~= data.id then return end
     local text = UsefulFor(id)
     if text then
@@ -76,7 +104,8 @@ local function TooltipHint(tooltip, data)
 end
 
 local function Schedule()
-    if scheduled or not addon.db or type(ContainerFrameUtil_EnumerateContainerFrames) ~= "function" then return end
+    if scheduled or not addon.db then return end
+    if type(ContainerFrameUtil_EnumerateContainerFrames) ~= "function" and not CharacterBankPanel() then return end
     scheduled = true
     C_Timer.After(0.05, function()
         scheduled = false
@@ -84,10 +113,48 @@ local function Schedule()
     end)
 end
 
+local function RefreshButton(button, bank, enabled, size)
+    if addon.Read(button.IsForbidden, button) ~= false then return end
+    local badge = buttons[button]
+    if not badge then badge = {}; buttons[button] = badge end
+    badge.bank = bank
+    if not enabled or addon.Read(button.IsShown, button) ~= true or not UsefulFor(ButtonItem(button)) then return end
+    if not badge.icon then
+        badge.outline = button:CreateTexture(nil, "OVERLAY", nil, 6)
+        badge.outline:SetPoint("TOPRIGHT", -1, -1)
+        badge.outline:SetVertexColor(0, 0, 0, 0.9)
+        badge.icon = button:CreateTexture(nil, "OVERLAY", nil, 7)
+        badge.icon:SetPoint("TOPRIGHT", -2, -2)
+        for _, texture in ipairs({badge.outline, badge.icon}) do
+            texture:SetTexture("Interface\\MerchantFrame\\UI-Merchant-RepairIcons")
+            texture:SetTexCoord(0, 0.28125, 0, 0.5625)
+        end
+    end
+    badge.icon:SetSize(size, size)
+    badge.outline:SetSize(size + 2, size + 2)
+    badge.outline:Show(); badge.icon:Show()
+end
+
+local function HookContainer(frame, bank)
+    if frames[frame] then return end
+    frames[frame] = true
+    -- Hook existing instances: their mixin methods were copied before addon loading.
+    local methods = bank and {"GenerateItemSlotsForSelectedTab", "RefreshAllItemsForSelectedTab", "UpdateSearchResults"}
+        or {"UpdateItems", "UpdateSearchResults"}
+    for _, method in ipairs(methods) do
+        if type(frame[method]) == "function" then hooksecurefunc(frame, method, Schedule) end
+    end
+    frame:HookScript("OnShow", Schedule)
+    frame:HookScript("OnHide", Schedule)
+end
+
 function addon.RefreshBagHints()
     HideBadges()
     if not OutOfCombat() or not addon.db then return end
-    if type(ContainerFrameUtil_EnumerateContainerFrames) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+    if type(hooksecurefunc) ~= "function" then return end
+    local bankPanel = CharacterBankPanel()
+    local hasBags = type(ContainerFrameUtil_EnumerateContainerFrames) == "function"
+    if not hasBags and not bankPanel then return end
     if not tooltipHooked and TooltipDataProcessor and Enum and Enum.TooltipDataType
         and type(TooltipDataProcessor.AddTooltipPostCall) == "function" and GameTooltip
         and addon.Read(GameTooltip.IsForbidden, GameTooltip) == false then
@@ -100,40 +167,20 @@ function addon.RefreshBagHints()
     local size = addon.BagHintSize()
     learned = enabled and addon.LearnedProfessions() or nil
     catalog = enabled and addon.Catalog() or nil
-    for _, frame in ContainerFrameUtil_EnumerateContainerFrames() do
-        if addon.Read(frame.IsForbidden, frame) == false and type(frame.EnumerateItems) == "function" then
-            if not frames[frame] then
-                frames[frame] = true
-                -- Hook existing instances: their mixin methods were copied before addon loading.
-                if type(frame.UpdateItems) == "function" then hooksecurefunc(frame, "UpdateItems", Schedule) end
-                if type(frame.UpdateSearchResults) == "function" then hooksecurefunc(frame, "UpdateSearchResults", Schedule) end
-                frame:HookScript("OnShow", Schedule)
-            end
-            if frame:IsShown() then
-                for _, button in frame:EnumerateItems() do
-                    if addon.Read(button.IsForbidden, button) == false then
-                        local badge = buttons[button]
-                        if not badge then badge = {}; buttons[button] = badge end
-                        local useful = enabled and button:IsShown() and UsefulFor(CarriedItem(button))
-                        if useful then
-                            if not badge.icon then
-                                badge.outline = button:CreateTexture(nil, "OVERLAY", nil, 6)
-                                badge.outline:SetPoint("TOPRIGHT", -1, -1)
-                                badge.outline:SetVertexColor(0, 0, 0, 0.9)
-                                badge.icon = button:CreateTexture(nil, "OVERLAY", nil, 7)
-                                badge.icon:SetPoint("TOPRIGHT", -2, -2)
-                                for _, texture in ipairs({badge.outline, badge.icon}) do
-                                    texture:SetTexture("Interface\\MerchantFrame\\UI-Merchant-RepairIcons")
-                                    texture:SetTexCoord(0, 0.28125, 0, 0.5625)
-                                end
-                            end
-                            badge.icon:SetSize(size, size)
-                            badge.outline:SetSize(size + 2, size + 2)
-                            badge.outline:Show(); badge.icon:Show()
-                        end
-                    end
+    if hasBags then
+        for _, frame in ContainerFrameUtil_EnumerateContainerFrames() do
+            if addon.Read(frame.IsForbidden, frame) == false and type(frame.EnumerateItems) == "function" then
+                HookContainer(frame, false)
+                if frame:IsShown() then
+                    for _, button in frame:EnumerateItems() do RefreshButton(button, false, enabled, size) end
                 end
             end
+        end
+    end
+    if bankPanel and type(bankPanel.EnumerateValidItems) == "function" then
+        HookContainer(bankPanel, true)
+        if BankVisible() then
+            for button in bankPanel:EnumerateValidItems() do RefreshButton(button, true, enabled, size) end
         end
     end
 end
@@ -147,7 +194,8 @@ end
 local events = CreateFrame("Frame")
 for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ADDON_LOADED", "BAG_OPEN",
     "BAG_CONTAINER_UPDATE", "BAG_UPDATE_DELAYED", "SKILL_LINES_CHANGED", "TRADE_SKILL_LIST_UPDATE",
-    "TRADE_SKILL_SHOW", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED"}) do
+    "TRADE_SKILL_SHOW", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
+    "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "BANK_TABS_CHANGED", "PLAYERBANKSLOTS_CHANGED"}) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event)

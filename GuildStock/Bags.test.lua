@@ -211,4 +211,77 @@ GameTooltip.forbidden = false
 addon.ApplyLanguage("esES"); lines = Tooltip(first, 10)
 assert(lines[1]:find("Útil para:", 1, true) and lines[1]:find("Minería", 1, true))
 
-print("GuildStock: native bag hints, tooltips, preferences and restricted reads OK")
+-- Forever's bank uses an active frame pool and separate tab/slot accessors.
+local bankReadable, bankReads = true, 0
+Enum.BankType = {Character = 0, Account = 2}
+Enum.BagIndex = {CharacterBankTab_1 = 6, CharacterBankTab_9 = 14}
+C_Bank = {CanViewBank = function(kind) assert(kind == 0); return bankReadable end}
+BankFrame = Frame(); BankFrame:Hide()
+local panel, bankItem = Frame(), Frame()
+BankFrame.BankPanel = panel
+panel.bankType, panel.active = 0, {[bankItem] = true}
+function panel:GetActiveBankType() return self.bankType end
+function panel:EnumerateValidItems() return pairs(self.active) end
+function panel:GenerateItemSlotsForSelectedTab() end
+function panel:RefreshAllItemsForSelectedTab() end
+bankItem.tab, bankItem.slot = 6, 1
+bankItem.GetBankTabID = function(self) return self.tab end
+bankItem.GetContainerSlotID = function(self) return self.slot end
+bankItem.GetBagID = function() error("bank slots cannot use carried-bag accessors") end
+bankItem.scripts.OnClick = nativeClick
+local containerRead = C_Container.GetContainerItemInfo
+C_Container.GetContainerItemInfo = function(bag, slot)
+    if bag >= 6 then bankReads = bankReads + 1 end
+    return containerRead(bag, slot)
+end
+Event("ADDON_LOADED"); Drain()
+assert(not Visible(bankItem) and bankReads == 0, "never read a closed bank")
+BankFrame:Show(); Event("BANKFRAME_OPENED"); Drain()
+assert(Visible(bankItem) and #Tooltip(bankItem, 10) == 1 and bankItem.textures[2].width == addon.BagHintSize())
+assert(bankItem.scripts.OnClick == nativeClick, "native bank actions remain intact")
+bags[6][1].isFiltered = true; panel:UpdateSearchResults(); Drain()
+assert(not Visible(bankItem) and #Tooltip(bankItem, 10) == 0)
+bags[6][1].isFiltered = false; panel:UpdateSearchResults(); Drain(); assert(Visible(bankItem))
+-- Page regeneration reuses frames for different tabs and container slots.
+bags[7] = {{itemID = 20}, {itemID = 10}}
+bankItem.tab = 7; panel:GenerateItemSlotsForSelectedTab(); Drain(); assert(not Visible(bankItem))
+bankItem.slot = 2; panel:GenerateItemSlotsForSelectedTab(); Drain(); assert(Visible(bankItem))
+bags[7][2] = nil; panel:RefreshAllItemsForSelectedTab(); Drain(); assert(not Visible(bankItem))
+bags[7][2] = {itemID = 10}; Event("PLAYERBANKSLOTS_CHANGED"); Drain(); assert(Visible(bankItem))
+for _, unavailable in ipairs({false, secret}) do
+    bankReadable = unavailable
+    local before = bankReads; addon.RefreshBagHints()
+    assert(not Visible(bankItem) and #Tooltip(bankItem, 10) == 0 and bankReads == before)
+end
+bankReadable = true
+panel.bankType = 2; panel:GenerateItemSlotsForSelectedTab(); Drain()
+assert(not Visible(bankItem) and #Tooltip(bankItem, 10) == 0, "account storage is outside character-bank scope")
+panel.bankType = 0
+for _, invalid in ipairs({15, -1, secret}) do
+    bankItem.tab = invalid; addon.RefreshBagHints(); assert(not Visible(bankItem))
+end
+bankItem.tab = 7
+bankItem.slot = secret; addon.RefreshBagHints(); assert(not Visible(bankItem))
+bankItem.slot = 2
+bankItem.forbidden = true; addon.RefreshBagHints(); assert(#bankItem.textures == 2)
+bankItem.forbidden = false
+panel.forbidden = true; addon.RefreshBagHints(); assert(not Visible(bankItem))
+panel.forbidden = false
+local enumerateBags = ContainerFrameUtil_EnumerateContainerFrames
+ContainerFrameUtil_EnumerateContainerFrames = nil
+saved.settings.bagHintSize = 20; addon.BagHintsChanged()
+assert(Visible(bankItem) and bankItem.textures[2].width == 20, "bank works independently of the bag enumerator")
+saved.settings.bagHints = false; addon.BagHintsChanged(); assert(not Visible(bankItem))
+saved.settings.bagHints = true; addon.BagHintsChanged(); assert(Visible(bankItem))
+combat = true; Event("PLAYER_REGEN_DISABLED"); assert(not Visible(bankItem))
+combat = false; Event("PLAYER_REGEN_ENABLED"); Drain(); assert(Visible(bankItem))
+panel.active = {}; bankItem:Hide(); panel:GenerateItemSlotsForSelectedTab(); Drain()
+assert(not Visible(bankItem), "released pool buttons lose their hints")
+panel.active = {[bankItem] = true}; bankItem:Show(); panel:GenerateItemSlotsForSelectedTab(); Drain()
+assert(Visible(bankItem) and #bankItem.textures == 2 and #callbacks == 1)
+BankFrame:Hide(); Event("BANKFRAME_CLOSED"); Drain()
+local before = bankReads; addon.RefreshBagHints()
+assert(not Visible(bankItem) and #Tooltip(bankItem, 10) == 0 and bankReads == before)
+ContainerFrameUtil_EnumerateContainerFrames = enumerateBags
+
+print("GuildStock: native bag/bank hints, tooltips, preferences and restricted reads OK")
