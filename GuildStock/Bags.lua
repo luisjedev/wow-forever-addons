@@ -14,6 +14,12 @@ function addon.BagHintsEnabled()
         and (settings.bagHints == nil or settings.bagHints == true))
 end
 
+function addon.BagHintSize()
+    local settings = addon.db and addon.db.settings
+    local size = type(settings) == "table" and settings.bagHintSize
+    return addon.Integer(size, 10, 24) and size or 14
+end
+
 local function CarriedItem(button)
     if addon.Read(button.IsForbidden, button) ~= false then return end
     local bag, slot = addon.Read(button.GetBagID, button), addon.Read(button.GetID, button)
@@ -91,6 +97,7 @@ function addon.RefreshBagHints()
         tooltipHooked = true
     end
     local enabled = addon.BagHintsEnabled()
+    local size = addon.BagHintSize()
     learned = enabled and addon.LearnedProfessions() or nil
     catalog = enabled and addon.Catalog() or nil
     for _, frame in ContainerFrameUtil_EnumerateContainerFrames() do
@@ -111,17 +118,17 @@ function addon.RefreshBagHints()
                         if useful then
                             if not badge.icon then
                                 badge.outline = button:CreateTexture(nil, "OVERLAY", nil, 6)
-                                badge.outline:SetSize(18, 18)
                                 badge.outline:SetPoint("TOPRIGHT", -1, -1)
                                 badge.outline:SetVertexColor(0, 0, 0, 0.9)
                                 badge.icon = button:CreateTexture(nil, "OVERLAY", nil, 7)
-                                badge.icon:SetSize(16, 16)
                                 badge.icon:SetPoint("TOPRIGHT", -2, -2)
                                 for _, texture in ipairs({badge.outline, badge.icon}) do
                                     texture:SetTexture("Interface\\MerchantFrame\\UI-Merchant-RepairIcons")
                                     texture:SetTexCoord(0, 0.28125, 0, 0.5625)
                                 end
                             end
+                            badge.icon:SetSize(size, size)
+                            badge.outline:SetSize(size + 2, size + 2)
                             badge.outline:Show(); badge.icon:Show()
                         end
                     end

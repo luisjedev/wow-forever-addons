@@ -105,6 +105,24 @@ combat = false; Event("PLAYER_REGEN_ENABLED"); Drain()
 assert(#callbacks == 1 and Visible(first) and not Visible(second))
 assert(saved.settings.bagHints == nil and saved.settings.scale == 0.9 and saved.favorites[10] and saved.hiddenItems[10],
     "defaults do not rewrite settings; sharing exclusions do not hide personal hints")
+assert(addon.BagHintSize() == 14 and saved.settings.bagHintSize == nil and first.textures[2].width == 14,
+    "existing characters receive the smaller default without rewriting preferences")
+for _, size in ipairs({10, 24, 14}) do
+    saved.settings.bagHintSize = size; addon.RefreshBagHints()
+    assert(first.textures[2].width == size and first.textures[2].height == size
+        and first.textures[1].width == size + 2 and #first.textures == 2, "resize existing artwork and outline together")
+end
+for _, invalid in ipairs({9, 25, 14.5, "18", false, 0/0, math.huge, secret}) do
+    saved.settings.bagHintSize = invalid; addon.RefreshBagHints()
+    assert(addon.BagHintSize() == 14 and first.textures[2].width == 14, "invalid sizes fall back safely")
+    assert(rawequal(saved.settings.bagHintSize, invalid) or invalid ~= invalid, "invalid preferences are preserved")
+end
+saved.settings.bagHintSize = 18
+combat = true; addon.RefreshBagHints()
+assert(not Visible(first) and first.textures[2].width == 14, "size changes defer in combat")
+combat = false; Event("PLAYER_REGEN_ENABLED"); Drain()
+assert(Visible(first) and first.textures[2].width == 18)
+saved.settings.bagHintSize = nil; addon.RefreshBagHints()
 local nativeClick, nativeUpdate = first.scripts.OnClick, individual.updates
 local lines = Tooltip(first, 10)
 assert(#lines == 1 and lines[1]:find("Useful for:", 1, true) and lines[1]:find("|TInterface\\Icons\\Trade_Mining:16:16:0:0|t Mining", 1, true))
@@ -138,7 +156,10 @@ individual:Show(); Drain(); assert(Visible(first))
 
 saved.settings.bagHints = false; Tooltip(first, 10); addon.BagHintsChanged()
 assert(not Visible(first) and not Visible(reagent) and #Tooltip(first, 10) == 0)
+saved.settings.bagHintSize = 12; addon.RefreshBagHints()
+assert(not Visible(first), "resizing cannot enable disabled hints")
 saved.settings.bagHints = true; addon.BagHintsChanged(); Tooltip(first, 10)
+assert(first.textures[2].width == 12 and reagent.textures[2].width == 12, "re-enabled hints use the saved size")
 saved.settings.bagHints = false; addon.BagHintsChanged()
 assert(not GameTooltip:IsShown(), "disabling removes an already visible hint")
 local originalSettings = saved.settings

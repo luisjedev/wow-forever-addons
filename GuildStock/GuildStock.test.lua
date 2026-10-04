@@ -77,6 +77,7 @@ function methods:GetHeight() return self.height or 160 end
 function methods:GetEffectiveScale() return 1 end
 function methods:GetCenter() return 100, 100 end
 function methods:GetValue() return self.value or 0 end
+function methods:SetMinMaxValues(minimum, maximum) self.minimum, self.maximum = minimum, maximum end
 function methods:SetValue(value)
     if self.scroll then value = math.max(0, math.min(value, self.scroll:GetVerticalScrollRange())) end
     if self.value == value then return end
@@ -1064,10 +1065,34 @@ globalSharing:SetChecked(true); globalSharing.scripts.OnClick(globalSharing)
 assert(saved.settings == "preserve unsupported preferences" and not globalSharing:GetChecked())
 saved.settings = settingsBefore
 addon.Refresh()
-local slider
-for _, f in ipairs(frames) do if f.scripts.OnValueChanged then slider = f end end
+local slider, bagSizeSlider
+for _, f in ipairs(frames) do
+    if f.scripts.OnValueChanged and f.minimum == 0.8 then slider = f end
+    if f.scripts.OnValueChanged and f.minimum == 10 then bagSizeSlider = f end
+end
 slider.scripts.OnValueChanged(slider, 0.9)
 assert(saved.settings.scale == 0.9 and GuildStockFrame:GetScale() == 0.9)
+assert(bagSizeSlider.maximum == 24 and bagSizeSlider:GetValue() == 14 and saved.settings.bagHintSize == nil)
+local refreshHints, hintRefreshes = addon.RefreshBagHints, 0
+addon.RefreshBagHints = function() hintRefreshes = hintRefreshes + 1 end
+bagSizeSlider.scripts.OnValueChanged(bagSizeSlider, 12)
+assert(saved.settings.bagHintSize == 12 and bagSizeSlider:GetValue() == 12
+    and bagSizeSlider.valueLabel:GetText() == "12" and hintRefreshes == 1, "slider saves and refreshes bag hints immediately")
+addon.Refresh()
+bagSizeSlider.scripts.OnValueChanged(bagSizeSlider, 12)
+assert(hintRefreshes == 1, "display refresh cannot trigger recursive slider updates")
+for _, invalid in ipairs({9, 25, math.huge, 0/0, secret, "14"}) do
+    bagSizeSlider.scripts.OnValueChanged(bagSizeSlider, invalid)
+    assert(saved.settings.bagHintSize == 12)
+end
+bagSizeSlider.scripts.OnValueChanged(bagSizeSlider, 17.6)
+assert(saved.settings.bagHintSize == 18 and saved.settings.scale == 0.9, "bag size rounds independently of window scale")
+saved.settings = "preserve unsupported preferences"
+bagSizeSlider.scripts.OnValueChanged(bagSizeSlider, 20)
+assert(saved.settings == "preserve unsupported preferences")
+saved.settings = settingsBefore; addon.Refresh()
+assert(bagSizeSlider:GetValue() == 18, "reopening settings restores the saved size")
+addon.RefreshBagHints = refreshHints
 -- Language selection is per character and takes effect on the next UI load.
 local languageButton = Click("Automatic (game language)")
 local languageOptions = {}
