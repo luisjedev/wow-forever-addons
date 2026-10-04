@@ -67,6 +67,7 @@ function methods:SetFontHeight(value) self.fontSize = value end
 function methods:SetAtlas(value) self.atlas = value end
 function methods:SetEnabled(value) self.enabled = value end
 function methods:SetMotionScriptsWhileDisabled(value) self.motionWhileDisabled = value end
+function methods:SetMouseClickEnabled(value) self.mouseClickEnabled = value end
 function methods:SetTextColor(...) self.textColor = {...} end
 function methods:SetChecked(value) self.checked = value end
 function methods:SetFillToInterior(value) self.fillToInterior = value end
@@ -139,6 +140,7 @@ STANDARD_TEXT_FONT = "Fonts/example.ttf"
 methods.AddLine = function() end
 function methods:SetOwner(owner, anchor) self.owner, self.anchor = owner, anchor end
 function methods:IsOwned(owner) return self.owner == owner end
+function methods:SetItemByID(id) self.tooltipItemID = id; self:Show() end
 GetCursorPosition = function() return 150, 100 end
 GetBuildInfo = function() return "1.60.1", "70205", "", 16001 end
 UISpecialFrames, SlashCmdList = {}, {}
@@ -682,6 +684,41 @@ for _, frame in ipairs(frames) do
     if frame.icon and frame.icon.atlas == "auctionhouse-icon-favorite-off" and not frame.parent.label then detailFavorite = frame end
 end
 assert(materialInput and detailUses and detailFavorite)
+local function CheckItemTooltip(slot, id)
+    assert(slot and slot.mouseClickEnabled == false, "item hover leaves row clicks available")
+    slot.scripts.OnEnter(slot)
+    assert(GameTooltip:IsOwned(slot) and GameTooltip.anchor == "ANCHOR_RIGHT"
+        and GameTooltip.tooltipItemID == id and GameTooltip:IsShown(), "native tooltip receives the displayed item ID")
+    slot.scripts.OnLeave(slot)
+    assert(not GameTooltip:IsShown(), "leaving the icon dismisses its tooltip")
+    slot.scripts.OnEnter(slot)
+    slot.scripts.OnHide(slot)
+    assert(not GameTooltip:IsShown(), "hiding an icon or its parent dismisses its tooltip")
+    GameTooltip:SetOwner(UIParent); GameTooltip:Show()
+    slot.scripts.OnLeave(slot); slot.scripts.OnHide(slot)
+    assert(GameTooltip:IsShown(), "icon cleanup leaves another owner's tooltip alone")
+    GameTooltip:Hide()
+end
+CheckItemTooltip(materialInput.list.rows[1].itemSlot, materialInput.list.rows[1].itemID)
+do
+    local slot
+    for _, frame in ipairs(frames) do
+        if frame.parent == detailUses.parent and frame.itemID then slot = frame end
+    end
+    CheckItemTooltip(slot, materialInput.list.rows[1].itemID)
+    slot.scripts.OnEnter(slot)
+    materialInput.list.rows[2].scripts.OnClick(materialInput.list.rows[2])
+    assert(not GameTooltip:IsShown(), "changing the selected material clears the old detail tooltip")
+    CheckItemTooltip(slot, materialInput.list.rows[2].itemID)
+    materialInput.list.rows[1].scripts.OnClick(materialInput.list.rows[1])
+    local id = slot.itemID
+    for _, invalid in ipairs({0, -1, "10", secret}) do
+        slot.itemID = invalid
+        slot.scripts.OnEnter(slot)
+        assert(not GameTooltip:IsShown(), "invalid or inaccessible IDs are not passed to native tooltips")
+    end
+    slot.itemID = id
+end
 do
     local buttons, mine, other, all = {}
     for _, frame in ipairs(frames) do
@@ -809,6 +846,7 @@ local function ItemRow(list, id)
     for _, row in ipairs(list.rows) do if row.itemID == id and row:IsShown() then return row end end
 end
 local bagRows = bagInput.list
+CheckItemTooltip(bagRows.rows[1].itemSlot, bagRows.rows[1].itemID)
 local function HiddenRow(id)
     for _, frame in ipairs(frames) do
         if frame.itemID == id and frame.sharing and not frame.usedBy and frame:IsShown() then return frame end
@@ -827,6 +865,7 @@ assert(ItemRow(bagRows, 10).border[4] == 0 and HiddenRow(10).border[4] == 0, "in
 assert(#addon.Materials("all") == 2 and #addon.Materials("favorites") == 1, "hiding does not remove catalog or favorites")
 assert(addon.snapshot == rawBeforeHiding and not addon.ShareableSnapshot().items[10])
 local hiddenRow = HiddenRow(10)
+CheckItemTooltip(hiddenRow.itemSlot, 10)
 assert(hiddenRow.sharing.template == "UIPanelButtonTemplate" and hiddenRow.sharing:GetText() == "Share", "restore uses a native Blizzard button")
 assert(math.abs((bagRows.width + 24) / (hiddenRow.parent.width + 24) - 7 / 3) < 0.001, "inventory panes use the requested 70/30 split")
 Click("Settings")
@@ -982,6 +1021,7 @@ characterWhisper.scripts.OnEnter(characterWhisper)
 assert(GameTooltip:GetText() == "Whisper requires confirmed online presence.")
 characterWhisper.scripts.OnLeave(characterWhisper)
 local peerRows = peerItemInput.list.rows
+CheckItemTooltip(peerRows[1].itemSlot, peerRows[1].itemID)
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
 assert(not peerRows[1].sharing, "only My inventory has privacy controls")
 assert(peerRows[1].usedBy.slots[1].icon.texture == "Interface\\Icons\\INV_Misc_Food_15")
@@ -1304,7 +1344,10 @@ do
     local firstRow = list.rows[1]
     local selectionMarker = firstRow.selection
     assert(selectionMarker:IsShown(), "the selected material has a visible marker")
+    firstRow.itemSlot.scripts.OnEnter(firstRow.itemSlot)
     list.scroll.ScrollBar:SetValue(5500)
+    assert(not GameTooltip:IsShown(), "scroll recycling dismisses the previous item's tooltip")
+    CheckItemTooltip(firstRow.itemSlot, 1101)
     assert(list.rows[1] == firstRow and firstRow.itemID == 1101 and firstRow.point[3] == -5500)
     assert(firstRow.selection == selectionMarker and not selectionMarker:IsShown(), "recycling clears the previous item's marker")
     assert(firstRow.background[4] == 0, "recycling a selected row restores the panel background")

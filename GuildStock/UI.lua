@@ -137,6 +137,26 @@ local function Tip(frame, value)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+local function HideItemTooltip(self)
+    if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+end
+
+local function SetSlotItem(slot, itemID)
+    if not slot:GetScript("OnEnter") then
+        slot:EnableMouse(true)
+        slot:SetMouseClickEnabled(false) -- Keep row selection clickable through the icon.
+        slot:SetScript("OnEnter", function(self)
+            if not addon.Integer(self.itemID, 1, 2147483647) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetItemByID(self.itemID)
+        end)
+        slot:SetScript("OnLeave", HideItemTooltip)
+        slot:SetScript("OnHide", HideItemTooltip)
+    end
+    if slot.itemID ~= itemID then HideItemTooltip(slot) end
+    slot.itemID = itemID
+end
+
 local function SyncAge(observedAt)
     local age = math.max(0, time() - observedAt)
     local count, key
@@ -451,8 +471,8 @@ local function RenderVisibleRows(list)
                     RefreshMaterialDetail()
                 end
             end, nil, true)
-            local slot = Panel(row, 7, 6, 43, 43)
-            row.icon = Icon(slot, nil, 2, 2, 39)
+            row.itemSlot = Panel(row, 7, 6, 43, 43)
+            row.icon = Icon(row.itemSlot, nil, 2, 2, 39)
             row.label:ClearAllPoints()
             row.label:SetPoint("LEFT", 59, 0)
             row.label:SetWidth(own and contentWidth * 0.5 - 73 or list.width - (hidden and 155 or 96))
@@ -498,6 +518,7 @@ local function RenderVisibleRows(list)
         row:SetPoint("TOPLEFT", 0, -(index - 1) * 55)
         row.separator:SetShown(index < #entries)
         row.itemID = entry.id
+        SetSlotItem(row.itemSlot, entry.id)
         row.label:SetText(entry.name)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         Highlight(row, not own and not hidden and entry.id == selected)
@@ -659,6 +680,7 @@ function addon.RenderOwners()
 end
 
 RefreshMaterialDetail = function()
+    SetSlotItem(detailSlot, selected)
     detailSlot:SetShown(selected ~= nil)
     detailStar:SetShown(selected ~= nil)
     detailProfessions:SetShown(selected ~= nil)

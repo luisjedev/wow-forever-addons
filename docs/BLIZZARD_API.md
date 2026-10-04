@@ -19,6 +19,14 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock native item-icon tooltips · October 4, 2026
+
+**Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001`. **Affected addon:** GuildStock. Item icons in Materials/Favorites, the selected material detail, My inventory, Not shared and Characters now use the native item tooltip. Only icons receive hover handlers; row clicks remain available. Tooltips close on leave/hide and item replacement, and cleanup checks ownership.
+
+**Documented in matching-build source:** [TooltipDataHandler](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua#L481) exposes `GameTooltip:SetItemByID` through the native tooltip processor. [Script-region methods](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua#L631) distinguish mouse clicks from motion. GuildStock passes an accessible positive item ID and leaves tooltip content, localization and data refresh to Blizzard. These are generic item tooltips, not a particular bag stack: stack-specific binding and total sale value are not inferred from aggregate inventory counts.
+
+**Automated:** syntax and all seven repository suites pass against the committed baseline plus this isolated change. Fixtures cover native item IDs in every item view, selection changes, row recycling, invalid/inaccessible IDs, leave/hide cleanup and preserving another owner's tooltip. Concurrent profession work is excluded from this publication. **Pending native verification:** a reload attempt was interrupted by desktop activity. Verify effects, required/item levels and vendor price where supplied by the client, pointer hover/click-through, window/tab hiding, uncached data, combat and other scales/locales. No new persistence or synchronization claims; no screenshots or player records are published.
+
 ### GuildStock profession planner and native guild directory feasibility · October 4, 2026
 
 **Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`; a read-only native `GetBuildInfo()` query also returned version `1.60.1`, build `70205` and interface `16001`. **Affected addon:** GuildStock. This is research for a possible profession planner and guild artisan directory; no addon behavior or saved data is changed.
