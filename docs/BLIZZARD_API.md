@@ -13,11 +13,19 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 4, 2026; GuildStock native bag profession hints |
+| Last review of this log | October 4, 2026; GuildStock 0.4.1 two-client delivery investigation |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock 0.4.1 two-client delivery investigation · October 4, 2026
+
+**Reference:** `wow_classic_beta`; both clients' diagnostics showed `1.60.1.70205`, interface `16001`. Local addon metadata confirmed 0.4.1; the second participant reported 0.4.1. **Affected addon:** GuildStock. The local native roster contained the second participant under the exact full name, with `isSelf = false` and online presence. Local reload and discovery did not recover synchronization: diagnostics showed `ready`, registration/send `Success`, 5 sent packets and 0 completed received inventories. The remote capture showed the same status/results, 11 sent packets and 0 completed received inventories. Existing dated history remained visible; it is not evidence of current delivery.
+
+**Native probe evidence:** after coordinating overlapping `/guildstock probe` windows, the remote capture showed `received = 1`, `confirmed = 0`, `unmatched = 0`; local diagnostics showed zero for all three. The probe excludes its own request echo before counting receipt, so the remote count establishes a matched guild-peer request, but not a round trip. A temporary local `CHAT_MSG_ADDON` observer, independent of GuildStock's membership and protocol filters, saw own echoes. During a further remote-confirmed probe attempt, its prefix/accessibility diagnostics recorded only the local echo, with accessible message/channel/sender values; no additional matching-prefix or inaccessible-prefix event was observed. This points to missing delivery toward the local client in this session, without identifying whether the cause is remote sending, client state, another addon, or server routing. Exact shard placement was not established.
+
+**Limits and next checks:** `AreOutgoingAddonChatMessagesRestricted()` remained true and `InChatMessagingLockdown()` false. The matching-build [chat API documentation](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua#L10) describes realm-dependent outgoing restrictions and independent receiving control; native `Success` and own echoes must not be presented as remote delivery. A full client restart, isolation from other addons, and controlled same-shard/cross-shard comparisons in both directions remain pending. Protocol-2 inventory synchronization is still unverified for these clients; no code/protocol/version change or fix is claimed. The documented syntax check and all seven repository suites pass, which does not validate native delivery. Only anonymized observations are recorded; no screenshots, identities, inventories or private saved files are published.
 
 ### GuildStock character-bank material hints · October 4, 2026
 
