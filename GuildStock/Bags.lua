@@ -46,7 +46,7 @@ end
 local function HideBadges()
     for button, badge in pairs(buttons) do
         if badge.icon and addon.Read(button.IsForbidden, button) == false then
-            badge.icon:Hide()
+            badge.icon:Hide(); badge.outline:Hide()
         end
     end
 end
@@ -110,12 +110,19 @@ function addon.RefreshBagHints()
                         local useful = enabled and button:IsShown() and UsefulFor(CarriedItem(button))
                         if useful then
                             if not badge.icon then
+                                badge.outline = button:CreateTexture(nil, "OVERLAY", nil, 6)
+                                badge.outline:SetSize(18, 18)
+                                badge.outline:SetPoint("TOPRIGHT", -1, -1)
+                                badge.outline:SetVertexColor(0, 0, 0, 0.9)
                                 badge.icon = button:CreateTexture(nil, "OVERLAY", nil, 7)
                                 badge.icon:SetSize(16, 16)
                                 badge.icon:SetPoint("TOPRIGHT", -2, -2)
-                                badge.icon:SetTexture("Interface\\Cursor\\Repair")
+                                for _, texture in ipairs({badge.outline, badge.icon}) do
+                                    texture:SetTexture("Interface\\MerchantFrame\\UI-Merchant-RepairIcons")
+                                    texture:SetTexCoord(0, 0.28125, 0, 0.5625)
+                                end
                             end
-                            badge.icon:Show()
+                            badge.outline:Show(); badge.icon:Show()
                         end
                     end
                 end

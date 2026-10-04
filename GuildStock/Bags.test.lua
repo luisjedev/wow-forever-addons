@@ -23,6 +23,8 @@ function methods:Hide() self.shown = false; if self.scripts.OnHide then self.scr
 function methods:SetSize(w, h) self.width, self.height = w, h end
 function methods:SetPoint(...) self.point = {...} end
 function methods:SetTexture(texture) self.texture = texture end
+function methods:SetTexCoord(...) self.coords = {...} end
+function methods:SetVertexColor(...) self.color = {...} end
 function methods:GetBagID() return self.bag end
 function methods:GetID() return self.slot end
 function methods:GetOwner() return self.owner end
@@ -76,7 +78,9 @@ combined:Hide()
 local containers = {individual, combined}
 local function Enumerate() return ipairs(containers) end
 local function Visible(button)
-    return #button.textures > 0 and button.textures[1]:IsShown()
+    if #button.textures == 0 then return false end
+    assert(button.textures[1]:IsShown() == button.textures[2]:IsShown(), "outline follows the badge")
+    return button.textures[2]:IsShown()
 end
 local function Tooltip(owner, id, getter, append)
     GameTooltip.owner, GameTooltip.lines = owner, {}
@@ -171,7 +175,7 @@ combat = secret; addon.RefreshBagHints(); assert(not Visible(first))
 combat = false
 local late = Frame(); late.items = {Button(0, 1)}; containers[#containers + 1] = late
 Event("BAG_OPEN"); Drain(); assert(Visible(late.items[1]))
-Event("ADDON_LOADED"); Drain(); assert(#callbacks == 1 and #first.textures == 1, "hooks and artwork are reused")
+Event("ADDON_LOADED"); Drain(); assert(#callbacks == 1 and #first.textures == 2, "hooks and artwork are reused")
 assert(first.scripts.OnClick == nativeClick and individual.updates > (nativeUpdate or 0), "native clicks and updates are preserved")
 local forbidden = Frame(); forbidden.forbidden = true
 forbidden.EnumerateItems = function() error("forbidden container read") end
