@@ -1,6 +1,7 @@
 local _, addon = ...
 local translations = {
     esES = {
+        ["Offline"] = "Desconectado",
         ["Bag icon size"] = "Tamaño del icono",
         ["Useful for:"] = "Útil para:",
         ["Mark materials useful for my professions"] = "Marcar materiales útiles para mis profesiones",
@@ -130,6 +131,7 @@ local translations = {
         ["Drag: Move"] = "Arrastrar: mover",
     },
     frFR = {
+        ["Offline"] = "Hors ligne",
         ["Bag icon size"] = "Taille de l’icône",
         ["Useful for:"] = "Utile pour :",
         ["Mark materials useful for my professions"] = "Marquer les composants utiles à mes métiers",
@@ -259,6 +261,7 @@ local translations = {
         ["Drag: Move"] = "Glisser : déplacer",
     },
     deDE = {
+        ["Offline"] = "Offline",
         ["Bag icon size"] = "Symbolgröße",
         ["Useful for:"] = "Nützlich für:",
         ["Mark materials useful for my professions"] = "Nützliche Materialien für meine Berufe markieren",
@@ -388,6 +391,7 @@ local translations = {
         ["Drag: Move"] = "Ziehen: verschieben",
     },
     itIT = {
+        ["Offline"] = "Offline",
         ["Bag icon size"] = "Dimensione icona",
         ["Useful for:"] = "Utile per:",
         ["Mark materials useful for my professions"] = "Segnala i materiali utili alle mie professioni",
@@ -517,6 +521,7 @@ local translations = {
         ["Drag: Move"] = "Trascina: sposta",
     },
     ptBR = {
+        ["Offline"] = "Offline",
         ["Bag icon size"] = "Tamanho do ícone",
         ["Useful for:"] = "Útil para:",
         ["Mark materials useful for my professions"] = "Marcar materiais úteis para minhas profissões",
@@ -646,6 +651,7 @@ local translations = {
         ["Drag: Move"] = "Arrastar: mover",
     },
     ruRU = {
+        ["Offline"] = "Не в сети",
         ["Bag icon size"] = "Размер значка",
         ["Useful for:"] = "Полезно для:",
         ["Mark materials useful for my professions"] = "Отмечать материалы для моих профессий",
@@ -775,6 +781,7 @@ local translations = {
         ["Drag: Move"] = "Перетаскивание: переместить",
     },
     koKR = {
+        ["Offline"] = "오프라인",
         ["Bag icon size"] = "아이콘 크기",
         ["Useful for:"] = "유용한 전문 기술:",
         ["Mark materials useful for my professions"] = "내 전문 기술에 유용한 재료 표시",
@@ -904,6 +911,7 @@ local translations = {
         ["Drag: Move"] = "드래그: 이동",
     },
     zhCN = {
+        ["Offline"] = "离线",
         ["Bag icon size"] = "图标大小",
         ["Useful for:"] = "适用专业：",
         ["Mark materials useful for my professions"] = "标记对我的专业有用的材料",
@@ -1033,6 +1041,7 @@ local translations = {
         ["Drag: Move"] = "拖动：移动",
     },
     zhTW = {
+        ["Offline"] = "離線",
         ["Bag icon size"] = "圖示大小",
         ["Useful for:"] = "適用專業：",
         ["Mark materials useful for my professions"] = "標記對我的專業有用的材料",

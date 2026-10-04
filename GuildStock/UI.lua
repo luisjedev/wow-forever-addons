@@ -414,6 +414,45 @@ local function LayoutProfessions()
     professionList.scroll.ScrollBar:SetValue(math.min(professionList.scroll:GetVerticalScroll(), maximum))
 end
 
+local function SectionHeading(parent, text, x, y, width)
+    local title = Label(parent, text, x, y, width, 13, muted)
+    title:SetWordWrap(false)
+    title.separator = parent:CreateTexture(nil, "ARTWORK")
+    title.separator:SetTexture("Interface\\Buttons\\WHITE8X8")
+    title.separator:SetVertexColor(unpack(gold))
+    title.separator:SetRoundLayoutToNearestPixel(true)
+    title.separator:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+    title.separator:SetSize(width * 0.6, 1)
+    title.animation = title.separator:CreateAnimationGroup()
+    title.stretch = title.animation:CreateAnimation("Scale")
+    title.stretch:SetOrigin("LEFT", 0, 0)
+    title.stretch:SetScaleTo(1, 1)
+    title.stretch:SetDuration(0.5)
+    title.stretch:SetSmoothing("OUT")
+    return title
+end
+
+local function HighlightSection(title, active)
+    if title.active == active then return end
+    local width = title:GetWidth() * (active and 0.8 or 0.6)
+    local from = title.targetWidth
+    if from and addon.Read(title.animation.IsPlaying, title.animation) == true then
+        local progress = addon.Read(title.stretch.GetSmoothProgress, title.stretch)
+        if type(progress) == "number" and progress >= 0 and progress <= 1 then
+            from = title.fromWidth + (from - title.fromWidth) * progress
+        end
+    end
+    title.animation:Stop()
+    title.separator:SetSize(width, active and 2 or 1)
+    title.separator:SetVertexColor(unpack(active and colors.accent or gold))
+    title.active, title.fromWidth, title.targetWidth = active, from, width
+    if from and title:IsShown() then
+        -- Set the final layout first; animate only its horizontal visual scale.
+        title.stretch:SetScaleFrom(from / width, 1)
+        title.animation:Play()
+    end
+end
+
 local function HighlightProfessionSections()
     local activeTitle = professionList.usedByTitle
     if profession then
@@ -421,26 +460,7 @@ local function HighlightProfessionSections()
             and professionList.myTitle or professionList.otherTitle
     end
     for _, title in ipairs({professionList.usedByTitle, professionList.myTitle, professionList.otherTitle}) do
-        local active = title == activeTitle
-        if title.active ~= active then
-            local width = title:GetWidth() * (active and 0.8 or 0.6)
-            local from = title.targetWidth
-            if from and addon.Read(title.animation.IsPlaying, title.animation) == true then
-                local progress = addon.Read(title.stretch.GetSmoothProgress, title.stretch)
-                if type(progress) == "number" and progress >= 0 and progress <= 1 then
-                    from = title.fromWidth + (from - title.fromWidth) * progress
-                end
-            end
-            title.animation:Stop()
-            title.separator:SetSize(width, active and 2 or 1)
-            title.separator:SetVertexColor(unpack(active and colors.accent or gold))
-            title.active, title.fromWidth, title.targetWidth = active, from, width
-            if from and title:IsShown() then
-                -- Set the final layout first; animate only its horizontal visual scale.
-                title.stretch:SetScaleFrom(from / width, 1)
-                title.animation:Play()
-            end
-        end
+        HighlightSection(title, title == activeTitle)
     end
 end
 
@@ -589,17 +609,41 @@ local function RenderList(list, entries, snapshot)
 end
 
 local function RefreshCharacters()
-    local entries = addon.GuildCharacters((characterSearch.appliedText or ""))
+    local groups, entries = {{}, {}, {}}, {}
+    for _, entry in ipairs(addon.GuildCharacters((characterSearch.appliedText or ""))) do
+        entry.section = entry.online == true and 1 or entry.offline == true and 2 or 3
+        local group = groups[entry.section]
+        group[#group + 1] = entry
+    end
+    for _, group in ipairs(groups) do
+        for _, entry in ipairs(group) do entries[#entries + 1] = entry end
+    end
     local current
     for _, entry in ipairs(entries) do if entry.id == selectedCharacter then current = entry end end
     current = current or entries[1]
     local nextID = current and current.id
     if selectedCharacter ~= nextID then characterItems.scroll.ScrollBar:SetValue(0) end
     selectedCharacter = nextID
+    for section, title in ipairs(characterList.headings) do
+        local shown = #groups[section] > 0
+        title:SetShown(shown)
+        title.separator:SetShown(shown)
+        HighlightSection(title, current ~= nil and current.section == section)
+        if not shown then title.animation:Stop() end
+    end
+    local y, previousSection = 0, nil
     for i, entry in ipairs(entries) do
+        if entry.section ~= previousSection then
+            if previousSection then y = y + 12 end
+            local title = characterList.headings[entry.section]
+            title:ClearAllPoints()
+            title:SetPoint("TOPLEFT", 8, -y)
+            y = y + 32
+            previousSection = entry.section
+        end
         local row = characterList.rows[i]
         if not row then
-            row = Button(characterList.content, "", 0, (i - 1) * 46, characterList.width, 46, function(self)
+            row = Button(characterList.content, "", 0, y, characterList.width, 46, function(self)
                 selectedCharacter = self.characterID
                 characterItems.scroll.ScrollBar:SetValue(0)
                 addon.Refresh()
@@ -610,17 +654,20 @@ local function RefreshCharacters()
             row.label:SetWidth(characterList.width - 124)
             characterList.rows[i] = row
         end
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 0, -y)
+        y = y + 46
         row.characterID = entry.id
         addon.SetPlayerRace(row, entry.race, 10)
         addon.SetPlayerSkills(row, entry.skills, characterList.width - 68)
-        row.separator:SetShown(i < #entries)
+        row.separator:SetShown(entries[i + 1] ~= nil and entries[i + 1].section == entry.section)
         row.label:SetText(entry.name)
         SyncTip(row, entry)
         Highlight(row, entry.id == selectedCharacter)
         row:Show()
     end
     for i = #entries + 1, #characterList.rows do characterList.rows[i]:Hide() end
-    characterList.content:SetHeight(math.max(1, #entries * 46))
+    characterList.content:SetHeight(math.max(1, y))
     characterList.scroll:UpdateScrollChildRect()
     characterList.scroll.ScrollBar:SetValue(math.min(characterList.scroll.ScrollBar:GetValue(), characterList.scroll:GetVerticalScrollRange()))
     characterList.empty:SetShown(#entries == 0)
@@ -806,8 +853,8 @@ local function SelectPage(value)
     addon.Refresh()
 end
 
--- Passing the palette keeps this builder below Lua 5.1's 60-upvalue limit.
-local function CreateWindow(colors)
+-- Pass shared helpers/palette to stay below Lua 5.1's 60-upvalue limit.
+local function CreateWindow(colors, SectionHeading)
     window = CreateFrame("Frame", "GuildStockFrame", UIParent, "BackdropTemplate")
     window:Hide()
     window:SetSize(1180, 650)
@@ -854,7 +901,7 @@ local function CreateWindow(colors)
     navigation.favorites.image:SetSize(20, 18)
     navigation.favorites.image:ClearAllPoints()
     navigation.favorites.image:SetPoint("LEFT", 14, 0)
-    local usedByTitle = Label(sidebar, L["Used by"], 15, 118, 202, 13, muted)
+    local usedByTitle = SectionHeading(sidebar, L["Used by"], 15, 118, 202)
     professionList = Scroll(sidebar, 7, 145, 234, 404)
     professionList.usedByTitle = usedByTitle
     professionButtons.all = Button(professionList.content, L["All professions"], 0, 0, 210, 40, function()
@@ -872,29 +919,12 @@ local function CreateWindow(colors)
         professionButtons[entry[1]].separator:Hide()
     end
     professionList.content:SetHeight((#addon.professions + 1) * 40)
-    professionList.myTitle = Label(professionList.content, L["My professions"], 8, 0, 202, 13, muted)
-    professionList.otherTitle = Label(professionList.content, L["Other professions"], 8, 0, 202, 13, muted)
-    professionList.myTitle:SetWordWrap(false)
-    professionList.otherTitle:SetWordWrap(false)
+    professionList.myTitle = SectionHeading(professionList.content, L["My professions"], 8, 0, 202)
+    professionList.otherTitle = SectionHeading(professionList.content, L["Other professions"], 8, 0, 202)
     professionList.myTitle:Hide()
     professionList.otherTitle:Hide()
-    for _, entry in ipairs({{sidebar, usedByTitle}, {professionList.content, professionList.myTitle},
-        {professionList.content, professionList.otherTitle}}) do
-        local title = entry[2]
-        title.separator = entry[1]:CreateTexture(nil, "ARTWORK")
-        title.separator:SetTexture("Interface\\Buttons\\WHITE8X8")
-        title.separator:SetVertexColor(unpack(gold))
-        title.separator:SetRoundLayoutToNearestPixel(true)
-        title.separator:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
-        title.separator:SetSize(title:GetWidth() * 0.6, 1)
-        title.separator:SetShown(title:IsShown())
-        title.animation = title.separator:CreateAnimationGroup()
-        title.stretch = title.animation:CreateAnimation("Scale")
-        title.stretch:SetOrigin("LEFT", 0, 0)
-        title.stretch:SetScaleTo(1, 1)
-        title.stretch:SetDuration(0.5)
-        title.stretch:SetSmoothing("OUT")
-    end
+    professionList.myTitle.separator:Hide()
+    professionList.otherTitle.separator:Hide()
     local middle = Panel(browser, 258, 77, 324, 566)
     search = Search(middle, "Search materials...", 11, 13, 301)
     listTitle = Label(middle, "", 14, 64, 295, 19)
@@ -941,6 +971,11 @@ local function CreateWindow(colors)
     Label(characterSidebar, L["Guildmates with inventory data"], 18, 51, 264, 14, muted)
     characterSearch = Search(characterSidebar, "Search characters...", 14, 82, 272)
     characterList = Scroll(characterSidebar, 12, 129, 276, 421)
+    characterList.headings = {
+        SectionHeading(characterList.content, L["Online"], 8, 0, characterList.width - 16),
+        SectionHeading(characterList.content, L["Offline"], 8, 0, characterList.width - 16),
+        SectionHeading(characterList.content, L["Unknown"], 8, 0, characterList.width - 16),
+    }
     characterSearch.list = characterList
     characterList.empty = Label(characterSidebar, "", 18, 225, 264, 16, muted)
     characterList.empty:SetJustifyH("CENTER")
@@ -1135,7 +1170,7 @@ end
 function addon.OpenMaterial(itemID)
     if not addon.db or not addon.Integer(itemID, 1, 2147483647)
         or addon.Read(InCombatLockdown) ~= false then return end
-    if not window then CreateWindow(colors) end
+    if not window then CreateWindow(colors, SectionHeading) end
     page, view, profession = "materials", "all", nil
     -- Setting text also cancels any pending debounced query from an earlier search.
     search:SetText(addon.ItemData(itemID).name)
@@ -1148,7 +1183,7 @@ end
 
 local function Toggle()
     if not addon.db then return end
-    if not window then CreateWindow(colors) end
+    if not window then CreateWindow(colors, SectionHeading) end
     if not window:IsShown() then view = InitialView(); page = "materials"; profession = nil end
     window:SetShown(not window:IsShown())
 end

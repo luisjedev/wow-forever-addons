@@ -19,6 +19,14 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock character presence sections · October 4, 2026
+
+**Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`, interface `16001` from the existing native reference. **Affected addon:** GuildStock. Characters groups the existing inventory participants under localized Online and Offline headings, with online first and alphabetical order within each group. Unconfirmed/mobile presence uses the existing Unknown label instead of asserting disconnection. Empty groups hide. Selection survives presence changes; searches and scroll height include the headings.
+
+The headings reuse Materials' divider styling and native half-second scale animation: the selected character's section expands from 60% to 80% width and becomes thicker/brighter. Repeated refreshes or selections within one section do not restart the effect. No new client API, presence authority, saved data or transport behavior is introduced.
+
+**Validation:** Lua syntax and all seven repository suites pass. Regression fixtures cover grouping, selection changes, presence transitions, unknown/mobile status, section animations, search/empty states, overflowing lists, scroll clamping, reused rows and translations. After `/reload`, native Characters displayed populated online/offline groups with aligned headings and dividers. Selecting the offline character moved the longer highlighted divider to that section and restored the online divider's thin resting appearance. Other scales/locales, native presence transitions and overflowing guild lists remain pending. No screenshots or player records are published.
+
 ### GuildStock material filter heading · October 4, 2026
 
 **Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001` from the existing client reference. **Affected addon:** GuildStock. The material-list heading now uses the localized selected profession, or Favorites plus that profession when both filters apply. Clearing the profession restores All materials or Favorites. This reuses existing UI state and labels without new client APIs, saved data or transport behavior.

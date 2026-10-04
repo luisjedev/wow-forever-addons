@@ -1038,6 +1038,75 @@ for _, frame in ipairs(frames) do
     end
 end
 assert(characterInput and peerItemInput, "both searchable character panes are active")
+do
+    local list, syncMember = characterInput.list, addon.SyncMember
+    local online, offline, unknown = unpack(list.headings)
+    assert(not online:IsShown() and not offline:IsShown() and unknown:IsShown(),
+        "unconfirmed presence is not labeled offline")
+    local presence = {
+        alpha = {online = false, offline = true}, beta = {online = true}, empty = {online = true},
+    }
+    addon.SyncMember = function(id) return presence[id] end
+    addon.Refresh()
+    assert(list.rows[1].characterID == "beta" and list.rows[2].characterID == "empty"
+        and list.rows[3].characterID == "alpha", "online players come first, alphabetically within each group")
+    assert(list.rows[3].selection:IsShown() and offline.active and not online.active,
+        "regrouping preserves the selected character and highlights its section")
+    assert(online:IsShown() and offline:IsShown() and not unknown:IsShown() and not unknown.separator:IsShown())
+    assert(list.rows[1].point[3] == -32 and list.rows[2].point[3] == -78
+        and offline.point[3] == -136 and list.rows[3].point[3] == -168 and list.content.height == 214,
+        "headings, gaps and rows contribute to the scrollable height")
+    assert(list.rows[1].separator:IsShown() and not list.rows[2].separator:IsShown()
+        and not list.rows[3].separator:IsShown(), "row separators stop at each group boundary")
+    Click("Beta Example")
+    assert(online.active and not offline.active and online.animation:IsPlaying() and offline.animation:IsPlaying(),
+        "switching presence groups animates both dividers")
+    assert(online.separator.width == online.width * 0.8 and online.separator.height == 2
+        and offline.separator.width == offline.width * 0.6 and offline.separator.height == 1)
+    assert(online.stretch.duration == 0.5 and online.stretch.smoothing == "OUT"
+        and online.stretch.origin[1] == "LEFT", "characters use the Materials divider animation")
+    local plays = online.animation.playCount
+    Click("Empty Example")
+    addon.Refresh()
+    assert(online.animation.playCount == plays, "selection within a group and refreshes do not restart its animation")
+    presence.empty = {online = false, offline = true}
+    addon.Refresh()
+    assert(offline.active and list.rows[3].characterID == "empty" and list.rows[3].selection:IsShown(),
+        "a selected player moving offline retains selection and activates the new group")
+    presence.empty = {online = false, offline = false}
+    addon.Refresh()
+    assert(unknown:IsShown() and unknown.active and list.rows[3].selection:IsShown(),
+        "mobile or unknown presence remains distinct from confirmed offline")
+    characterInput:SetText("Beta")
+    assert(online:IsShown() and online.active and not offline:IsShown() and not unknown:IsShown()
+        and list.content.height == 78, "search hides empty groups and keeps the matching selection")
+    characterInput:SetText("missing")
+    assert(list.empty:IsShown() and list.content.height == 1)
+    for _, heading in ipairs(list.headings) do
+        assert(not heading:IsShown() and not heading.separator:IsShown() and not heading.animation:IsPlaying(),
+            "empty searches hide headings, dividers and animations")
+    end
+    characterInput:SetText("")
+    local data = addon.guildData
+    addon.guildData = {guildID = club, characters = {}}
+    for i = 1, 12 do
+        local id = "scroll" .. i
+        addon.guildData.characters[id] = {name = string.format("Scroll Example %02d", i), snapshot = sharedAlpha}
+        presence[id] = {online = i <= 6, offline = i > 6}
+    end
+    addon.Refresh()
+    list.scroll.ScrollBar:SetValue(1000)
+    assert(list.scroll:GetVerticalScroll() == list.content.height - list.scroll.height
+        and list.scroll:GetVerticalScroll() > 0, "overflow includes both section headings")
+    local allocated = #frames
+    characterInput:SetText("Scroll Example 12")
+    assert(list.scroll:GetVerticalScroll() == 0 and offline.active and not online:IsShown(),
+        "filtering an overflowing list resets and clamps scrolling")
+    addon.guildData, addon.SyncMember = data, syncMember
+    characterInput:SetText("")
+    Click("Alpha [Example]")
+    assert(#frames == allocated and not list.rows[4]:IsShown(), "regrouping and filtering reuse character rows")
+end
 local characterWhisper
 for _, frame in ipairs(frames) do
     if frame.parent == peerItemInput.parent.parent and frame:GetText() == "Whisper" then characterWhisper = frame end
@@ -1262,6 +1331,7 @@ do
     assert(locales.esES["Not shared with guild"] == "No se comparte" and locales.esES["Share"] == "Compartir")
     assert(locales.esES["Not shared"] == "No compartidos")
     assert(locales.esES["My professions"] == "Mis profesiones" and locales.esES["Other professions"] == "Otras profesiones")
+    assert(locales.esES["Online"] == "Conectado" and locales.esES["Offline"] == "Desconectado")
 end
 
 -- Alternate item names search the discovered catalog without replacing native data.
