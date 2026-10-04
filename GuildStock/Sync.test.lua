@@ -67,7 +67,7 @@ local function Client(name, syncPath)
         end,
     }
     local addon = {}
-    for _, file in ipairs({"Locales", "GuildStock", "Probe", "ItemNames", "CatalogSeed", "Catalog", "Sync"}) do
+    for _, file in ipairs({"Locales", "GuildStock", "Probe", "ItemNames", "CatalogSeed", "Catalog", "Sync", "Prices"}) do
         local fn = assert(loadfile(file == "Sync" and syncPath or "GuildStock/" .. file .. ".lua")); setfenv(fn, env); fn("GuildStock", addon)
     end
     client.addon, client.env = addon, env
@@ -119,6 +119,21 @@ assert(Received(a,b).skills[1] == "Alchemy" and Received(a,b).skills[2] == "Mini
 assert(a.addon.SyncStatus() == "Automatic guild synchronization")
 assert(#a.addon.GuildCharacters() == 1 and #a.addon.MaterialOwners(2589, true) == 1)
 local quiet = #log; Step(600); assert(#log == quiet, "unchanged inventories must not emit heartbeats")
+do
+    a.env.C_AuctionHouse = {
+        ReplicateItems = function() end,
+        HasFullCommoditySearchResults = function() return true end,
+        GetNumCommoditySearchResults = function() return 1 end,
+        GetCommoditySearchResultInfo = function() return {quantity = 3, unitPrice = 81726345} end,
+    }
+    a:Event("AUCTION_HOUSE_SHOW")
+    a:Event("COMMODITY_SEARCH_RESULTS_UPDATED", 2770)
+    a:Event("AUCTION_HOUSE_CLOSED")
+    Step(60)
+    assert(a.addon.AuctionPrice(2770).copper == 81726345 and not b.addon.AuctionPrice(2770))
+    assert(#log == quiet and Received(b,a).snapshot.items[2770].copper == nil,
+        "auction observations stay local and cannot schedule or enter guild messages")
+end
 assert(a.addon.GuildCharacters()[1].race == 7 and a.addon.MaterialOwners(2589, true)[1].race == 7)
 for _, race in ipairs({secret, "7", 0, 1.5}) do
     b.race = race; a:Event("CLUB_MEMBER_UPDATED", 42, 2)

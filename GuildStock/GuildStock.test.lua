@@ -1,6 +1,7 @@
 -- Run from the repository root with Lua 5.1 or LuaJIT. No client or saved files are accessed.
 local clock, epoch, combat = 100, 1800000000, false
 GetTime = function() return clock end
+GetMoneyString = function(copper) return tostring(copper) .. "c" end
 time = function() return epoch end
 date = function(_, value) return tostring(value) end
 InCombatLockdown = function() return combat end
@@ -69,6 +70,7 @@ function methods:SetEnabled(value) self.enabled = value end
 function methods:SetMotionScriptsWhileDisabled(value) self.motionWhileDisabled = value end
 function methods:SetMouseClickEnabled(value) self.mouseClickEnabled = value end
 function methods:SetTextColor(...) self.textColor = {...} end
+function methods:SetVertexColor(...) self.vertexColor = {...} end
 function methods:SetChecked(value) self.checked = value end
 function methods:SetFillToInterior(value) self.fillToInterior = value end
 function methods:SetCustomOnMouseUpHandler(handler) self.customMouseUpHandler = handler end
@@ -234,7 +236,7 @@ C_Club = {
     GetMemberInfo = function(_, id) return members[id] end,
 }
 local addon = {}
-for _, file in ipairs({ "Locales", "GuildStock", "Probe", "ItemNames", "Catalog", "Bags", "UI" }) do
+for _, file in ipairs({ "Locales", "GuildStock", "Probe", "ItemNames", "Catalog", "Bags", "Prices", "UI" }) do
     assert(loadfile("GuildStock/" .. file .. ".lua"))("GuildStock", addon)
 end
 local function Event(event, ...)
@@ -689,6 +691,46 @@ for _, frame in ipairs(frames) do
     if frame.icon and frame.icon.atlas == "auctionhouse-icon-favorite-off" and not frame.parent.label then detailFavorite = frame end
 end
 assert(materialInput and detailUses and detailFavorite)
+do
+    local row = materialInput.list.rows[1]
+    local detail = detailUses.parent.price
+    assert(row.price.itemID == row.itemID and detail.itemID == row.itemID)
+    assert(row.price.text:GetText() == "—" and detail.text:GetText() == "—")
+    local before, previous = #sent, addon.db.auctionPrices
+    addon.db.auctionPrices = {version = 1, items = {[row.itemID] = {copper = 12345, observedAt = epoch - 59}}}
+    addon.Refresh()
+    assert(row.price.text:GetText() == "~ 12345c" and detail.text:GetText() == row.price.text:GetText())
+    local clockIcon = row.price.clock
+    assert(clockIcon.icon.atlas == "auctionhouse-icon-clock" and clockIcon.mouseClickEnabled == false)
+    clockIcon.scripts.OnEnter(clockIcon)
+    assert(GameTooltip:GetText():find("Updated 59 seconds ago", 1, true))
+    assert(not GameTooltip:GetText():find("Visit the auction house", 1, true))
+    epoch = epoch + 1; row.price.scripts.OnUpdate(row.price, 1)
+    assert(GameTooltip:GetText():find("Updated 1 minute ago", 1, true))
+    for _, case in ipairs({{43200, 0.70, false}, {43201, 1, true}, {86400, 1, true}, {86401, 1, true}}) do
+        addon.db.auctionPrices.items[row.itemID].observedAt = epoch - case[1]
+        row.price.scripts.OnUpdate(row.price, 1)
+        local color = clockIcon.icon.vertexColor
+        assert(color[1] == case[2] and color[2] == (case[1] > 86400 and 0.22 or case[1] > 43200 and 0.55 or 0.68))
+        assert((GameTooltip:GetText():find("Visit the auction house", 1, true) ~= nil) == case[3])
+    end
+    clockIcon.scripts.OnLeave(clockIcon); row.price.scripts.OnUpdate(row.price, 1)
+    assert(not GameTooltip:IsShown(), "the age refresh must not reopen a dismissed tooltip")
+    clockIcon.scripts.OnEnter(clockIcon)
+    addon.SetPriceItem(row.price, 999999)
+    assert(not GameTooltip:IsShown() and row.price.text:GetText() == "—", "recycled prices and tooltips do not leak")
+    clockIcon.scripts.OnEnter(clockIcon)
+    assert(GameTooltip:GetText():find("No auction price recorded.", 1, true))
+    row.price.scripts.OnHide(row.price); row.price.scripts.OnUpdate(row.price, 1)
+    assert(not GameTooltip:IsShown())
+    GameTooltip:SetOwner(UIParent); GameTooltip:Show()
+    clockIcon.scripts.OnLeave(clockIcon)
+    assert(GameTooltip:IsShown(), "price cleanup preserves another tooltip owner")
+    GameTooltip:Hide()
+    addon.db.auctionPrices, epoch = previous, epoch - 1
+    addon.Refresh()
+    assert(#sent == before, "price rendering creates no addon messages")
+end
 local function CheckItemTooltip(slot, id)
     assert(slot and slot.mouseClickEnabled == false, "item hover leaves row clicks available")
     slot.scripts.OnEnter(slot)
@@ -708,7 +750,7 @@ CheckItemTooltip(materialInput.list.rows[1].itemSlot, materialInput.list.rows[1]
 do
     local slot
     for _, frame in ipairs(frames) do
-        if frame.parent == detailUses.parent and frame.itemID then slot = frame end
+        if frame.parent == detailUses.parent and frame.itemID and frame:GetScript("OnEnter") then slot = frame end
     end
     CheckItemTooltip(slot, materialInput.list.rows[1].itemID)
     slot.scripts.OnEnter(slot)
@@ -868,6 +910,7 @@ for _, frame in ipairs(frames) do
     if frame.list and frame.list.rows[1] and frame.list.rows[1].usedBy then bagInput = frame end
 end
 assert(bagInput, "inventory rows include profession uses")
+assert(bagInput.list.rows[1].price.itemID == bagInput.list.rows[1].itemID)
 assert(not bagInput.list.rows[1]:GetScript("OnEnter"), "inventory item names and quantities have no row tooltip")
 local function ItemRow(list, id)
     for _, row in ipairs(list.rows) do if row.itemID == id and row:IsShown() then return row end end
@@ -892,6 +935,7 @@ assert(ItemRow(bagRows, 10).border[4] == 0 and HiddenRow(10).border[4] == 0, "in
 assert(#addon.Materials("all") == 2 and #addon.Materials("favorites") == 1, "hiding does not remove catalog or favorites")
 assert(addon.snapshot == rawBeforeHiding and not addon.ShareableSnapshot().items[10])
 local hiddenRow = HiddenRow(10)
+assert(hiddenRow.price.itemID == 10 and hiddenRow.price.text:GetText() == "—")
 CheckItemTooltip(hiddenRow.itemSlot, 10)
 assert(hiddenRow.sharing.template == "UIPanelButtonTemplate" and hiddenRow.sharing:GetText() == "Share", "restore uses a native Blizzard button")
 assert(math.abs((bagRows.width + 24) / (hiddenRow.parent.width + 24) - 7 / 3) < 0.001, "inventory panes use the requested 70/30 split")
@@ -1117,6 +1161,14 @@ characterWhisper.scripts.OnEnter(characterWhisper)
 assert(GameTooltip:GetText() == "Whisper requires confirmed online presence.")
 characterWhisper.scripts.OnLeave(characterWhisper)
 local peerRows = peerItemInput.list.rows
+do
+    local previous = addon.db.auctionPrices
+    addon.db.auctionPrices = {version = 1, items = {[peerRows[1].itemID] = {copper = 321, observedAt = epoch}}}
+    addon.Refresh()
+    assert(peerRows[1].price.text:GetText() == "~ 321c", "peer inventories use the viewer's local unit price")
+    assert(peerRows[1].count:GetText() == 7, "price display does not multiply or change inventory units")
+    addon.db.auctionPrices = previous; addon.Refresh()
+end
 CheckItemTooltip(peerRows[1].itemSlot, peerRows[1].itemID)
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
 assert(not peerRows[1].sharing, "only My inventory has privacy controls")
@@ -1290,7 +1342,7 @@ do
     end
     GetLocale = previousLocale
     -- Include literal lookups so a new untranslated label fails even if absent from every table.
-    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "Bags", "Sync", "UI"}) do
+    for _, file in ipairs({"GuildStock", "Probe", "Catalog", "Bags", "Sync", "Prices", "UI"}) do
         local sourceFile = assert(io.open("GuildStock/" .. file .. ".lua", "r"))
         local source = sourceFile:read("*a")
         sourceFile:close()

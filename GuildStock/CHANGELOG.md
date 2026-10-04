@@ -1,3 +1,11 @@
+# GuildStock 0.5.0
+
+- Add local estimated auction buyout prices per unit beside the material title and beneath item names in Materials, Favorites, My inventory, Not shared and Characters.
+- Read auction snapshots during visits and completed item searches; preserve earlier prices and dates when fresh data is unavailable. Prices are saved per character and never synchronized with guildmates.
+- Add a transparent clock with localized update age: neutral through 12 hours, orange after 12 hours, red after 24 hours. Stale and unknown prices prompt a visit to the auction house.
+
+Lua syntax and all eight repository suites pass. Native unknown-price layout verified after reload; live auction acquisition, populated prices and reload/restart persistence remain pending. Target: Forever 1.60.1, build 70205, interface 16001.
+
 # GuildStock 0.4.4
 
 - Show the selected guildmate’s actual primary-profession levels shared by their own GuildStock, using the existing vertical 0–300 bars. Stop using unreliable native guild ranks.

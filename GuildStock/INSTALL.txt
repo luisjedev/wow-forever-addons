@@ -1,4 +1,4 @@
-GuildStock 0.4.1 - Release
+GuildStock 0.5.0 - Release
 For World of Warcraft: Forever 1.60.1 (interface 16001)
 
 INSTALLATION
@@ -19,6 +19,9 @@ FEATURES
 - Start a whisper to an online guildmate; you write and send the message.
 - View dated offline inventory history and choose whether to show offline members.
 - See combined known material quantities from your bags and personal bank.
+- See local estimated auction prices per unit and a clock showing their age.
+  Prices update during auction-house visits and stay on your character's client.
+  The clock turns orange after 12 hours and red after 24 hours.
 - Choose which materials to share, or disable your own sharing in Settings.
 - Automatically synchronize shared inventories with players in the same guild.
 - Find recipe materials through chest shortcuts in the native Professions window.
@@ -43,6 +46,9 @@ Offline inventories show last-known stock and can be out of date. Empty results
 are not proof that nobody owns a material. Hints show known profession uses,
 not learned recipes or skill requirements. Account/guild banks are not included.
 Bag and bank hints target Blizzard's native interface.
+Auction prices are lowest observed buyout estimates, not guaranteed sale values.
+Missing or unreadable auction results preserve the earlier price and its date.
+Live price acquisition still needs verification once the beta auction service returns.
 The Forever beta client can delay synchronization or affect saved data. Broader
 multiplayer and full-restart checks remain ongoing. Retail and Classic Era are
 not supported targets.
