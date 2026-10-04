@@ -160,8 +160,6 @@ end
 local function SetCharacterProfessions(character)
     characters.professions:SetShown(character ~= nil)
     if not character then return end
-    characters.professions:ClearAllPoints()
-    characters.professions:SetPoint("TOPLEFT", math.min(characterName:GetStringWidth(), 380) + 40, -12)
     for i, slot in ipairs(characters.professions.slots) do
         local key = addon.Accessible(character.skills) and type(character.skills) == "table" and character.skills[i]
         local texture, title
@@ -987,6 +985,8 @@ local function CreateWindow(colors, SectionHeading)
     characterName = Label(characterDetail, "", 22, 18, 380, 25, cream, true)
     characterName:SetWordWrap(false)
     characters.professions = CreateFrame("Frame", nil, characterDetail)
+    -- Reserve a column beside both the name and subtitle, even for short names.
+    characters.professions:SetPoint("TOPLEFT", 420, -12)
     characters.professions:SetSize(280, 56)
     characters.professions.slots = {}
     for i = 1, 2 do
@@ -996,14 +996,18 @@ local function CreateWindow(colors, SectionHeading)
         slot:EnableMouse(true)
         slot.icon = Icon(slot, nil, 0, 0, 26)
         slot.bar = CreateFrame("StatusBar", nil, slot)
-        slot.bar:SetPoint("TOPLEFT", 34, -3)
-        slot.bar:SetSize(246, 20)
-        slot.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        slot.bar:SetStatusBarColor(0.45, 0.34, 0.15)
+        slot.bar:SetPoint("TOPLEFT", 37, -5)
+        slot.bar:SetSize(240, 18)
+        slot.bar:SetStatusBarTexture("Interface\\AddOns\\GuildStock\\Assets\\ProfessionBlue")
         local background = slot.bar:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints()
-        background:SetColorTexture(0.05, 0.04, 0.02, 1)
-        slot.rank = Label(slot.bar, "", 0, 2, 246, 13, cream)
+        background:SetPoint("TOPLEFT", -3, 3)
+        background:SetSize(246, 24)
+        background:SetAtlas("Profession-ProgressBar-BG")
+        local border = slot.bar:CreateTexture(nil, "OVERLAY")
+        border:SetAllPoints(background)
+        border:SetAtlas("Profession-ProgressBar-frame")
+        slot.rank = Label(slot.bar, "", 0, 2, 240, 13, {1, 1, 1})
+        slot.rank:SetShadowOffset(1, -1)
         slot.rank:SetJustifyH("CENTER")
         characters.professions.slots[i] = slot
     end
@@ -1016,7 +1020,8 @@ local function CreateWindow(colors, SectionHeading)
     characterWhisper:SetScript("OnClick", function(self)
         if self.characterID then addon.WhisperCharacter(self.characterID) end
     end)
-    Label(characterDetail, L["Last known inventory"], 22, 53, 818, 15, muted)
+    local subtitle = Label(characterDetail, L["Last known inventory"], 22, 53, 380, 15, muted)
+    subtitle:SetWordWrap(false)
     characterItemSearch = Search(characterDetail, "Search character items...", 20, 82, 820)
     InventoryHeader(characterDetail, 20, 130, 820)
     characterItems = Scroll(characterDetail, 20, 169, 820, 351)

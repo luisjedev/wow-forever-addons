@@ -19,6 +19,14 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock character-header spacing and profession artwork · October 4, 2026
+
+**Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001`. **Affected addon:** GuildStock. The user's screenshot showed the second profession overlapping the inventory subtitle for a short name. Both text regions now reserve a fixed column before the profession bars, including translated subtitles; long text stays on one line. The existing two slots, unknown ranks and fixed 300-point scale remain unchanged.
+
+**Matching-build source:** the [Camelot profession book](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBookTemplates.xml) uses `Profession-ProgressBar-frame` and `Profession-ProgressBar-BG`. GuildStock now combines that frame/background with its own 256×32 blue-gradient TGA, displayed through the existing native StatusBar API. No profession-window dependency or animation is needed.
+
+**Automated validation:** Lua syntax and all eight repository suites pass. Added fixtures cover short/long names, subtitle clearance and Whisper clearance; existing checks retain unknown, zero, capped and above-cap ranks. **Reproduced in the game:** after `/reload`, both bars showed the custom blue gradient inside the native border. Switching from a longer name to the short-name case kept the subtitle unobstructed and updated both fills correctly. Other scales, translated subtitles and extreme names remain pending. No screenshots, player records or saved-data changes are published.
+
 ### GuildStock 0.5.1 direct-owner synchronization · October 4, 2026
 
 **Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001` is unchanged. **Affected addon:** GuildStock 0.5.1. This supersedes 0.4.0's offline-history forwarding and addresses the relay revision poisoning reproduced in the security review below.

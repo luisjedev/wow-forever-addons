@@ -1797,6 +1797,24 @@ do
     group.slots[1].scripts.OnEnter(group.slots[1])
     assert(GameTooltip:GetText() == "Mining\n180 / 300")
     assert(group.point[2] + group.width < 740, "bars stay clear of Whisper")
+    local heading, subtitle
+    for _, label in ipairs(fontStrings) do
+        if label.parent == group.parent then
+            if label:GetText() == record.name then heading = label end
+            if label:GetText() == "Last known inventory" then subtitle = label end
+        end
+    end
+    assert(heading and subtitle)
+    local originalName = record.name
+    for _, name in ipairs({"A B", string.rep("Long", 30)}) do
+        record.name = name; addon.Refresh()
+        assert(heading:GetText() == name)
+        assert(group.point[2] >= heading.point[2] + heading.width + 18,
+            "short and long names reserve the same profession column")
+        assert(group.point[2] >= subtitle.point[2] + subtitle.width + 18,
+            "the subtitle's entire text region stays clear of both profession rows")
+    end
+    record.name = originalName; addon.Refresh()
     record.professionRanks = {300}; addon.Refresh()
     assert(group.slots[1].bar.value == 300 and group.slots[2].rank:GetText() == "?" and group.slots[2].bar.value == 0)
     record.professionRanks = {315}; addon.Refresh()
