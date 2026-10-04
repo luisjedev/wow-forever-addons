@@ -804,6 +804,28 @@ do
     ActiveSection(all)
     assert(#frames == allocated and #sent == packetCount, "regrouping reuses buttons and sends no messages")
 end
+do
+    local heading
+    for _, label in ipairs(fontStrings) do
+        if label.parent == materialInput.parent.parent and label:GetText() == "All materials" then heading = label end
+    end
+    assert(heading, "material list heading exists")
+    for _, entry in ipairs(addon.professions) do
+        Click(addon.L[entry[1]])
+        assert(heading:GetText() == addon.L[entry[1]], "heading follows each profession filter")
+    end
+    Click("Blacksmithing")
+    Click("Favorites")
+    assert(heading:GetText() == "Favorites · Blacksmithing", "heading preserves both active filters")
+    materialInput:SetText("no matching material")
+    assert(heading:GetText() == "Favorites · Blacksmithing", "empty searches retain the filter heading")
+    materialInput:SetText("")
+    Click("All professions")
+    assert(heading:GetText() == "Favorites", "clearing the profession preserves Favorites")
+    Click("Blacksmithing")
+    Click("All materials")
+    assert(heading:GetText() == "All materials", "All materials clears the profession heading")
+end
 -- Fishing is a secondary profession filter and shares the material-use renderer.
 local fishingButton = Click("Fishing")
 assert(fishingButton.image.texture == "Interface\\Icons\\Trade_Fishing")

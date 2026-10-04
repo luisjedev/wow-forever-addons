@@ -726,7 +726,9 @@ function addon.Refresh()
         local found = false
         for _, entry in ipairs(entries) do if entry.id == selected then found = true; break end end
         if not found then selected = entries[1] and entries[1].id end
-        listTitle:SetText(L[viewLabels[view]])
+        local title = profession and L[profession] or L[viewLabels[view]]
+        if profession and view == "favorites" then title = L["Favorites"] .. " · " .. title end
+        listTitle:SetText(title)
         listHint:SetText(L["Partial catalog · discovered materials"])
         materialList.empty:SetShown(#entries == 0)
         materialList.empty:SetText(L["No matching materials."] .. "\n\n" .. L[view == "favorites"

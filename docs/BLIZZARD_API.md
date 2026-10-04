@@ -19,6 +19,12 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock material filter heading · October 4, 2026
+
+**Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001` from the existing client reference. **Affected addon:** GuildStock. The material-list heading now uses the localized selected profession, or Favorites plus that profession when both filters apply. Clearing the profession restores All materials or Favorites. This reuses existing UI state and labels without new client APIs, saved data or transport behavior.
+
+**Validation:** syntax and all seven repository suites pass both in the shared checkout and against the committed baseline plus this isolated change. Regression checks exercise all profession headings, combined favorites, empty search results and filter resets. A native `/reload` completed and Materials reopened; concurrent desktop activity interrupted profession selection, so the changed heading, translated layout and other scales remain pending native verification. No screenshots or player records are published.
+
 ### GuildStock native item-icon tooltips · October 4, 2026
 
 **Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001`. **Affected addon:** GuildStock. Item icons in Materials/Favorites, the selected material detail, My inventory, Not shared and Characters now use the native item tooltip. Only icons receive hover handlers; row clicks remain available. Tooltips close on leave/hide and item replacement, and cleanup checks ownership.
