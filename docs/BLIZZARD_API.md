@@ -224,7 +224,17 @@ Login/reload and world transitions query remembered IDs through `C_Item.GetItemC
 
 **Automated verification:** synthetic fixtures assert no catalog-wide count queries, unchanged-ID reuse, duplicate event coalescing, rapid-deposit discovery, absolute transfer totals, bank-only discovery/restoration, zero-ID retention, nonmaterial exclusion, late metadata/recipe classification, unsupported-data preservation, failed reads and combat recovery. Simulated GUILD exchange verifies combined counts, bank-only depletion and privacy replacements. Repository syntax and regression results are recorded with the implementation commit.
 
-**Native verification:** the earlier Copper Bar API test below remains the only live bank-count result. During implementation the client was at the login screen, so this addon version could not be tested in-world. Pending: first bank discovery, all purchased tabs, deposit/withdrawal/stack splitting, rapid closing, bank crafting, reload/full-restart persistence and performance, plus aggregate reception on a second consenting guild client and cross-shard delivery. No native persistence fix or new live result is claimed.
+**Native verification, October 4:** the running client reported `1.60.1 / 70205 / 16001` and GuildStock `0.3.4`. The user prepared Copper Bar split between bags and bank, plus Coyote Meat and Light Leather held only in the bank. Local API queries and `GuildStockDB.own` agreed; after closing the bank and `/reload`, the following results persisted without reopening it. All three `knownMaterials` entries remained `true`, and My inventory rendered the same totals.
+
+| Test material | Carried count | Bank-inclusive native count | GuildStock total after reload |
+| --- | ---: | ---: | ---: |
+| Copper Bar (`2840`) | 2 | 3 | 3 |
+| Coyote Meat (`2673`) | 0 | 2 | 2 |
+| Light Leather (`2318`) | 0 | 2 | 2 |
+
+The native purchased-tab API returned character tab ID `6`; its first three container slots independently matched the prepared bank fixture. Withdrawing both Light Leather units changed carried stock from 0 to 2 while the native and addon totals stayed 2. Depositing them again and closing the bank immediately restored carried stock to 0 while both totals remained 2. The original distribution was restored. No code fix was needed. Only fixture results are recorded; no screenshots, identities, unrelated inventory or private saved files are published.
+
+**Limits and pending tests:** the fixtures were already remembered by the time of the controlled reload; this does not isolate first discovery of a previously unknown bank-only ID. Additional purchased tabs, stack splitting, bank crafting, full application restart, event/query profiling and performance, aggregate reception on a second consenting guild client and cross-shard delivery remain unverified in the client. Automated query-count assertions above remain the evidence against catalog-wide queries; no live query instrumentation was installed.
 
 ## GuildStock combined bag and bank counts research · October 3, 2026
 
