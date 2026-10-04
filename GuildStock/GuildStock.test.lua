@@ -965,6 +965,15 @@ for _, frame in ipairs(frames) do
     end
 end
 assert(characterInput and peerItemInput, "both searchable character panes are active")
+local characterWhisper
+for _, frame in ipairs(frames) do
+    if frame.parent == peerItemInput.parent.parent and frame:GetText() == "Whisper" then characterWhisper = frame end
+end
+assert(characterWhisper and characterWhisper:IsShown() and characterWhisper.characterID == "alpha")
+assert(not characterWhisper.enabled, "unconfirmed presence cannot enable character inventory whisper")
+characterWhisper.scripts.OnEnter(characterWhisper)
+assert(GameTooltip:GetText() == "Whisper requires confirmed online presence.")
+characterWhisper.scripts.OnLeave(characterWhisper)
 local peerRows = peerItemInput.list.rows
 assert(peerRows[1].count:GetText() == 7 and peerRows[2].count:GetText() == 3)
 assert(not peerRows[1].sharing, "only My inventory has privacy controls")
@@ -973,6 +982,7 @@ assert(peerRows[2].usedBy.unknown:IsShown(), "a peer-only item does not invent p
 assert(not peerRows[2].usedBy:GetScript("OnEnter"), "unknown peer uses have no cell tooltip")
 assert(not peerRows[1]:GetScript("OnEnter") and not peerRows[2]:GetScript("OnEnter"), "character inventories have no row tooltips")
 Click("Beta Example")
+assert(characterWhisper.characterID == "beta", "whisper follows the selected inventory")
 assert(peerRows[1].itemID == 10 and peerRows[1].count:GetText() == 99 and not peerRows[2]:IsShown())
 assert(peerRows[1].usedBy.slots[3]:IsShown(), "character inventories use the same material-to-profession mapping")
 addon.db.catalog[10] = allUses
@@ -981,6 +991,7 @@ local lastProfession = peerRows[1].usedBy.slots[#addon.professions]
 assert(lastProfession.point[2] + lastProfession.width <= peerRows[1].usedBy.width, "all supported icons fit the narrower character inventory")
 addon.db.catalog[10] = materialUses
 characterInput:SetText("[")
+assert(characterWhisper.characterID == "alpha", "filtering updates the whisper target")
 assert(peerRows[1].count:GetText() == 7, "filtering selects an available character instead of keeping stale details")
 assert(not peerRows[1].usedBy.slots[2]:IsShown(), "switching characters clears the previous material's extra uses")
 peerRows[1].usedBy.slots[1].scripts.OnEnter(peerRows[1].usedBy.slots[1])
@@ -994,10 +1005,13 @@ addon.guildData.characters.alpha = nil
 addon.Refresh()
 assert(peerRows[1].count:GetText() == 99, "removing the selection clears its old inventory")
 Click("Empty Example")
+assert(characterWhisper:IsShown() and characterWhisper.characterID == "empty", "empty inventories retain the character action")
 assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:GetText() == "No items recorded for this character.")
 club = 456
 Event("PLAYER_GUILD_UPDATE", "player")
 assert(#addon.GuildCharacters() == 0 and not characterInput.list.rows[1]:IsShown())
+assert(not characterWhisper:IsShown() and not characterWhisper.enabled and characterWhisper.characterID == nil,
+    "losing the guild clears the whisper target")
 assert(not peerRows[1]:IsShown() and peerItemInput.list.empty:GetText() == "Select a character to view their items.")
 club = nil
 assert(#addon.GuildCharacters() == 0, "no-guild state cannot expose cached peers")
@@ -1587,7 +1601,20 @@ characterInput:SetText("");addon.ApplyLanguage("enUS");Click("Materials")
 local draft
 ChatFrameUtil = {SendTell = function(name) draft = name end}
 owner.whisper.scripts.OnClick(owner.whisper); assert(draft == "Peer Fullname")
+Click("Characters")
+assert(characterWhisper:IsShown() and characterWhisper.enabled)
+draft = nil
+characterWhisper.scripts.OnClick(characterWhisper)
+assert(draft == "Peer Fullname", "inventory action opens the native draft with the full name")
 peerOnline, draft = false, nil
+characterWhisper.scripts.OnClick(characterWhisper)
+assert(draft == nil, "inventory action rechecks presence before a refresh")
+addon.Refresh(); assert(not characterWhisper.enabled)
+characterInput:SetText("no matching player")
+assert(not characterWhisper:IsShown() and characterWhisper.characterID == nil)
+characterWhisper.scripts.OnClick(characterWhisper)
+assert(draft == nil, "cleared selection cannot whisper the previous character")
+characterInput:SetText(""); Click("Materials")
 owner.whisper.scripts.OnClick(owner.whisper); assert(draft == nil, "click rechecks current presence")
 addon.Refresh(); assert(owner.presence:GetText() == "Unknown" and not owner.whisper.enabled)
 saved.settings.showOffline = false; addon.Refresh(); assert(not owner:IsShown())

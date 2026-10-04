@@ -19,6 +19,14 @@ The installed version comes from the `wow_classic_beta` product row in `.build.i
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
 
+### GuildStock Characters inventory Whisper action · October 4, 2026
+
+**Reference:** installed `wow_classic_beta` rechecked at `1.60.1.70205`; declared interface `16001`. **Affected addon:** GuildStock. The selected character's inventory header now includes Whisper, using the existing localized label and `WhisperCharacter` action. It follows selection/search changes, remains available for empty inventories, hides when no character is selected and disables without confirmed online presence. The click rechecks current membership/presence and preserves the full name.
+
+**Documented in matching-build source:** [ChatFrameUtil.SendTell](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua#L356) opens a native chat draft. No message is submitted by this action.
+
+**Automated:** syntax and all six repository suites pass against the committed baseline plus this UI change. Added fixtures cover target changes, empty/missing selections, unknown/offline presence, full-name drafts and disconnection before clicking. A separate synchronization edit appeared concurrently in the shared working tree and failed its existing batching assertion; it is excluded from this change. **Pending native verification:** reload, header layout, translated labels and native draft opening. The running client was inspected, but reload was deferred while the separate synchronization change was in progress. No screenshots or player records are published.
+
 ### GuildStock synchronization timing and offline-history analysis · October 4, 2026
 
 **Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`; interface `16001` is declared by GuildStock 0.3.4 and comes from the existing live reference. **Affected addon:** GuildStock. This is an investigation of the current implementation, not a synchronization fix or a protocol change. The user reports that inventories can take a couple of minutes to update after login; the exact live delay was not instrumented.
