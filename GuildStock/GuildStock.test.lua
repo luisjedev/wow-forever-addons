@@ -554,7 +554,8 @@ Receive("2|A|" .. token, "GUILD")
 assert(addon.probe.confirmed == 1, "matching acknowledgement counts exactly once")
 addon.StartProbe()
 assert(#sent == 2, "probe cooldown")
-clock = clock + 61
+assert(addon.ProbeRemaining() == 300, "repeating an active command preserves the window and results")
+clock = clock + 301
 sendResult = 3
 addon.StartProbe()
 assert(addon.probe.GUILD == "AddonMessageThrottle")
@@ -1164,7 +1165,8 @@ do
                 assert(type(rawget(L, key)) == "string" and text:find("%S"), locale .. ": missing " .. key)
             end
             assert(Placeholders(text) == Placeholders(key), locale .. ": format mismatch for " .. key)
-            assert(pcall(string.format, text, "2026-10-03 12:34:56"), locale .. ": invalid format for " .. key)
+            local argument = key:find("%d", 1, true) and 123 or "2026-10-03 12:34:56"
+            assert(pcall(string.format, text, argument), locale .. ": invalid format for " .. key)
             for command in key:gmatch("(/guildstock %a+)") do
                 assert(text:find(command, 1, true), locale .. ": changed command " .. command)
             end
@@ -1661,5 +1663,71 @@ assert(not GuildStockProfessionsButton)
 Event("PLAYER_LOGIN")
 assert(GuildStockProfessionsButton and GuildStockProfessionsButton.parent == ProfessionsFrame,
     "already-loaded profession UI also receives the shortcut")
+
+-- Real coordination is asynchronous: the second client may start minutes later.
+do
+    local now, bus, clients, attempts, loseAcknowledgements = 0, {}, {}, 0, false
+    local function Client(index)
+        local a = {L = addon.L, Read = addon.Read, Accessible = addon.Accessible}
+        local env = setmetatable({
+            GetTime = function() return now end,
+            InCombatLockdown = function() return false end,
+            CreateFrame = function() return {RegisterEvent = function() end, SetScript = function() end} end,
+            C_Club = {
+                GetGuildClubId = function() return 1 end,
+                GetClubMembers = function() return {1, 2} end,
+                GetMemberInfo = function(_, id) return {name = "Probe " .. id, isSelf = id == index, presence = 1} end,
+            },
+            C_ChatInfo = {
+                RegisterAddonMessagePrefix = function() return 0 end,
+                InChatMessagingLockdown = function() return false end,
+                SendAddonMessage = function(p, m, c)
+                    assert(c == "GUILD")
+                    attempts = attempts + 1
+                    if not (loseAcknowledgements and m:sub(1, 4) == "2|A|") then
+                        bus[#bus + 1] = {p, m, c, "Probe " .. index}
+                    end
+                    return 0
+                end,
+            },
+        }, {__index = _G})
+        setfenv(assert(loadfile("GuildStock/Probe.lua")), env)("GuildStock", a)
+        a.RegisterProbe()
+        return a
+    end
+    local function Deliver()
+        while #bus > 0 do
+            local message = table.remove(bus, 1)
+            for _, a in ipairs(clients) do a.ReceiveProbe(unpack(message)) end
+        end
+    end
+    clients = {Client(1), Client(2)}
+    clients[1].StartProbe(); Deliver()
+    for tick = 15, 105, 15 do now = tick; clients[1].ProbeTick(); Deliver() end
+    assert(clients[1].probe.confirmed == 0 and clients[2].probe.received == 0)
+    now, loseAcknowledgements = 120, true
+    clients[2].StartProbe(); clients[1].ProbeTick(); Deliver()
+    assert(clients[1].probe.received == 1 and clients[2].probe.received == 1)
+    assert(clients[1].probe.confirmed == 0 and clients[2].probe.confirmed == 0)
+    local before = attempts
+    clients[1].StartProbe()
+    assert(attempts == before and clients[1].ProbeRemaining() == 180, "active command does not reset evidence")
+    now, loseAcknowledgements = 135, false
+    clients[1].ProbeTick(); clients[2].ProbeTick(); Deliver()
+    for _, a in ipairs(clients) do
+        assert(a.probe.confirmed == 1 and a.probe.received == 1, "late start and lost acknowledgements recover")
+        assert(a.probe.unmatched == 0, "own request and acknowledgement echoes are ignored")
+    end
+    before, now = attempts, 150
+    clients[1].ProbeTick(); clients[2].ProbeTick(); Deliver()
+    assert(attempts == before, "confirmation stops outgoing requests")
+    now = 420
+    for _, a in ipairs(clients) do a.ProbeTick(); assert(a.ProbeRemaining() == 0) end
+    clients = {Client(1), Client(2)}
+    clients[1].StartProbe(); Deliver()
+    for tick = 435, 735, 15 do now = tick; clients[1].ProbeTick(); Deliver() end
+    assert(clients[1].probe.requests == 20 and clients[1].ProbeRemaining() == 0,
+        "unanswered probes stop after five minutes and at most twenty requests")
+end
 
 print("GuildStock: bag observations, saved data, probes, catalog and interface checks OK")

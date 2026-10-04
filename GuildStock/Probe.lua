@@ -1,9 +1,10 @@
 local _, addon = ...
 local L = addon.L
 local prefix = "GuildStockP0"
-local state = { received = 0, confirmed = 0, unmatched = 0 }
+local DURATION, INTERVAL = 300, 15
+local state = { received = 0, confirmed = 0, unmatched = 0, requests = 0 }
 addon.probe = state
-local registered, pending, expires, lastProbe, guild, lastReply
+local registered, pending, expires, lastProbe, guild, lastReply, nextRequest
 local replied = {}
 
 function addon.ResultName(enum, result)
@@ -50,26 +51,51 @@ local function Peer(sender)
         if not addon.Accessible(id) then return false end
         local info = addon.Read(C_Club.GetMemberInfo, club, id)
         if type(info) == "table" and addon.Accessible(info.name) and addon.Accessible(info.isSelf)
-            and addon.Accessible(info.presence) and info.name == sender and info.isSelf == false then
+            and addon.Accessible(info.presence) and info.name == sender then
+            if info.isSelf == true then return false, true end
+            if info.isSelf ~= false then return false end
             return info.presence == presence.Online or info.presence == presence.Away or info.presence == presence.Busy
         end
     end
     return false
 end
 
+function addon.ProbeRemaining()
+    return expires and math.max(0, math.ceil(expires - GetTime())) or 0
+end
+
+local function ActiveMessage()
+    return string.format(L["Probe active for %d seconds. Run /guildstock probe on a second guild client."], addon.ProbeRemaining())
+end
+
 function addon.StartProbe()
     local now = GetTime()
+    if addon.ProbeRemaining() > 0 and Guild() == guild then return ActiveMessage() end
     if lastProbe and now - lastProbe < 60 then return L["Probe cooldown: 60 seconds."] end
     if not CanSend() then return L["Probe unavailable: check Settings and /guildstock diagnostics."] end
-    lastProbe, expires, guild = now, now + 60, Guild()
+    lastProbe, expires, guild = now, now + DURATION, Guild()
+    nextRequest = now + INTERVAL
     pending = string.format("%d-%d", time(), math.random(1, 2147483647))
     replied, lastReply = {}, nil
     state.received, state.confirmed, state.unmatched = 0, 0, 0
+    state.requests = 1
     if not Send("2|P|" .. pending) then
         pending, expires = nil, nil
         return L["Probe unavailable: check Settings and /guildstock diagnostics."]
     end
-    return L["Probe active for 60 seconds. Run /guildstock probe on a second guild client."]
+    return ActiveMessage()
+end
+
+function addon.ProbeTick()
+    local now = GetTime()
+    if not expires then return end
+    if now >= expires then pending, expires = nil, nil; return end
+    if not pending or now < nextRequest then return end
+    if Guild() ~= guild then pending, expires = nil, nil; return end
+    nextRequest = now + INTERVAL -- No catch-up burst after a pause or loading screen.
+    if not CanSend() then return end
+    state.requests = state.requests + 1
+    if not Send("2|P|" .. pending) then pending, expires = nil, nil end
 end
 
 function addon.ReceiveProbe(messagePrefix, message, channel, sender)
@@ -84,11 +110,14 @@ function addon.ReceiveProbe(messagePrefix, message, channel, sender)
     if not kind then return end
     -- Own broadcast echoes cannot establish delivery to another client.
     if kind == "P" and token == pending then return end
-    if not Peer(sender) then state.unmatched = state.unmatched + 1; return end
-    if kind == "P" and not replied[sender]
-        and state.received < 5 and (not lastReply or GetTime() - lastReply >= 2) then
-        replied[sender], lastReply = true, GetTime()
-        state.received = state.received + 1
+    local peer, own = Peer(sender)
+    if own then return end
+    if not peer then state.unmatched = state.unmatched + 1; return end
+    local previous = replied[sender]
+    if kind == "P" and (not previous or GetTime() - previous >= INTERVAL)
+        and (previous or state.received < 5) and (not lastReply or GetTime() - lastReply >= 2) then
+        replied[sender], lastReply = GetTime(), GetTime()
+        if not previous then state.received = state.received + 1 end
         Send("2|A|" .. token)
     elseif kind == "A" and token == pending then
         state.confirmed = state.confirmed + 1
@@ -98,6 +127,7 @@ function addon.ReceiveProbe(messagePrefix, message, channel, sender)
 end
 
 local events = CreateFrame("Frame")
+events:SetScript("OnUpdate", function() if expires then addon.ProbeTick() end end)
 events:RegisterEvent("CHAT_MSG_ADDON")
 events:RegisterEvent("PLAYER_GUILD_UPDATE")
 events:RegisterEvent("PLAYER_LEAVING_WORLD")
