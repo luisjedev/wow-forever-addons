@@ -13,11 +13,21 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 4, 2026; GuildStock direct-owner synchronization |
+| Last review of this log | October 6, 2026; GuildStock auction-service investigation |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### GuildStock auction-price acquisition investigation · October 6, 2026
+
+**Reference:** installed product `wow_classic_beta`, version `1.60.1.70205`; a native read again returned `1.60.1 / 70205 / 16001`. **Affected addon:** GuildStock 1.0.0. The installed manifest loads `Prices.lua`, and that module matches the repository byte for byte. This installation is currently a separate directory rather than the development symlink; no installed files or personal SavedVariables were changed.
+
+**Reproduced in the game:** `C_AuctionHouse.ReplicateItems` exists and `IsThrottledMessageSystemReady()` returned `true` before the visit. Opening the native auction window displayed **Internal auction error** and **The auction house is closed at the moment. Please try again later.** These observations establish an unavailable auction service in this trial. Throttle readiness and the presence of the API do not establish service availability, accepted replication or usable server results. The user also confirmed that ordinary auctions were unavailable and deferred further native testing. No successful price acquisition, fresh replication response or price-persistence result is claimed; this does not exclude an addon defect once the service returns.
+
+**Source review and automated validation:** the matching-build [AuctionHouse documentation](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/AuctionHouseDocumentation.lua) still documents replication and completed commodity/item searches. GuildStock requests replication on opening outside combat, then updates only from readable results. A replication attempt consumes its 15-minute session cooldown even if no usable response arrives; reopening inside that interval cannot establish a new replication observation. This is an addon implementation limit, not a measured server cooldown. Syntax and all eight repository suites pass, including price normalization, incomplete/empty/restricted observations, batching, cooldowns, search updates and preserved historical timestamps. No addon-code change is made for an unavailable service.
+
+**Pending:** with ordinary auctions working, observe a fresh replication request and response, compare a listed material's unit buyout against GuildStock, exercise completed commodity/item searches, and verify reload/full-restart persistence and combat/throttle recovery. Keep the auction window open until batched processing completes. A reload resets the addon session cooldown, but does not establish or restore server availability. Temporary runtime diagnostics are cleared by the next reload; no screenshots, player records or private saved data are published.
 
 ### GuildStock character-header spacing and profession artwork · October 4, 2026
 
