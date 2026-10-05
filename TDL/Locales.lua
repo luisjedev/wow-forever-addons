@@ -16,6 +16,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "¿Eliminar esta tarea?\n\n%s",
         ["Left-click: Open / close"] = "Clic izquierdo: abrir / cerrar",
         ["Drag: Move"] = "Arrastrar: mover",
+        ["Double-click a task to edit"] = "Doble clic en una tarea para editarla",
     },
     frFR = {
         ["My tasks"] = "Mes tâches",
@@ -33,6 +34,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "Supprimer cette tâche ?\n\n%s",
         ["Left-click: Open / close"] = "Clic gauche : ouvrir / fermer",
         ["Drag: Move"] = "Glisser : déplacer",
+        ["Double-click a task to edit"] = "Double-cliquez sur une tâche pour la modifier",
     },
     deDE = {
         ["My tasks"] = "Meine Aufgaben",
@@ -50,6 +52,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "Diese Aufgabe löschen?\n\n%s",
         ["Left-click: Open / close"] = "Linksklick: öffnen / schließen",
         ["Drag: Move"] = "Ziehen: verschieben",
+        ["Double-click a task to edit"] = "Aufgabe zum Bearbeiten doppelklicken",
     },
     itIT = {
         ["My tasks"] = "Le mie attività",
@@ -67,6 +70,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "Eliminare questa attività?\n\n%s",
         ["Left-click: Open / close"] = "Clic sinistro: apri / chiudi",
         ["Drag: Move"] = "Trascina: sposta",
+        ["Double-click a task to edit"] = "Fai doppio clic su un’attività per modificarla",
     },
     ptBR = {
         ["My tasks"] = "Minhas tarefas",
@@ -84,6 +88,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "Excluir esta tarefa?\n\n%s",
         ["Left-click: Open / close"] = "Clique esquerdo: abrir / fechar",
         ["Drag: Move"] = "Arraste: mover",
+        ["Double-click a task to edit"] = "Clique duas vezes em uma tarefa para editar",
     },
     ruRU = {
         ["My tasks"] = "Мои задачи",
@@ -101,6 +106,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "Удалить эту задачу?\n\n%s",
         ["Left-click: Open / close"] = "ЛКМ: открыть / закрыть",
         ["Drag: Move"] = "Перетаскивание: переместить",
+        ["Double-click a task to edit"] = "Дважды щёлкните по задаче для редактирования",
     },
     koKR = {
         ["My tasks"] = "내 할 일",
@@ -118,6 +124,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "이 할 일을 삭제할까요?\n\n%s",
         ["Left-click: Open / close"] = "좌클릭: 열기 / 닫기",
         ["Drag: Move"] = "드래그: 이동",
+        ["Double-click a task to edit"] = "할 일을 더블 클릭하여 수정하세요",
     },
     zhCN = {
         ["My tasks"] = "我的待办事项",
@@ -135,6 +142,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "删除此待办事项？\n\n%s",
         ["Left-click: Open / close"] = "左键点击：打开 / 关闭",
         ["Drag: Move"] = "拖动：移动",
+        ["Double-click a task to edit"] = "双击待办事项以编辑",
     },
     zhTW = {
         ["My tasks"] = "我的待辦事項",
@@ -152,6 +160,7 @@ local translations = {
         ["Delete this task?\n\n%s"] = "刪除此待辦事項？\n\n%s",
         ["Left-click: Open / close"] = "左鍵點擊：開啟 / 關閉",
         ["Drag: Move"] = "拖曳：移動",
+        ["Double-click a task to edit"] = "按兩下待辦事項以編輯",
     },
 }
 translations.esMX = translations.esES

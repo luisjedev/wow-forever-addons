@@ -2,7 +2,7 @@
 ## Title: TDL
 ## IconTexture: Interface\AddOns\TDL\Assets\Icon
 ## Notes: Task list for WoW
-## Version: 1.1.0
+## Version: 1.2.0
 ## SavedVariablesPerCharacter: TDLDB
 
 Locales.lua

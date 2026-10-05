@@ -9,7 +9,7 @@ for _, name in ipairs({"SetSize", "SetFrameLevel", "SetFrameStrata", "SetClamped
     "SetColorTexture", "SetTexCoord", "SetVertexColor", "SetHeight", "SetWidth", "SetEnabled",
     "SetChecked", "EnableMouseWheel", "ClearFocus", "SetTextColor", "SetPushedTexture", "SetDisabledTexture",
     "SetJustifyV", "SetNonSpaceWrap", "SetScrollChild", "UpdateScrollChildRect", "SetValue",
-    "SetFontObject", "SetMultiLine"}) do
+    "SetFontObject", "SetMultiLine", "SetFontHeight", "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor"}) do
     methods[name] = function() end
 end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
@@ -57,6 +57,10 @@ for _, name in ipairs({"TDL", "Revenge"}) do
         assert(loadfile(name .. "/Locales.lua"))(name, addon)
         for _, key in ipairs({"Left-click: Open / close", "Drag: Move"}) do
             assert(type(rawget(addon.L, key)) == "string", name .. ": missing " .. locale .. " " .. key)
+        end
+        if name == "TDL" then
+            assert(type(rawget(addon.L, "Double-click a task to edit")) == "string",
+                "TDL: missing editing hint for " .. locale)
         end
     end
     GetLocale = function() return "enUS" end

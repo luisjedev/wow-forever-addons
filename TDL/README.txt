@@ -9,7 +9,8 @@ Long tasks show an ellipsis. Click their text to expand or collapse them.
 Double-click any task to edit its text directly, including multiple lines.
 Edits save when you leave the field, close the window, reload the UI, or log out.
 Empty or over-limit edits keep the previous task text and show an error.
-The Delete button stays visible below each task. The bottom input adds new tasks.
+The classic gold-framed window keeps Delete visible to the right of each task.
+The bottom input adds new tasks, with an editing hint underneath.
 The window opens on login or UI reload when at least one task is unfinished.
 The interface automatically follows the client language, with English fallback.
 Supports English, Spanish (Spain and Latin America), French, German, Italian,

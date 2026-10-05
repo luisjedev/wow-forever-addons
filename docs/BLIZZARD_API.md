@@ -13,11 +13,19 @@ It is extended for each version and build that affects our addons. It does not a
 | Interface declared by TDL, Revenge and GuildStock | `16001` |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
 | Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 6, 2026; GuildStock auction-service investigation |
+| Last review of this log | October 6, 2026; GuildStock auction-service investigation and TDL window restyle |
 
 The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+
+### TDL window restyle · October 6, 2026
+
+**Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`, interface `16001`. **Affected addon:** TDL 1.2.0. The approved classic window uses an addon-owned decorative texture with native buttons, checkboxes, edit boxes and the existing continuous scroll frame. Delete now stays to the right of each task, with space reserved in both display and edit modes. Initialization, recovery and SavedVariables are unchanged.
+
+**Source and native limitation:** `SetFontHeight` is a FontString method; the matching-build [EditBox API](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleEditBoxAPIDocumentation.lua) provides `SetFont` and `SetFontObject`. An initial native pass stopped window creation at an erroneous EditBox `SetFontHeight` call. Removing it restored creation; a regression assertion rejects that call on EditBox stubs. The existing [scroll template](https://github.com/Gethe/wow-ui-source/blob/e3ecc27b64d30fdc735a3f6579b866858f9f9df1/Interface/AddOns/Blizzard_SharedXML/SecureScrollTemplates.xml) remains in use.
+
+**Validation:** syntax and all eight repository suites pass. Layout checks cover reserved action space, expansion, caret scrolling, clamping and autosave through the native close button. After reload, the game displayed the complete gold frame, title, two task rows, right-aligned Delete buttons, visible native scrollbar, bottom input, Add button and editing hint. The close button also hid the window during the initial pass. The separate installed TDL copy was preserved privately and its development symlink restored. **Pending native verification:** overflowing lists, expanded/edited rows in the new layout, other scales/locales, combat and persistence after a full restart. Earlier SavedVariables limitations remain open. No screenshots or player records are published.
 
 ### GuildStock auction-price acquisition investigation · October 6, 2026
 

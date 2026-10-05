@@ -8,10 +8,15 @@ for _, name in ipairs({"SetFrameLevel", "SetFrameStrata", "SetClampedToScreen", 
     "EnableMouse", "EnableMouseWheel", "RegisterForClicks", "RegisterForDrag", "SetHighlightTexture",
     "SetPushedTexture", "SetDisabledTexture", "SetAllPoints", "SetTexture", "SetAutoFocus", "SetMaxBytes",
     "SetJustifyH", "SetJustifyV", "SetColorTexture", "SetTexCoord", "SetVertexColor",
-    "SetFontObject", "SetMultiLine", "SetCursorPosition", "HighlightText", "SetTextColor", "UpdateScrollChildRect"}) do
+    "SetFontObject", "SetMultiLine", "SetCursorPosition", "HighlightText", "SetTextColor", "UpdateScrollChildRect",
+    "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor"}) do
     methods[name] = function() end
 end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
+function methods:SetFontHeight(height)
+    assert(self.kind ~= "EditBox", "SetFontHeight belongs to FontString, not EditBox")
+    self.fontHeight = height
+end
 function methods:RegisterEvent(name) self.events[name] = true end
 function methods:UnregisterEvent(name) self.events[name] = nil end
 function methods:SetPoint(anchor, ...) self.points[anchor] = {...} end
@@ -63,8 +68,10 @@ end
 function methods:Show() self:SetShown(true) end
 function methods:Hide() self:SetShown(false) end
 methods.CreateTexture, methods.CreateFontString = frame, frame
-CreateFrame = function(_, name, parent)
+CreateFrame = function(kind, name, parent, template)
     local result = frame(parent)
+    result.kind = kind
+    result.template = template
     result.TitleText, result.Inset, result.ScrollBar = frame(result), frame(result), frame(result)
     frames[#frames + 1] = result
     if name then _G[name] = result end
@@ -113,18 +120,23 @@ assert(TDLFrame:IsShown(), "reload opens pending tasks")
 local longText = string.rep("Task text with spaces ", 10)
 saved.tasks[1].text = longText
 TDLFrame.scripts.OnShow()
-assert(rows[1]:GetHeight() == 70 and rows[1].text:GetHeight() == 14
+assert(rows[1]:GetHeight() == 48 and rows[1].text:GetHeight() == 14
     and not rows[1].text.wrap and not rows[1].text.nonSpaceWrap
     and rows[1].delete:IsShown(),
-    "collapsed text stays on one line with its actions visible underneath")
+    "collapsed text stays on one line with its actions visible beside it")
+assert(rows[1].text.points.TOPRIGHT[1] < rows[1].delete.points.TOPRIGHT[1] - rows[1].delete:GetWidth()
+    and rows[1].editor.points.TOPRIGHT[1] == rows[1].text.points.TOPRIGHT[1],
+    "display and inline editor both reserve space for Delete and the disclosure")
+assert(rows[1].delete.points.TOPRIGHT[2] == -11 and rows[1].delete:GetHeight() < rows[1]:GetHeight(),
+    "Delete remains inside the collapsed row")
 click(rows[1])
 assert(rows[1].expanded and rows[1].text.wrap and rows[1].text.nonSpaceWrap
-    and rows[1].delete:IsShown() and rows[1]:GetHeight() > 70)
-assert(rows[2].points.TOPLEFT[2] == -rows[1]:GetHeight() - 2, "expansion pushes later rows down")
+    and rows[1].delete:IsShown() and rows[1]:GetHeight() > 48)
+assert(rows[2].points.TOPLEFT[2] == -rows[1]:GetHeight() - 8, "expansion pushes later rows down")
 assert(TDLScrollFrame:GetVerticalScrollRange() > 0, "overflow remains scrollable")
 TDLScrollFrame.ScrollBar:SetValue(TDLScrollFrame:GetVerticalScrollRange())
 click(rows[1])
-assert(rows[1]:GetHeight() == 70 and rows[2].points.TOPLEFT[2] == -72
+assert(rows[1]:GetHeight() == 48 and rows[2].points.TOPLEFT[2] == -56
     and rows[1].delete:IsShown())
 assert(TDLScrollFrame.ScrollBar:GetValue() == TDLScrollFrame:GetVerticalScrollRange(), "collapse clamps scrolling")
 click(rows[2])
@@ -135,7 +147,7 @@ rows[9].scripts.OnDoubleClick()
 assert(rows[9].editor.focused and rows[9].editor:IsShown() and not rows[9].text:IsShown())
 rows[9].editor:SetText("  Español 中文 |cff00ff00 test\nSecond line  ")
 assert(saved.tasks[9].text == "Completed task 9", "inline changes wait for autosave")
-assert(rows[9]:GetHeight() > 70, "multiline editing grows the row")
+assert(rows[9]:GetHeight() > 48, "multiline editing grows the row")
 rows[9].editor.scripts.OnCursorChanged(rows[9].editor, 0, -14, 1, 14)
 assert(TDLScrollFrame.ScrollBar:GetValue() > 0, "caret scrolls into view")
 rows[9].editor:ClearFocus()
@@ -163,7 +175,12 @@ rows[9].editor:ClearFocus()
 assert(saved.tasks[9].text:find("Second line") and UIErrorsFrame.message == "Shorten the task text.")
 rows[9].scripts.OnDoubleClick()
 rows[9].editor:SetText("Saved on close")
-TDLFrame:Hide()
+local close
+for _, f in ipairs(frames) do
+    if f.parent == TDLFrame and f.template == "UIPanelCloseButtonNoScripts" then close = f end
+end
+assert(close, "custom window keeps a native close button")
+click(close)
 assert(saved.tasks[9].text == "Saved on close", "closing the addon saves the active edit")
 TDL_Toggle()
 rows[9].scripts.OnDoubleClick()
