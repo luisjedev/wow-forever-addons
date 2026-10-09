@@ -9,15 +9,26 @@ It is extended for each version and build that affects our addons. It does not a
 | Field | Value |
 | --- | --- |
 | Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on October 3, 2026 | `1.60.1.70205` |
-| Interface declared by TDL, Revenge and GuildStock | `16001` |
+| Installed client observed on October 9, 2026 | `1.60.1.70205` (`wow_classic_beta`, active row in `.build.info`) |
+| Latest published Forever build checked on October 9, 2026 | `1.60.1.70291` (Blizzard version service; newer than the installed client) |
+| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70291` has not been verified in-game |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Latest source revision consulted | [`e3ecc27` · 1.60.1 (70205), October 3, 2026](https://github.com/Gethe/wow-ui-source/commit/e3ecc27b64d30fdc735a3f6579b866858f9f9df1) |
-| Last review of this log | October 6, 2026; GuildStock auction-service investigation and TDL window restyle |
+| Latest source revision consulted | [`9465cb2` · 1.60.1 (70291), October 8, 2026](https://github.com/Gethe/wow-ui-source/commit/9465cb273b5513495d8ecc12fbb19930dd6b8957) |
+| Last review of this log | October 9, 2026; build 70291 API and FrameXML review |
 
-The installed version comes from the `wow_classic_beta` product row in `.build.info`. The running GuildStock diagnostics also reported interface `16001` on October 3. A manifest declaration alone is not evidence of a client test. In the game, `/dump GetBuildInfo()` lets you check the version, build, and interface number.
+The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client remains on build `70205`, while the service and the newest `forever` mirror commit report build `70291`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
 
-Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. We chose `forever` because its commit identifies the same build as the installed client. Do not assume the `classic_beta` branch still represents Forever.
+Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
+
+### Forever 1.60.1 · published build 70291 · October 9, 2026
+
+**Installed versus published:** the active local `wow_classic_beta` row in `.build.info` remains `1.60.1.70205`. Blizzard's US and EU version services report published build `1.60.1.70291`. The `forever` branch of the community mirror has a matching commit, [`9465cb2`](https://github.com/Gethe/wow-ui-source/commit/9465cb273b5513495d8ecc12fbb19930dd6b8957), dated October 8. Build `70291`'s interface number has not been confirmed in the running client; `16001` below is the addons' existing declaration and the previously observed interface for build `70205`.
+
+**API and FrameXML comparison:** comparing `70205` with `70291` found no generated signature changes to the unit/nameplate, chat-message transport, club membership, item, bag, or profession-reading APIs used by the addons. The generated documentation adds voice-provider and Discord APIs, extends `ChatChannelType` with Discord values, and adds player-stat functions whose results are secret when unit stats are restricted. None of these new APIs is called by TDL, Revenge, or GuildStock. `GetFrameStrata` is now documented as returning a secret frame-strata aspect; `SetFrameStrata` remains protected, with its secret-argument annotation changed to allow an untainted caller. Our calls pass fixed strata strings (`"DIALOG"` or `"LOW"`) to addon-owned frames. We do not read `GetFrameStrata`; the current source change alone does not establish a runtime failure or remove protected-frame restrictions.
+
+**Affected addons and follow-up:** the mirror also changes native profession-window handling for `Professions.SkillAbandoned` and `TRADE_SKILL_CLOSE`. GuildStock adds its shortcut to `ProfessionsFrame`, reads profession data through `GetProfessions()` / `GetProfessionInfo()`, and draws its own profession bars. Blizzard's [October 8 known-issues post](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-known-issues-8-october/629369) reports that some icons in the native Professions window appear broken; GuildStock currently uses its own profession icon paths and progress-bar atlases, so impact is unconfirmed. Once build `70291` is installed, check `/dump GetBuildInfo()`, GuildStock's shortcut and profession display while opening and closing the native profession window, TDL's and Revenge's strata, Revenge nameplates, and SavedVariables after `/reload` and a full restart. Test cross-layer GuildStock delivery with two clients. Do not infer that the SavedVariables issue is fixed from this update.
+
+**Official notes:** Blizzard's [October 8 development notes](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-8-october/631316) describe gameplay and content changes but do not document an addon API or SavedVariables fix. This is source/documentation review only; build `70291` has not been reproduced in-game here.
 
 ### TDL window restyle · October 6, 2026
 
