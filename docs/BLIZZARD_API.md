@@ -38,6 +38,14 @@ Gethe is a **community mirror of Blizzard's interface code**, not an official se
 
 **Official notes:** Blizzard's [October 8 development notes](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-8-october/631316) describe gameplay and content changes but do not document an addon API or SavedVariables fix. This is source/documentation review only; build `70291` has not been reproduced in-game here.
 
+### DeathMark 0.1.0 · October 10, 2026
+
+**Reference:** installed product `wow_classic_beta` `1.60.1.70205`, interface `16001` from the existing client reference. **Affected addon:** DeathMark 0.1.0 (new). Local-only death log: the last 10 deaths of the character, each with `timestamp, level, zone, subzone, mapID, x, y` and an optional short note. No addon communication, no combat logic, no protected frames: one window plus a minimap button following the TDL/Revenge pattern.
+
+**API use:** death is captured on `PLAYER_DEAD`, not `PLAYER_ALIVE`, because after release the player position is the graveyard. `PLAYER_ALIVE` / `PLAYER_UNGHOST` only clear the pending-death flag that suppresses a duplicate `PLAYER_DEAD` without release. Position comes from `C_Map.GetBestMapForUnit("player")` plus `C_Map.GetPlayerMapPosition()`, with `GetZoneText()` / `GetSubZoneText()` kept as text. A nil map or nil coordinates (indoors, instances) are stored as nil and displayed as unknown, never as invented coordinates. Reads are guarded with `pcall` and `canaccessvalue` checks following Revenge. Persistence uses `SavedVariablesPerCharacter: DeathMarkDB` with a versioned schema; migration preserves unknown keys and valid entries, drops invalid ones and prunes to 10.
+
+**Automated validation:** Lua syntax and the repository suites pass, including a stub harness that records deaths, suppresses double `PLAYER_DEAD`, re-arms on release, tolerates nil maps, annotates notes and drags the minimap button. **Pending native verification:** a real death, `/reload` while a ghost, a death in an instance, and SavedVariables after `/reload` and a full restart. The historical beta persistence limitation remains open; no fix is claimed from this addition. No screenshots or player records are published.
+
 ### TDL window restyle · October 6, 2026
 
 **Reference:** installed product `wow_classic_beta` rechecked at `1.60.1.70205`, interface `16001`. **Affected addon:** TDL 1.2.0. The approved classic window uses an addon-owned decorative texture with native buttons, checkboxes, edit boxes and the existing continuous scroll frame. Delete now stays to the right of each task, with space reserved in both display and edit modes. Initialization, recovery and SavedVariables are unchanged.
