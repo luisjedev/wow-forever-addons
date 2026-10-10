@@ -137,6 +137,9 @@ local function ParseSlash(message)
         if (rest or "") == "" then return "add-missing" end
         return "add", rest
     end
+    if command and command:lower() == "place" then
+        return "place"
+    end
     return "unknown"
 end
 
@@ -159,9 +162,10 @@ addon.FormatCoords = FormatCoords
 -- Allows the small standalone test to load the pure helpers without mocking WoW.
 if not CreateFrame then return addon end
 
-local db, window, countText, emptyText, hintText
+local db, window, countText, emptyText, hintText, mapButton
 local rows = {}
 local providerInstance, providerRegistered, mapHooked, mapButtonAdded = nil, false, false, false
+local placing = false
 
 local function Readable(value)
     if value == nil then return nil end
@@ -395,19 +399,62 @@ function WaymarkPinMixin:OnClick(button)
     end
 end
 
-local function HookAltClick()
+-- Placing mode needs no keyboard: arming happens on the map button (or
+-- /wm place) and the next left click on the canvas plants the pin.
+local function UpdateMapButton()
+    if not mapButton then return end
+    mapButton:SetText(placing and L["Placing…"] or L["Waymark"])
+end
+
+local function ArmPlacing()
+    if not db then return end
+    if type(db.pins) == "table" and #db.pins >= MAX_PINS then
+        Notify(L["Waymark list is full (20)."])
+        return
+    end
+    placing = true
+    UpdateMapButton()
+    Notify(L["Click the map to place your waymark. Click the button again to cancel."])
+end
+
+local function CancelPlacing(silent)
+    if not placing then return end
+    placing = false
+    UpdateMapButton()
+    if not silent then Notify(L["Placing cancelled."]) end
+end
+
+local function TogglePlacing()
+    if placing then CancelPlacing() else ArmPlacing() end
+end
+
+local function HookPlacementClick()
     if mapHooked then return end
     if type(WorldMapFrame) ~= "table" then return end
     local scroll = WorldMapFrame.ScrollContainer
     if type(scroll) ~= "table" or type(scroll.HookScript) ~= "function" then return end
     -- GetNormalizedCursorPosition always returns clamped 0..1 values, hence
-    -- the IsMouseOver guard: without it every Alt+Click on map chrome would
-    -- plant a pin on the nearest edge.
+    -- the IsMouseOver guard: without it clicks on map chrome would plant a
+    -- pin on the nearest edge.
     scroll:HookScript("OnMouseDown", function(_, button)
         if button ~= "LeftButton" then return end
-        if type(IsAltKeyDown) == "function" and not IsAltKeyDown() then return end
+        if not placing then return end
         if type(scroll.IsMouseOver) == "function" and not scroll:IsMouseOver() then
             return
+        end
+        -- Overlap guard: a click landing on an existing pin lets that pin
+        -- open its popup instead of planting a second pin underneath.
+        if type(WorldMapFrame.EnumeratePinsByTemplate) == "function" then
+            local ok, iterator = pcall(WorldMapFrame.EnumeratePinsByTemplate,
+                WorldMapFrame, "WaymarkPinTemplate")
+            if ok and type(iterator) == "function" then
+                for pin in iterator do
+                    if pin and type(pin.IsMouseOver) == "function" then
+                        local hoveredOk, hovered = pcall(pin.IsMouseOver, pin)
+                        if hoveredOk and hovered then return end
+                    end
+                end
+            end
         end
         if type(scroll.GetNormalizedCursorPosition) ~= "function" then return end
         local x, y = scroll:GetNormalizedCursorPosition()
@@ -423,6 +470,8 @@ local function HookAltClick()
             Notify(L["Waymark list is full (20)."])
             return
         end
+        -- Disarm before the popup so the note dialog never leaves us armed.
+        CancelPlacing(true)
         ShowAddPopup(mapID, x, y, ReadZoneForMap(mapID))
     end)
     mapHooked = true
@@ -502,12 +551,12 @@ local function CreateWindow()
     emptyText = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     emptyText:SetPoint("TOP", 0, -140)
     emptyText:SetWidth(400)
-    emptyText:SetText(L["No waymarks yet. Alt+Click the world map to add one."])
+    emptyText:SetText(L["No waymarks yet. Use the Waymark button on the world map to add one."])
 
     hintText = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hintText:SetPoint("BOTTOM", 0, 16)
     hintText:SetWidth(430)
-    hintText:SetText(L["Alt+Click map: Add waymark"])
+    hintText:SetText(L["Click the map to place your waymark. Click the button again to cancel."])
 
     window:SetScript("OnShow", RefreshWindow)
     addon._rows = rows
@@ -523,22 +572,39 @@ function Waymark_Toggle()
     ToggleWindow()
 end
 
--- Text button on the world map so the list is discoverable without a minimap button.
+-- World-map buttons: Waymark toggles placing mode, List toggles the window.
+-- Closing the map (Esc/X) silently disarms placing; right click never
+-- cancels because it is needed to zoom and navigate while armed.
 local function AddMapButton()
     if mapButtonAdded then return end
     if type(WorldMapFrame) ~= "table" then return end
-    local button = CreateFrame("Button", "WaymarkMapButton", WorldMapFrame, "UIPanelButtonTemplate")
-    button:SetSize(90, 22)
-    button:SetPoint("TOPRIGHT", WorldMapFrame, "TOPRIGHT", -120, -28)
-    button:SetText(L["Waymark"])
-    button:SetScript("OnClick", ToggleWindow)
-    button:SetScript("OnEnter", function(self)
+    local listButton = CreateFrame("Button", "WaymarkListButton", WorldMapFrame, "UIPanelButtonTemplate")
+    listButton:SetSize(60, 22)
+    listButton:SetPoint("TOPRIGHT", WorldMapFrame, "TOPRIGHT", -216, -28)
+    listButton:SetText(L["List"])
+    listButton:SetScript("OnClick", ToggleWindow)
+    listButton:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText("Waymark", 1, 0.82, 0)
         GameTooltip:AddLine(L["Open list"], 1, 1, 1)
         GameTooltip:Show()
     end)
-    button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    listButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    mapButton = CreateFrame("Button", "WaymarkMapButton", WorldMapFrame, "UIPanelButtonTemplate")
+    mapButton:SetSize(90, 22)
+    mapButton:SetPoint("TOPRIGHT", WorldMapFrame, "TOPRIGHT", -120, -28)
+    mapButton:SetText(L["Waymark"])
+    mapButton:SetScript("OnClick", TogglePlacing)
+    mapButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Waymark", 1, 0.82, 0)
+        GameTooltip:AddLine(placing and L["Placing…"] or L["Waymark button: Add waymark"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    mapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    if type(WorldMapFrame.HookScript) == "function" then
+        WorldMapFrame:HookScript("OnHide", function() CancelPlacing(true) end)
+    end
     mapButtonAdded = true
 end
 
@@ -557,7 +623,7 @@ local function RegisterProvider()
     providerInstance = instance
     addon._providerInstance = instance
     providerRegistered = true
-    HookAltClick()
+    HookPlacementClick()
     AddMapButton()
     RefreshPins()
     return true
@@ -600,12 +666,17 @@ local function HandleSlash(message)
     local action, rest = ParseSlash(message)
     if action == "toggle" then
         ToggleWindow()
+    elseif action == "place" then
+        if type(WorldMapFrame) == "table" and type(WorldMapFrame.Show) == "function" then
+            WorldMapFrame:Show()
+        end
+        ArmPlacing()
     elseif action == "add" then
         AddAtPlayer(rest)
     elseif action == "add-missing" then
         Notify(L["Write a note after /wm add."])
     else
-        Notify(L["Unknown command. Use /wm or /wm add <text>."])
+        Notify(L["Unknown command. Use /wm, /wm place or /wm add <text>."])
     end
 end
 

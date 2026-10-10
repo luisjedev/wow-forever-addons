@@ -76,6 +76,8 @@ local action, rest = addon.ParseSlash("add fountain by the road")
 assert(action == "add" and rest == "fountain by the road")
 assert(addon.ParseSlash("ADD upper") == "add")
 assert(addon.ParseSlash("add") == "add-missing")
+assert(addon.ParseSlash("place") == "place")
+assert(addon.ParseSlash("PLACE") == "place")
 assert(addon.ParseSlash("bogus") == "unknown")
 
 -- Coordinate formatting.
@@ -90,8 +92,11 @@ local source = sourceFile:read("*a")
 sourceFile:close()
 local keys = {}
 for key in source:gmatch('L%["(.-)"%]') do keys[key] = true end
-assert(keys["Waymarks: %d"] and keys["No waymarks yet. Alt+Click the world map to add one."]
-    and keys["Alt+Click map: Add waymark"] and keys["Unknown command. Use /wm or /wm add <text>."])
+assert(keys["Waymarks: %d"] and keys["No waymarks yet. Use the Waymark button on the world map to add one."]
+    and keys["Click the map to place your waymark. Click the button again to cancel."]
+    and keys["Unknown command. Use /wm, /wm place or /wm add <text>."])
+assert(keys["No waymarks yet. Alt+Click the world map to add one."] == nil, "Alt keys are gone")
+assert(keys["Alt+Click map: Add waymark"] == nil, "Alt keys are gone")
 local loadLocales = assert(loadfile(ROOT .. "Locales.lua"))
 local spanish
 for _, locale in ipairs({"esES", "esMX", "frFR", "deDE", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "enUS", "enGB", "unknown"}) do
@@ -137,6 +142,7 @@ end
 function methods:RegisterForClicks(...) self.clicks = table.concat({...}, ",") end
 function methods:RegisterForDrag(button) self.dragButton = button end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
+function methods:HookScript(name, callback) self.scripts[name] = callback end
 function methods:GetScript(name) return self.scripts[name] end
 function methods:RegisterEvent(name) self.events[name] = true end
 function methods:SetMovable(movable) self.movable = movable end
@@ -195,8 +201,7 @@ local shownPopups = {}
 StaticPopup_Show = function(name, arg1, arg2, data)
     shownPopups[#shownPopups + 1] = { name = name, arg1 = arg1, data = data }
 end
-local altDown, mouseOver, cursorX, cursorY = true, true, 0.42, 0.61
-IsAltKeyDown = function() return altDown end
+local mouseOver, cursorX, cursorY = true, 0.42, 0.61
 local worldMapID = 1414
 WorldMapFrame = frame()
 WorldMapFrame.ScrollContainer = frame()
@@ -208,6 +213,17 @@ function WorldMapFrame:GetMapID() return worldMapID end
 function WorldMapFrame:SetMapID(id) self.shownMap = id end
 local addedProviders = {}
 function WorldMapFrame:AddDataProvider(provider) addedProviders[#addedProviders + 1] = provider end
+local hoveredPin = false
+function WorldMapFrame:EnumeratePinsByTemplate(template)
+    assert(template == "WaymarkPinTemplate")
+    local pins = {}
+    if hoveredPin then pins[1] = { IsMouseOver = function() return true end } end
+    local index = 0
+    return function()
+        index = index + 1
+        return pins[index]
+    end
+end
 GetLocale = function() return "enUS" end
 GetZoneText = function() return "Fallback Zone" end
 local playerMapID, playerX, playerY = 1414, 0.30, 0.40
@@ -258,32 +274,63 @@ provider:RefreshAllData()
 assert(provider.cleared == "WaymarkPinTemplate" and #acquired == 1
     and acquired[1].data.note == "kept" and acquired[1].x == 0.1 and acquired[1].y == 0.2)
 
--- Alt+LeftClick on the canvas opens the note popup; right click never does.
+-- Placing mode needs no keyboard: the map button arms it, the next left
+-- click on the canvas plants the pin and disarms.
 local mouseDown = WorldMapFrame.ScrollContainer.hooks.OnMouseDown
 assert(mouseDown ~= nil, "map click hook installed")
-local popups = #shownPopups
+assert(_G.WaymarkListButton ~= nil, "world map list button exists")
+local popups, armedChat = #shownPopups, #chat
+mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
+assert(#shownPopups == popups, "disarmed clicks are ignored")
+_G.WaymarkMapButton.scripts.OnClick()
+assert(_G.WaymarkMapButton.label == "Placing…", "button shows the armed state")
+assert(#chat == armedChat + 1, "arming explains how to cancel")
+-- Right click never plants nor cancels: it stays with map zoom.
+mouseDown(WorldMapFrame.ScrollContainer, "RightButton")
+assert(#shownPopups == popups and _G.WaymarkMapButton.label == "Placing…")
+-- Armed clicks keep the clicked map: navigate-then-place works.
+worldMapID = 999
 mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
 assert(#shownPopups == popups + 1 and shownPopups[#shownPopups].name == "WAYMARK_ADD")
+assert(_G.WaymarkMapButton.label == "Waymark", "planting disarms")
 local addData = shownPopups[#shownPopups].data
-assert(addData.mapID == 1414 and addData.x == 0.42 and addData.y == 0.61 and addData.zone == "Zone 1414")
-mouseDown(WorldMapFrame.ScrollContainer, "RightButton")
-assert(#shownPopups == popups + 1, "right click stays with the map zoom")
-altDown = false
-mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
-assert(#shownPopups == popups + 1, "clicks without Alt are ignored")
-altDown = true
+assert(addData.mapID == 999 and addData.x == 0.42 and addData.y == 0.61 and addData.zone == "Zone 999")
+worldMapID = 1414
 
 -- Accepting the popup creates the pin; cancelling would create nothing.
 StaticPopupDialogs.WAYMARK_ADD.OnAccept({ editBox = { GetText = function() return "  fountain  " end } }, addData)
-assert(#WaymarkDB.pins == 2 and WaymarkDB.pins[1].note == "fountain" and WaymarkDB.pins[1].id == 8)
+assert(#WaymarkDB.pins == 2 and WaymarkDB.pins[1].note == "fountain"
+    and WaymarkDB.pins[1].id == 8 and WaymarkDB.pins[1].mapID == 999)
+provider:RefreshAllData()
+assert(#acquired == 1, "other-map pins stay hidden on refresh")
+WaymarkDB.pins[1].mapID = 1414
 provider:RefreshAllData()
 assert(#acquired == 2, "refresh picks up the new pin on its map")
 
--- Pins on other maps are not acquired.
-WaymarkDB.pins[1].mapID = 999
-provider:RefreshAllData()
-assert(#acquired == 1 and acquired[1].data.note == "kept", "foreign-map pins stay hidden")
-WaymarkDB.pins[1].mapID = 1414
+-- Overlap guard: a click on an existing pin opens its popup, plants nothing.
+_G.WaymarkMapButton.scripts.OnClick()
+assert(_G.WaymarkMapButton.label == "Placing…")
+hoveredPin = true
+popups = #shownPopups
+mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
+assert(#shownPopups == popups, "clicks on pins plant nothing")
+assert(_G.WaymarkMapButton.label == "Placing…", "overlap keeps us armed")
+hoveredPin = false
+mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
+assert(#shownPopups == popups + 1, "the next free click plants")
+local freeData = shownPopups[#shownPopups].data
+StaticPopupDialogs.WAYMARK_ADD.OnAccept({ editBox = { GetText = function() return "   " end } }, freeData)
+assert(#WaymarkDB.pins == 2, "blank popup notes save nothing")
+
+-- The button cancels while armed; closing the map cancels silently.
+_G.WaymarkMapButton.scripts.OnClick()
+armedChat = #chat
+_G.WaymarkMapButton.scripts.OnClick()
+assert(_G.WaymarkMapButton.label == "Waymark" and #chat == armedChat + 1, "button cancels placing")
+_G.WaymarkMapButton.scripts.OnClick()
+armedChat = #chat
+WorldMapFrame.scripts.OnHide()
+assert(_G.WaymarkMapButton.label == "Waymark" and #chat == armedChat, "map close cancels silently")
 
 -- Slash: toggle, add at the player, errors.
 local slash = SlashCmdList.WAYMARK
@@ -292,6 +339,10 @@ assert(_G.WaymarkFrame:IsShown(), "/wm opens the list")
 assert(live._rows[1].note.label == "fountain", "list shows the newest pin first")
 slash("")
 assert(not _G.WaymarkFrame:IsShown(), "/wm closes the list")
+_G.WaymarkListButton.scripts.OnClick()
+assert(_G.WaymarkFrame:IsShown(), "List button opens the window")
+_G.WaymarkListButton.scripts.OnClick()
+assert(not _G.WaymarkFrame:IsShown(), "List button closes the window")
 slash("add at the player")
 assert(WaymarkDB.pins[1].note == "at the player" and WaymarkDB.pins[1].x == 0.30
     and WaymarkDB.pins[1].zone == "Zone 1414", "/wm add uses the player position")
@@ -305,15 +356,21 @@ assert(#chat == messages + 2, "bare /wm add explains itself")
 slash("bogus")
 assert(#chat == messages + 3, "unknown commands explain themselves")
 
--- The cap blocks both slash and map clicks with a chat message.
+-- /wm place opens the map and arms placing.
+WorldMapFrame:Hide()
+slash("place")
+assert(WorldMapFrame:IsShown(), "/wm place opens the map")
+assert(_G.WaymarkMapButton.label == "Placing…", "/wm place arms placing")
+_G.WaymarkMapButton.scripts.OnClick()
+
+-- The cap blocks slash adds and refuses to arm, with a chat message.
 while #WaymarkDB.pins < 20 do slash("add filler " .. #WaymarkDB.pins) end
 assert(#WaymarkDB.pins == 20)
 messages = #chat
 slash("add one too many")
 assert(#WaymarkDB.pins == 20 and #chat == messages + 1, "the 21st pin is blocked")
-popups = #shownPopups
-mouseDown(WorldMapFrame.ScrollContainer, "LeftButton")
-assert(#shownPopups == popups and #chat == messages + 2, "map clicks are blocked when full")
+_G.WaymarkMapButton.scripts.OnClick()
+assert(_G.WaymarkMapButton.label == "Waymark" and #chat == messages + 2, "arming is blocked when full")
 
 -- List buttons: go recenters the world map, delete removes with a message.
 live._rows[1].go.scripts.OnClick()
