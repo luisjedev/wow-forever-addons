@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: Waymark
+## Notes: Mark places on the world map with a short note.
+## Version: 0.1.0
+## SavedVariablesPerCharacter: WaymarkDB
+
+Locales.lua
+Waymark.lua
+Waymark.xml

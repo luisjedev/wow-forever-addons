@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y lua5.1
       - name: Check Lua syntax
-        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "DeathMark/Locales.lua", "DeathMark/DeathMark.lua", "DeathMark/DeathMark.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/Sync.lua", "GuildStock/Sync.test.lua", "GuildStock/ItemNames.lua", "GuildStock/CatalogSeed.lua", "GuildStock/CatalogSeed.test.lua", "GuildStock/Catalog.lua", "GuildStock/Bags.lua", "GuildStock/Bags.test.lua", "GuildStock/Prices.lua", "GuildStock/Prices.test.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
+        run: lua5.1 -e 'for _, p in ipairs({"TDL/Locales.lua", "TDL/TDL.lua", "TDL/TDL.test.lua", "Revenge/Locales.lua", "Revenge/Revenge.lua", "Revenge/Revenge.test.lua", "tests/minimap.test.lua", "DeathMark/Locales.lua", "DeathMark/DeathMark.lua", "DeathMark/DeathMark.test.lua", "Waymark/Locales.lua", "Waymark/Waymark.lua", "Waymark/Waymark.test.lua", "GuildStock/Locales.lua", "GuildStock/GuildStock.lua", "GuildStock/Probe.lua", "GuildStock/Sync.lua", "GuildStock/Sync.test.lua", "GuildStock/ItemNames.lua", "GuildStock/CatalogSeed.lua", "GuildStock/CatalogSeed.test.lua", "GuildStock/Catalog.lua", "GuildStock/Bags.lua", "GuildStock/Bags.test.lua", "GuildStock/Prices.lua", "GuildStock/Prices.test.lua", "GuildStock/UI.lua", "GuildStock/GuildStock.test.lua"}) do assert(loadfile(p)) end'
       - name: Check TDL interface logic
         run: lua5.1 TDL/TDL.test.lua
       - name: Check Revenge logic
@@ -22,6 +22,8 @@ jobs:
         run: lua5.1 tests/minimap.test.lua
       - name: Check DeathMark logic
         run: lua5.1 DeathMark/DeathMark.test.lua
+      - name: Check Waymark logic
+        run: lua5.1 Waymark/Waymark.test.lua
       - name: Check GuildStock prototype
         run: lua5.1 GuildStock/GuildStock.test.lua
       - name: Check GuildStock native bag hints

@@ -11,6 +11,7 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 | **[TDL](TDL)** | Your in-game task list. Add plans, edit them, and mark what you have completed. | Minimap button, `/tdl`, or `/todo` |
 | **[Revenge](Revenge)** | Keep a list of enemy players and recognize their nameplates with a marker and a distinctive style when the game allows identification. | Minimap button or `/rvg` |
 | **DeathMark** | Remember where you died: your last 10 deaths with zone, coordinates, level and an optional short note. | Minimap button, `/deathmark`, or `/dm` |
+| **Waymark** | Mark places on the world map: Alt+Click to drop a pin with a short note, kept per character. | World map button, `/wm`, or `/waymark` |
 
 Hover over a minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
 
@@ -28,6 +29,10 @@ Add your current target with one click or enter their first name and surname. Br
 
 Each death is recorded automatically with date, level, zone and map coordinates, newest first, up to the last 10. Add a short note to the latest entry with `/dm nota <text>`. The interface follows your game's language, with English as the fallback.
 
+### Waymark · Mark your map
+
+Alt+Click the large world map to drop a pin with a short note, or use `/wm add <text>` where you stand. Click a pin to view or delete it, and use the list to jump back to any mark. The newest 20 marks persist per character. The interface follows your game's language, with English as the fallback.
+
 ## Installation
 
 The addons will also be available from [my public CurseForge page (Artidev)](https://www.curseforge.com/members/artidev/projects) as they are published there.
@@ -35,8 +40,8 @@ The addons will also be available from [my public CurseForge page (Artidev)](htt
 To install them from this repository:
 
 1. Download the repository using **Code → Download ZIP** and extract it.
-2. Copy the `TDL` folder, the `Revenge` folder, the `DeathMark` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
-3. Check that the paths are `AddOns/TDL/TDL.toc`, `AddOns/Revenge/Revenge.toc`, and `AddOns/DeathMark/DeathMark.toc`.
+2. Copy the `TDL` folder, the `Revenge` folder, the `DeathMark` folder, the `Waymark` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+3. Check that the paths are `AddOns/TDL/TDL.toc`, `AddOns/Revenge/Revenge.toc`, `AddOns/DeathMark/DeathMark.toc`, and `AddOns/Waymark/Waymark.toc`.
 4. Restart the game and enable the addons on the character selection screen.
 
 Do not copy the entire repository folder into `AddOns`. You do not need development tools to play.

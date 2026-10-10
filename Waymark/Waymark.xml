@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+  <Button name="WaymarkPinTemplate" virtual="true" mixin="WaymarkPinMixin">
+    <Size x="20" y="20"/>
+    <NormalTexture file="Interface\Icons\INV_Misc_Map_01"/>
+    <HighlightTexture file="Interface\Minimap\UI-Minimap-ZoomButton-Highlight" alphaMode="ADD"/>
+  </Button>
+</Ui>
