@@ -9,16 +9,24 @@ It is extended for each version and build that affects our addons. It does not a
 | Field | Value |
 | --- | --- |
 | Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on October 9, 2026 | `1.60.1.70205` (`wow_classic_beta`, active row in `.build.info`) |
-| Latest published Forever build checked on October 9, 2026 | `1.60.1.70291` (Blizzard version service; newer than the installed client) |
-| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70291` has not been verified in-game |
+| Installed client observed on October 10, 2026 | `1.60.1.70205` (`wow_classic_beta`, active row in `.build.info`) |
+| Latest published Forever build checked on October 10, 2026 | `1.60.1.70338` (Blizzard version service; newer than the installed client) |
+| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70338` has not been verified in-game |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Latest source revision consulted | [`9465cb2` · 1.60.1 (70291), October 8, 2026](https://github.com/Gethe/wow-ui-source/commit/9465cb273b5513495d8ecc12fbb19930dd6b8957) |
-| Last review of this log | October 9, 2026; build 70291 API and FrameXML review |
+| Latest source revision consulted | [`9437644` · 1.60.1 (70338), October 10, 2026](https://github.com/Gethe/wow-ui-source/commit/943764493e6b16d63ded3ab304150d1f05e58b57) |
+| Last review of this log | October 10, 2026; build 70338 API and FrameXML review |
 
-The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client remains on build `70205`, while the service and the newest `forever` mirror commit report build `70291`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
+The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client remains on build `70205`, while the service and the newest `forever` mirror commit report build `70338`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
+
+### Forever 1.60.1 · published build 70338 · October 10, 2026
+
+**Installed versus published:** the active local `wow_classic_beta` row in `.build.info` remains `1.60.1.70205`. Blizzard's [US](https://us.version.battle.net/wow_classic_beta/versions) and [EU](https://eu.version.battle.net/wow_classic_beta/versions) version services report `1.60.1.70338`. The `forever` mirror's matching [`9437644` commit](https://github.com/Gethe/wow-ui-source/commit/943764493e6b16d63ded3ab304150d1f05e58b57) is dated October 10. The interface number for `70338` has not been verified in-game; `16001` remains the addons' declaration and the observed interface for installed build `70205`.
+
+**API and FrameXML comparison:** the mirror's intervening `70334` and `70338` commits change only `version.txt`; they contain no API documentation or FrameXML changes relative to build `70291`. Thus this source review found no new API or FrameXML impact for TDL, Revenge, or GuildStock. This does not rule out client-side or server hotfixes outside the mirror. Blizzard's latest located [development notes](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-8-october/631316) and [known-issues list](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-known-issues-8-october/629369) are dated October 8; neither documents build `70338`'s contents or a SavedVariables fix.
+
+**Pending verification:** after the client updates, check `/dump GetBuildInfo()` for product, build, and interface. Continue the build `70291` follow-up checks above, including native profession-window interaction, Revenge nameplates, SavedVariables after `/reload` and a full restart, and GuildStock delivery between two clients. The new build number and version-only mirror commit do not establish that those behaviors were retested or fixed.
 
 ### Forever 1.60.1 · published build 70291 · October 9, 2026
 
