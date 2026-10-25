@@ -9,16 +9,26 @@ It is extended for each version and build that affects our addons. It does not a
 | Field | Value |
 | --- | --- |
 | Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on October 10, 2026 | `1.60.1.70205` (`wow_classic_beta`, active row in `.build.info`) |
-| Latest published Forever build checked on October 10, 2026 | `1.60.1.70338` (Blizzard version service; newer than the installed client) |
-| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70338` has not been verified in-game |
+| Installed client observed on October 25, 2026 | `1.60.1.70338` (`wow_classic_beta`, active row in `.build.info`) |
+| Latest published Forever build checked on October 25, 2026 | `1.60.1.70532` (Blizzard version service; newer than the installed client) |
+| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70532` has not been verified in-game |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Latest source revision consulted | [`9437644` · 1.60.1 (70338), October 10, 2026](https://github.com/Gethe/wow-ui-source/commit/943764493e6b16d63ded3ab304150d1f05e58b57) |
-| Last review of this log | October 10, 2026; build 70338 API and FrameXML review |
+| Latest source revision consulted | [`ca8368f` · 1.60.1 (70532), October 22, 2026](https://github.com/Gethe/wow-ui-source/commit/ca8368f2f2380cbe696854f7f2646387c278a61b) |
+| Last review of this log | October 25, 2026; build 70532 API and FrameXML review |
 
-The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client remains on build `70205`, while the service and the newest `forever` mirror commit report build `70338`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
+The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client is on build `70338`, while the service and newest `forever` mirror commit report build `70532`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
+
+### Forever 1.60.1 · published build 70532 · October 25, 2026
+
+**Installed versus published:** the active local `wow_classic_beta` row in `.build.info` is `1.60.1.70338`. Blizzard's [US](https://us.version.battle.net/wow_classic_beta/versions) and [EU](https://eu.version.battle.net/wow_classic_beta/versions) version services report `1.60.1.70532`. The `forever` branch of the community mirror has matching revision [`ca8368f`](https://github.com/Gethe/wow-ui-source/commit/ca8368f2f2380cbe696854f7f2646387c278a61b), dated October 22. The interface number for build `70532` has not been verified in-game; `16001` remains the addons' declaration.
+
+**API and FrameXML comparison:** the cumulative mirror comparison from build `70338` (revision [`9437644`](https://github.com/Gethe/wow-ui-source/commit/943764493e6b16d63ded3ab304150d1f05e58b57)) to `70532` contains generated API documentation and FrameXML changes. It adds `SHARD_TRANSFER_CANCELLED`; GuildStock currently handles `SHARD_TRANSFER` and world-entry/exit to reset its sync state, but does not subscribe to cancellation. No guild data is deleted on transfer. The `PLAYER_LEVEL_UP` payload adds `spiritDelta`, and new stat APIs include secret-value annotations; none of these is used by the current addons. The new `AuctionHouse.GetItemKeySampleLink` is also unused. No changed signature was found for the current unit/nameplate, guild communication, bag/item, or profession-reading calls. GuildStock's `ChatFrameUtil.SendTell` path only opens native chat and is unchanged.
+
+FrameXML moves the native nameplate level display to the right side of the health bar; Revenge reads the nameplate health bar and may need a visual overlap check, with no API signature change identified. Profession UI changes concern gamepad/footer behavior; GuildStock's custom shortcut and progress display should be checked against the launch client's native profession window. Blizzard's [October 15 development notes](https://eu.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-15-october/631316/1) do not document an addon API or SavedVariables fix. A [community beta-feedback thread](https://us.forums.blizzard.com/en/wow/t/wow-forever-beta-addon-feedback/2385926) includes a new report of SavedVariables failing after reload/relog and a conflicting reply reporting persistence; this is conflicting external evidence, not a reproduced result or proof of a build-specific regression or fix.
+
+**Validation and next checks:** Blizzard announced the beta's end on October 23 in its [official forum post](https://us.forums.blizzard.com/en/wow/t/the-wow-forever-beta-celebration-is-underway/2389633), so build `70532` was not validated in-game here. When the launch client is available, record `/dump GetBuildInfo()`, then check Revenge nameplate layout, GuildStock's profession shortcut, SavedVariables after `/reload` and a full restart, and GuildStock `GUILD` delivery with two clients. Also test shard-transfer cancellation if it can be reproduced. The mirror comparison is source evidence only; it does not establish runtime behavior or resolve the persistence report.
 
 ### Forever 1.60.1 · published build 70338 · October 10, 2026
 
