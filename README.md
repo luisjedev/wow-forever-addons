@@ -17,15 +17,15 @@ Small, independent addons by [luisjedev](https://github.com/luisjedev) for **Wor
 <table>
   <tr>
     <td align="center" width="33%">
-      <a href="TDL"><img src="docs/images/tdl-1.1.0-ui.png" alt="TDL task list window" width="100%"></a>
+      <a href="GuildStock"><img src="docs/images/guildstock-materials.png" alt="GuildStock materials browser" width="100%"></a>
       <br>
-      <strong><a href="TDL">TDL</a></strong>
+      <strong><a href="GuildStock">GuildStock</a></strong>
       <br>
-      Your in-game task list: add plans, edit them, and mark what you have completed.
+      Find profession materials and see which guildmates have them, with automatically shared inventories.
       <br>
-      <code>/tdl</code> · <code>/todo</code> · minimap button
+      <code>/guildstock</code> · minimap button
       <br>
-      <a href="https://www.curseforge.com/wow/addons/tdl"><strong>Download on CurseForge</strong></a>
+      <a href="https://www.curseforge.com/wow/addons/guildstock"><strong>Download on CurseForge</strong></a>
     </td>
     <td align="center" width="33%">
       <a href="Revenge"><img src="docs/images/revenge-nameplate-preview.png" alt="Revenge nameplate preview — illustrative recreation" width="100%"></a>
@@ -39,56 +39,20 @@ Small, independent addons by [luisjedev](https://github.com/luisjedev) for **Wor
       <a href="https://www.curseforge.com/wow/addons/revenge-enemy-list"><strong>Download on CurseForge</strong></a>
     </td>
     <td align="center" width="33%">
-      <a href="GuildStock"><img src="docs/images/guildstock-materials.png" alt="GuildStock materials browser" width="100%"></a>
+      <a href="TDL"><img src="docs/images/tdl-1.1.0-ui.png" alt="TDL task list window" width="100%"></a>
       <br>
-      <strong><a href="GuildStock">GuildStock</a></strong>
+      <strong><a href="TDL">TDL</a></strong>
       <br>
-      Find profession materials and see which guildmates have them, with automatically shared inventories.
+      Your in-game task list: add plans, edit them, and mark what you have completed.
       <br>
-      <code>/guildstock</code> · minimap button
+      <code>/tdl</code> · <code>/todo</code> · minimap button
       <br>
-      <a href="https://www.curseforge.com/wow/addons/guildstock"><strong>Download on CurseForge</strong></a>
+      <a href="https://www.curseforge.com/wow/addons/tdl"><strong>Download on CurseForge</strong></a>
     </td>
   </tr>
 </table>
 
 Hover over a minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move it around the minimap. Position is saved per character, subject to the beta persistence limitation below.
-
----
-
-### TDL · Remember your plans
-
-<p align="center">
-  <img src="docs/images/tdl-1.1.0-ui.png" alt="TDL task list with example tasks" width="640">
-</p>
-
-Unfinished quests, materials to gather, or plans for your next session.
-
-- Create, edit, complete, and delete tasks in a movable, classic gold-framed window.
-- All tasks share one vertically scrolling list.
-- Click a truncated task to expand or collapse it, or double-click any task to edit its text directly.
-- Edits save automatically when you leave the field, close the window, reload the UI, or log out.
-- The window opens on login or UI reload when you have unfinished tasks.
-- Follows your game's language.
-
-**Open it:** minimap button, `/tdl`, or `/todo` · **Get it:** [TDL: ToDo List on CurseForge](https://www.curseforge.com/wow/addons/tdl)
-
----
-
-### Revenge · Some faces are worth remembering
-
-<p align="center">
-  <img src="docs/images/revenge-nameplate-preview.png" alt="Revenge nameplate preview" width="760">
-</p>
-
-<p align="center"><em>Nameplate preview — illustrative recreation, not an in-game screenshot.</em></p>
-
-- Add your current target with one click, or enter their first name and surname.
-- Browse your saved list and delete entries you no longer need.
-- Spot saved players on their nameplates, with a marker and a distinctive style when the game allows identification.
-- Follows your game's language, with English as the fallback.
-
-**Open it:** minimap button or `/rvg` · **Get it:** [Revenge: Enemy List on CurseForge](https://www.curseforge.com/wow/addons/revenge-enemy-list)
 
 ---
 
@@ -112,6 +76,42 @@ Unfinished quests, materials to gather, or plans for your next session.
 
 ---
 
+### Revenge · Some faces are worth remembering
+
+<p align="center">
+  <img src="docs/images/revenge-nameplate-preview.png" alt="Revenge nameplate preview" width="760">
+</p>
+
+<p align="center"><em>Nameplate preview — illustrative recreation, not an in-game screenshot.</em></p>
+
+- Add your current target with one click, or enter their first name and surname.
+- Browse your saved list and delete entries you no longer need.
+- Spot saved players on their nameplates, with a marker and a distinctive style when the game allows identification.
+- Follows your game's language, with English as the fallback.
+
+**Open it:** minimap button or `/rvg` · **Get it:** [Revenge: Enemy List on CurseForge](https://www.curseforge.com/wow/addons/revenge-enemy-list)
+
+---
+
+### TDL · Remember your plans
+
+<p align="center">
+  <img src="docs/images/tdl-1.1.0-ui.png" alt="TDL task list with example tasks" width="640">
+</p>
+
+Unfinished quests, materials to gather, or plans for your next session.
+
+- Create, edit, complete, and delete tasks in a movable, classic gold-framed window.
+- All tasks share one vertically scrolling list.
+- Click a truncated task to expand or collapse it, or double-click any task to edit its text directly.
+- Edits save automatically when you leave the field, close the window, reload the UI, or log out.
+- The window opens on login or UI reload when you have unfinished tasks.
+- Follows your game's language.
+
+**Open it:** minimap button, `/tdl`, or `/todo` · **Get it:** [TDL: ToDo List on CurseForge](https://www.curseforge.com/wow/addons/tdl)
+
+---
+
 ## Installation
 
 ### From CurseForge (easiest)
@@ -127,8 +127,8 @@ You can also browse them on [my CurseForge page (Artidev)](https://www.curseforg
 ### From this repository
 
 1. Download the repository using **Code → Download ZIP** and extract it.
-2. Copy the `TDL` folder, the `Revenge` folder, the `GuildStock` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
-3. Check that the paths are `AddOns/TDL/TDL.toc`, `AddOns/Revenge/Revenge.toc`, and `AddOns/GuildStock/GuildStock.toc`.
+2. Copy the `GuildStock` folder, the `Revenge` folder, the `TDL` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+3. Check that the paths are `AddOns/GuildStock/GuildStock.toc`, `AddOns/Revenge/Revenge.toc`, and `AddOns/TDL/TDL.toc`.
 4. Restart the game and enable the addons on the character selection screen.
 
 Do not copy the entire repository folder into `AddOns`. You do not need development tools to play.
