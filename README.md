@@ -124,6 +124,10 @@ Install any of the three addons from its CurseForge page with the CurseForge app
 
 You can also browse them on [my CurseForge page (Artidev)](https://www.curseforge.com/members/artidev/projects).
 
+### From GitHub Releases
+
+Download the ready-to-install `.zip` for each addon from the [repository's Releases](https://github.com/luisjedev/wow-forever-addons/releases), extract it into `World of Warcraft/_classic_beta_/Interface/AddOns/`, restart the game, and enable the addon on the character selection screen. Each zip already contains the addon folder with the right structure, for example `AddOns/GuildStock/GuildStock.toc`.
+
 ### From this repository
 
 1. Download the repository using **Code → Download ZIP** and extract it.
