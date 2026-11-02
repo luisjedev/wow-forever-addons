@@ -10,12 +10,9 @@ This collection brings together [luisjedev](https://github.com/luisjedev)'s addo
 | --- | --- | --- |
 | **[TDL](TDL)** | Your in-game task list. Add plans, edit them, and mark what you have completed. | Minimap button, `/tdl`, or `/todo` |
 | **[Revenge](Revenge)** | Keep a list of enemy players and recognize their nameplates with a marker and a distinctive style when the game allows identification. | Minimap button or `/rvg` |
-| **DeathMark** | Remember where you died: your last 10 deaths with zone, coordinates, level and an optional short note. | Minimap button, `/deathmark`, or `/dm` |
-| **Waymark** | Mark places on the world map: press the map button, then click to drop a pin with a short note, kept per character. | World map buttons, `/wm`, `/wm place`, or `/waymark` |
+| **[GuildStock](GuildStock)** | Find profession materials and see which guildmates have them, with automatically shared inventories. | Minimap button or `/guildstock` |
 
 Hover over a minimap icon for its controls: left-click to open or close, and drag with the left mouse button to move around the minimap. Position is saved per character, subject to the beta persistence limitation below.
-
-**Testing preview:** [GuildStock](GuildStock/README.md) helps guildmates find profession materials. Its prototype provides a material browser, favorites, a character inventory view, a searchable inventory and display settings, opened with `/guildstock` or its chest minimap button. The bundled partial catalog supplies 589 materials and their observed profession associations on every installation. Version 1.0.0 remembers observed material IDs, includes their character-bank counts in the same total, preserves dated inventories received directly from their owners and automatically exchanges shared inventories at login, batching later changes for 30 seconds, subject to client restrictions. Each character sends only its own inventory; third-party history relaying is removed while retaining protocol-2 direct compatibility. Earlier versions delivered complete peer inventories to the local client; native multi-client validation of this update and cross-shard behavior remain pending. Settings reports communication status.
 
 ### TDL · Remember your plans
 
@@ -25,13 +22,9 @@ Unfinished quests, materials to gather, or plans for your next session. Create, 
 
 Add your current target with one click or enter their first name and surname. Browse your list, delete entries, and spot saved players on their nameplates. The interface follows your game's language, with English as the fallback.
 
-### DeathMark · Where you died
+### GuildStock · Who has what your professions need
 
-Each death is recorded automatically with date, level, zone and map coordinates, newest first, up to the last 10. Add a short note to the latest entry with `/dm nota <text>`. The interface follows your game's language, with English as the fallback.
-
-### Waymark · Mark your map
-
-Open the large world map and press the Waymark button, then click to drop a pin with a short note — no keyboard needed. You can also use `/wm place` or `/wm add <text>` where you stand. Click a pin to view or delete it, and use the list to jump back to any mark. The newest 20 marks persist per character. The interface follows your game's language, with English as the fallback.
+Browse profession materials, keep favorites, and see which guildmates hold each material and how many they have. GuildStock automatically shares each character's own inventory with the guild and shows other characters' shared inventories, with dated observations when they are offline. You can exclude individual materials or stop sharing altogether in its settings, without losing your local inventory. It ships with a partial catalog of 589 materials and their observed profession associations, and can show local auction-price estimates. Cross-shard delivery still needs two-client validation. The interface follows your game's language, with English as the fallback. See its [own README](GuildStock/README.md) for the full guide.
 
 ## Installation
 
@@ -40,8 +33,8 @@ The addons will also be available from [my public CurseForge page (Artidev)](htt
 To install them from this repository:
 
 1. Download the repository using **Code → Download ZIP** and extract it.
-2. Copy the `TDL` folder, the `Revenge` folder, the `DeathMark` folder, the `Waymark` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
-3. Check that the paths are `AddOns/TDL/TDL.toc`, `AddOns/Revenge/Revenge.toc`, `AddOns/DeathMark/DeathMark.toc`, and `AddOns/Waymark/Waymark.toc`.
+2. Copy the `TDL` folder, the `Revenge` folder, the `GuildStock` folder, or any combination into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+3. Check that the paths are `AddOns/TDL/TDL.toc`, `AddOns/Revenge/Revenge.toc`, and `AddOns/GuildStock/GuildStock.toc`.
 4. Restart the game and enable the addons on the character selection screen.
 
 Do not copy the entire repository folder into `AddOns`. You do not need development tools to play.
