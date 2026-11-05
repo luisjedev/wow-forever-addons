@@ -133,6 +133,25 @@ assert(#Tooltip(first, 10, "GetBagItem", true) == 0)
 assert(#Tooltip(Frame(), 10) == 1, "bag addons supply their own item buttons")
 assert(#Tooltip(second, 20) == 0, "unknown relationships have no negative or invented hint")
 
+-- Bagnon loads independently and owns its buttons, whose item data lives in button.info.
+Bagnon = {Item = {Update = function() end}}
+Event("ADDON_LOADED"); Event("ADDON_LOADED")
+local bagnonButton = Frame(); bagnonButton.info = {itemID = 10}
+Bagnon.Item.Update(bagnonButton); Bagnon.Item.Update(bagnonButton)
+assert(#timers == 1, "Bagnon update bursts coalesce"); Drain()
+assert(Visible(bagnonButton), "useful materials are marked on Bagnon buttons")
+assert(#Tooltip(bagnonButton, 10) == 1)
+bagnonButton.searched = false; Bagnon.Item.Update(bagnonButton); Drain()
+assert(not Visible(bagnonButton), "search-dimmed Bagnon items lose their badge")
+bagnonButton.searched = nil
+for _, info in ipairs({{itemID = 20}, {}, {itemID = secret}}) do
+    bagnonButton.info = {itemID = 10}; Bagnon.Item.Update(bagnonButton); Drain(); assert(Visible(bagnonButton))
+    bagnonButton.info = info; Bagnon.Item.Update(bagnonButton); Drain()
+    assert(not Visible(bagnonButton), "recycled Bagnon buttons never keep another item's badge")
+end
+bagnonButton:Hide(); bagnonButton.info = {itemID = 10}; Bagnon.Item.Update(bagnonButton); Drain()
+assert(not Visible(bagnonButton), "released Bagnon buttons stay clear")
+
 -- Recycling, sorting, empty slots and search must never retain another item's badge.
 bags[0][1], bags[0][2] = bags[0][2], bags[0][1]
 individual:UpdateItems(); individual:UpdateItems()

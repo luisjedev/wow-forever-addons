@@ -1,6 +1,7 @@
 # GuildStock 1.0.1
 
 - Show "Useful for" in bag tooltips with bag addons such as Bagnon, and with any other native bag-item tooltip. Blizzard bag buttons keep their search filter behavior.
+- Mark useful materials on Bagnon's item buttons too, using the existing size and enable settings. Bagnon stays optional.
 - Accept guild packets from any verified guild member, even when the local roster still shows them offline. A received packet proves presence; previously a later login could stay invisible to earlier clients in both directions.
 - Refresh the native guild roster every 60 seconds so readiness and Online/Offline status no longer depend on opening the guild window. This requests no addon traffic.
 - Keep listening during combat with the last verified roster. Replies still wait until combat ends.

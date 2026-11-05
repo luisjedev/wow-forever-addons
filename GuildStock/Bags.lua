@@ -38,6 +38,12 @@ end
 
 local function ButtonItem(button)
     if addon.Read(button.IsForbidden, button) ~= false then return end
+    if buttons[button] and buttons[button].bagnon then
+        local info = button.info
+        local id = type(info) == "table" and info.itemID
+        if addon.Integer(id, 1, 2147483647) and button.searched ~= false then return id end
+        return
+    end
     local bank = buttons[button] and buttons[button].bank
     local bag, slot
     if bank then
@@ -147,6 +153,18 @@ local function HookContainer(frame, bank)
     frame:HookScript("OnHide", Schedule)
 end
 
+-- Bagnon replaces the native bag buttons; hooking its base class also covers subclasses.
+local bagnonHooked
+local function HookBagnon()
+    local item = not bagnonHooked and type(Bagnon) == "table" and Bagnon.Item
+    if type(item) ~= "table" or type(item.Update) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+    bagnonHooked = true
+    hooksecurefunc(item, "Update", function(button)
+        if not buttons[button] then buttons[button] = {bagnon = true} end
+        Schedule()
+    end)
+end
+
 function addon.RefreshBagHints()
     HideBadges()
     if not OutOfCombat() or not addon.db then return end
@@ -182,6 +200,9 @@ function addon.RefreshBagHints()
             for button in bankPanel:EnumerateValidItems() do RefreshButton(button, true, enabled, size) end
         end
     end
+    for button, badge in pairs(buttons) do
+        if badge.bagnon then RefreshButton(button, false, enabled, size) end
+    end
 end
 
 function addon.BagHintsChanged()
@@ -198,6 +219,7 @@ for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ADDON_LOADED",
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event)
+    HookBagnon()
     if event == "PLAYER_REGEN_DISABLED" then
         HideBadges()
         if hinted and GameTooltip then GameTooltip:Hide() end
