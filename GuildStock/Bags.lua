@@ -88,15 +88,14 @@ end
 local function TooltipHint(tooltip, data)
     if tooltip ~= GameTooltip or hinted or not OutOfCombat() or not addon.BagHintsEnabled()
         or addon.Read(tooltip.IsForbidden, tooltip) ~= false then return end
-    local owner = addon.Read(tooltip.GetOwner, tooltip)
-    if not owner or not buttons[owner] then return end
+    -- The getter identifies a bag item; bag addons such as Bagnon own their buttons.
     local info = addon.Read(tooltip.GetProcessingTooltipInfo, tooltip)
     if type(info) ~= "table" or not addon.Accessible(info.getterName) or info.getterName ~= "GetBagItem"
         or not addon.Accessible(info.append) or info.append then return end
     if not addon.Accessible(data) or type(data) ~= "table" or not addon.Integer(data.id, 1, 2147483647) then return end
-    local id = ButtonItem(owner)
-    if id ~= data.id then return end
-    local text = UsefulFor(id)
+    local owner = addon.Read(tooltip.GetOwner, tooltip)
+    if owner and buttons[owner] and ButtonItem(owner) ~= data.id then return end
+    local text = UsefulFor(data.id)
     if text then
         tooltip:AddLine(text, 1, 0.82, 0, true)
         hinted = true

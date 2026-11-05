@@ -5,7 +5,7 @@ local state = {status = "waiting", sent = 0, received = 0}
 addon.sync = state
 local world, registered, guild, session, published, revision, dirtyAt, fresh
 local members, memberUntil, readyAt, lastHello, offerAt, lastOffer, snapshotAt, lastSnapshot
-local discoveryAt, discoveryRetries
+local discoveryAt, discoveryRetries, rosterAt
 local queue, outgoing, peers, removed = {}, nil, {}, {}
 local nextSend, retries, retryAt = 0, 0, 0
 local privacyPending, requested
@@ -152,12 +152,14 @@ local function Roster()
     return members
 end
 function addon.SyncMember(name)
-    local roster = Roster()
+    -- Lockdown blocks fresh reads, not membership: keep the last verified roster.
+    local roster = Roster() or (not Unlocked() and members)
     return roster and roster[name]
 end
+-- Local presence lags behind logins, and a GUILD packet already proves its sender is online.
 local function Peer(name)
     local member = addon.SyncMember(name)
-    if member and not member.isSelf and member.online then return member end
+    if member and not member.isSelf then return member end
 end
 local function CanSend()
     if not registered or not Unlocked() then state.status = "waiting"; return false end
@@ -407,13 +409,17 @@ function addon.ReceiveSync(prefix, message, channel, sender)
     end
     if type(message) ~= "string" or type(sender) ~= "string" or prefix ~= PREFIX or channel ~= "GUILD"
         or #message > 240 or #sender > 200 or not registered then return end
-    local member = Peer(sender)
+    local member = addon.SyncMember(sender)
     if not member then
         -- A newcomer can announce before the presence event invalidates our five-second cache.
-        members, memberUntil = nil, nil
-        member = Peer(sender)
+        memberUntil = 0
+        member = addon.SyncMember(sender)
     end
-    if not member then return end
+    if not member then
+        state.rejected, state.lastRejected = (state.rejected or 0) + 1, sender
+        return
+    end
+    if member.isSelf then return end -- GUILD echoes our own packets.
     local fields = {}
     for field in (message .. "|"):gmatch("(.-)|") do fields[#fields + 1] = field end
     if fields[1] ~= "2" or not ValidToken(fields[3]) then return end
@@ -510,8 +516,13 @@ end
 function addon.SyncTick()
     if not world or not addon.db then return end
     if not Scope() then state.status = "waiting"; return end
-    if not CanSend() then return end
     local now = GetTime()
+    -- Only the open Communities window keeps the roster current, and readiness can depend on it.
+    if not rosterAt or now >= rosterAt then
+        rosterAt = now + 60
+        addon.Read(C_GuildInfo and C_GuildInfo.GuildRoster)
+    end
+    if not CanSend() then return end
     local current = Build()
     -- A privacy-filtered last complete observation can withdraw excluded items even
     -- while native inventory reads are incomplete. It never invents new quantities.
@@ -589,11 +600,12 @@ events:SetScript("OnEvent", function(_, event, a, b, c, d)
         ClearTransport() -- Retain dated same-guild records through shard/world transitions.
         if world and addon.ScheduleScan then addon.ScheduleScan() end
     elseif event == "GUILD_ROSTER_UPDATE" then
-        members, memberUntil = nil, nil
+        memberUntil = 0
         Refresh() -- Roster refreshes do not request addon traffic.
     elseif event == "SKILL_LINES_CHANGED" then addon.SyncChanged()
     else
-        members, memberUntil = nil, nil
+        memberUntil = 0
+        if event == "CLUB_MEMBER_REMOVED" then members = nil end
         if event == "CLUB_MEMBER_REMOVED" and addon.Accessible(a) and addon.Accessible(b) and b ~= nil and a == guild then
             removed[b] = true
             local history = History()

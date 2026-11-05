@@ -45,16 +45,14 @@ local function Peer(sender)
     if not club or club ~= guild then return false end
     local members = addon.Read(C_Club and C_Club.GetClubMembers, club)
     if type(members) ~= "table" or #members > 2000 then return false end
-    local presence = Enum and Enum.ClubMemberPresence
-    if not presence then return false end
     for _, id in ipairs(members) do
         if not addon.Accessible(id) then return false end
         local info = addon.Read(C_Club.GetMemberInfo, club, id)
         if type(info) == "table" and addon.Accessible(info.name) and addon.Accessible(info.isSelf)
-            and addon.Accessible(info.presence) and info.name == sender then
+            and info.name == sender then
             if info.isSelf == true then return false, true end
             if info.isSelf ~= false then return false end
-            return info.presence == presence.Online or info.presence == presence.Away or info.presence == presence.Busy
+            return true -- Receiving the probe proves presence; the local roster can lag.
         end
     end
     return false

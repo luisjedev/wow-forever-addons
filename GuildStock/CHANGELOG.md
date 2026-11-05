@@ -1,3 +1,13 @@
+# GuildStock 1.0.1
+
+- Show "Useful for" in bag tooltips with bag addons such as Bagnon, and with any other native bag-item tooltip. Blizzard bag buttons keep their search filter behavior.
+- Accept guild packets from any verified guild member, even when the local roster still shows them offline. A received packet proves presence; previously a later login could stay invisible to earlier clients in both directions.
+- Refresh the native guild roster every 60 seconds so readiness and Online/Offline status no longer depend on opening the guild window. This requests no addon traffic.
+- Keep listening during combat with the last verified roster. Replies still wait until combat ends.
+- `/guildstock probe` follows the same presence rule. `/guildstock diagnostics` adds `sync rejected` and `sync lastRejected`.
+
+Lua syntax and all repository suites pass, including stale-roster and combat regressions verified to fail without their fixes. No saved-data or protocol change; 1.0.0 clients stay compatible but keep their own limits. Native validation with several clients on the launch build remains pending. Target: Forever 1.60.1, build 70790.
+
 # GuildStock 1.0.0
 
 - Fix the Characters header so primary-profession information cannot overlap the inventory subtitle when a character has a short name.

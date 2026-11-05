@@ -8,17 +8,33 @@ It is extended for each version and build that affects our addons. It does not a
 
 | Field | Value |
 | --- | --- |
-| Development product | `wow_classic_beta` · WoW Forever |
-| Installed client observed on October 25, 2026 | `1.60.1.70338` (`wow_classic_beta`, active row in `.build.info`) |
-| Latest published Forever build checked on October 25, 2026 | `1.60.1.70532` (Blizzard version service; newer than the installed client) |
-| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for published build `70532` has not been verified in-game |
+| Live product | `wowf` · WoW Forever, installed in `_forever_` (the former `wow_classic_beta` product stays at build `70532`) |
+| Installed client observed on November 5, 2026 | `1.60.1.70790` (`wowf`, active row in `.build.info`) |
+| Latest published Forever build checked on November 5, 2026 | `1.60.1.70790` (Blizzard version service, US and EU, product `wowf`) |
+| Interface declared by TDL, Revenge and GuildStock | `16001`; the interface number for build `70790` has not been verified in-game |
 | Blizzard code source | [Gethe/wow-ui-source, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever) |
-| Latest source revision consulted | [`ca8368f` · 1.60.1 (70532), October 22, 2026](https://github.com/Gethe/wow-ui-source/commit/ca8368f2f2380cbe696854f7f2646387c278a61b) |
-| Last review of this log | October 25, 2026; build 70532 API and FrameXML review |
+| Latest source revision consulted | [`eac30af` · 1.60.1 (70790), November 4, 2026](https://github.com/Gethe/wow-ui-source/commit/eac30af597e5aaa43a60f6675ef5fdcea100375f) |
+| Last review of this log | November 5, 2026; launch build 70790 review for GuildStock |
 
-The installed version comes from the `wow_classic_beta` product row in `.build.info`; the published build comes from Blizzard's regional version service. The installed client is on build `70338`, while the service and newest `forever` mirror commit report build `70532`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
+The installed version comes from the active row of `.build.info`; the published build comes from Blizzard's regional version service. The service and the newest `forever` mirror commit report build `70790` for product `wowf`. The addons still declare interface `16001`, but that declaration does not verify the interface number or runtime behavior of the newer build. In the game, `/dump GetBuildInfo()` lets you check the installed version, build, and interface number.
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
+
+### Forever launch · build 70790 · GuildStock 1.0.1 · November 5, 2026
+
+**Reference:** product `wowf`, `1.60.1.70790`, confirmed in the local `.build.info` and on the US and EU version services. The mirror compares `ca8368f` (70532) with `eac30af` (70790). Affected addon: GuildStock. TDL and Revenge were not reviewed for this update beyond running their suites. Three user reports triggered this review. They arrive through players, so no multi-client reproduction exists yet.
+
+**API comparison:** the signatures GuildStock depends on did not change: chat transport, `CHAT_MSG_ADDON`, club membership, container reads, `GetProfessions`, `GetProfessionInfo`, profession-reading calls and tooltip getters. Relevant changes: `NameUtil.GetUnitFirstName` now tolerates names without a surname; `UNIT_COMBAT` `amount` is a secret value; `IsSpellCrowdControl` needs an untainted caller for secret arguments; `ForeverExperiencePreset.Modern` became `Enhanced`, with a pre-login and a post-login setter. GuildStock uses none of these. None of the reports comes from an API change, and raising the version would not have fixed them.
+
+**Bag tooltips, documented in source:** `TooltipHint` required the tooltip owner to be a registered Blizzard container button. [Native tooltips](https://github.com/Gethe/wow-ui-source/blob/eac30af597e5aaa43a60f6675ef5fdcea100375f/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua#L1750) come from `SetBagItem`, whose getter is `GetBagItem`. Bagnon's own buttons inherit `ContainerFrameItemButtonTemplate` and run the same native path, so the owner check rejected them. The getter now identifies the source, and known Blizzard buttons keep their item and search-filter check. Bag badges still cover Blizzard buttons only. The hint still lists only professions the character has learned.
+
+**Guild discovery, documented in source:** the [presence subscription](https://github.com/Gethe/wow-ui-source/blob/eac30af597e5aaa43a60f6675ef5fdcea100375f/Interface/AddOns/Blizzard_APIDocumentationGenerated/ClubDocumentation.lua#L1096) covers at most one club, and Blizzard calls it only from the channel window. Other UI requests `C_GuildInfo.GuildRoster()` while guild views are open. GuildStock did neither, yet it required the sender to be Online in the local roster. A client that saw a later login as offline would drop that peer's discovery and requests in both directions, and the peers stayed apart until something refreshed the roster. This explains partial reports, because the result depends on login order and on opening the guild window. It is a source-derived cause reproduced in simulation, not observed natively.
+
+**Implementation:** receivers accept any verified current member; membership stays required and presence is no longer an authorization. Every 60 seconds, including while the roster is not ready, GuildStock requests the native roster, which sends no addon messages. Packets during combat or chat lockdown were dropped because the roster could not be read; receivers now use the last verified roster during lockdown only, and removing a member still clears it. Whisper eligibility and Online/Offline labels still use native presence. `/guildstock diagnostics` reports `rejected` and `lastRejected`, so a name-format mismatch between sender and roster can be measured. Received names currently match the roster as `First Surname`, but only a small sample was examined and other formats are not excluded.
+
+**Icons, checked against build data:** a report says icons are missing from the "skills UI"; which screen it means is unconfirmed, and the report is not reproduced. The build's root manifest (`root` `2d645aeed4354af0eb5c1c8141491823`) contains all 16 icons checked, which include every profession icon GuildStock uses, each with distinct content. Their name hashes are present, and hashing `INTERFACE\ICONS\TRADE_ALCHEMY.BLP` and `INTERFACE\ICONS\TRADE_TAILORING.BLP` reproduced the stored values, so these paths are expected to resolve. Blizzard reported broken icons in the native Professions window during the beta, and build `70790` adds an `IconBorder` to native profession book buttons. No GuildStock change is made for this report; manifest presence does not prove rendering.
+
+**Automated validation:** Lua syntax and all repository suites pass. New regressions cover a permanently stale roster, refresh bounds while unready, combat offers with a roster update, and Bagnon-style owners; each sync assertion was confirmed to fail when its fix is removed. **Pending native verification:** `/dump GetBuildInfo()`, tooltips with Bagnon, two or more clients with staggered logins and no guild window, Online/Offline refresh, delivery while in combat, cross-shard delivery, and full-restart persistence. The installed `_forever_` copy is a separate folder, not a repository symlink, so it needs updating before testing.
 
 ### Forever 1.60.1 · published build 70532 · October 25, 2026
 

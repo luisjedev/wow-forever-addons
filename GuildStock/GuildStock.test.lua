@@ -543,13 +543,7 @@ Receive("2|P|" .. token, "GUILD", "Self Example")
 assert(#sent == 1, "self echo never proves delivery")
 Receive("2|P|101-20", "GUILD", "Unknown Example")
 assert(#sent == 1 and addon.probe.unmatched == 1)
-members[2].presence = 3
-Receive("2|P|101-20")
-assert(#sent == 1, "offline roster entries cannot trigger a reply")
-members[2].presence = secret
-Receive("2|P|101-20")
-assert(#sent == 1)
-members[2].presence = 1
+members[2].presence = 3 -- A stale local roster must not hide a peer that just sent a probe.
 for _, message in ipairs({ "2|P|bad", string.rep("x", 1000), "1|P|101-20", secret }) do Receive(message) end
 addon.ReceiveProbe("GuildStockP0", nil, "GUILD", "Peer Example")
 Receive("2|P|101-20", "PARTY")

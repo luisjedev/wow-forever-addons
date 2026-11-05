@@ -1380,7 +1380,7 @@ SlashCmdList.GUILDSTOCK = function(command)
         print("probe requests: " .. addon.probe.requests)
         print(L["Professions"] .. ": " .. addon.ProfessionNames())
         if addon.sync then
-            for _, key in ipairs({"status", "registration", "result", "sent", "received"}) do
+            for _, key in ipairs({"status", "registration", "result", "sent", "received", "rejected", "lastRejected"}) do
                 print("sync " .. key .. ": " .. tostring(addon.sync[key] or L["Not tested"]))
             end
         end

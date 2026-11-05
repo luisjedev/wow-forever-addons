@@ -129,7 +129,8 @@ assert(#lines == 1 and lines[1]:find("Useful for:", 1, true) and lines[1]:find("
 assert(lines[1]:find("Engineering", 1, true) and lines[1]:find("Cooking", 1, true) and not lines[1]:find("Alchemy", 1, true))
 callbacks[1](GameTooltip, {id = 10}); assert(#lines == 1, "repeated callback cannot duplicate the line")
 assert(#Tooltip(first, 20) == 0 and #Tooltip(first, secret) == 0 and #Tooltip(first, 10, "GetItemByID") == 0)
-assert(#Tooltip(first, 10, "GetBagItem", true) == 0 and #Tooltip(Frame(), 10) == 0)
+assert(#Tooltip(first, 10, "GetBagItem", true) == 0)
+assert(#Tooltip(Frame(), 10) == 1, "bag addons supply their own item buttons")
 assert(#Tooltip(second, 20) == 0, "unknown relationships have no negative or invented hint")
 
 -- Recycling, sorting, empty slots and search must never retain another item's badge.

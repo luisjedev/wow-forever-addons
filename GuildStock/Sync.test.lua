@@ -401,6 +401,38 @@ for _, scenario in ipairs({{delay=5}, {delay=20}, {delay=40}, {delay=20, missing
     quiet=#log;Step(600);assert(#log==quiet,"startup discovery retries must finish, not become a heartbeat")
 end
 
+-- A client keeps stale presence for later logins unless its roster is refreshed.
+do
+    clients,bus,log,clock,filter = {},{},{},0,nil
+    math.randomseed(1)
+    local early,late=Client("Stale Early Example"),Client("Stale Late Example")
+    local native=early.env.C_Club.GetMemberInfo
+    early.env.C_Club.GetMemberInfo=function(...)
+        local info=native(...)
+        if info.name==late.name then info.presence=4 end
+        return info
+    end
+    local requests=0
+    early.env.C_GuildInfo={GuildRoster=function() requests=requests+1 end}
+    late.disabled=true
+    early.rosterReady=false; early:Login(); Step(30)
+    assert(requests==1,"an unready roster still requests its first refresh")
+    Step(31); assert(requests==2,"roster refreshes stay bounded")
+    early.rosterReady=true; Step(1)
+    late.disabled=false; late:Login(); Step(70)
+    assert(Received(early,late) and Received(late,early),"a GUILD packet proves presence despite a stale roster")
+    assert(early.addon.sync.rejected==nil,"our own GUILD echoes are not rejected senders")
+    Receive(early,{name="Unknown Example"},"2|H|1-1|1")
+    assert(early.addon.sync.rejected==1 and early.addon.sync.lastRejected=="Unknown Example")
+
+    -- Combat blocks replies, not hearing an offer that is answered afterwards.
+    early.combat=true; early:Event("GUILD_ROSTER_UPDATE")
+    late.inventory[2770].count=8; late.addon.Observe(); Step(45)
+    early.combat=false; Step(30)
+    assert(Received(early,late).snapshot.items[2770].count==8,"offers heard during combat are not lost")
+    clients,bus,log,clock,filter = {},{},{},0,nil
+end
+
 -- Native send Success does not ensure delivery; lose all early peer traffic.
 do
     clients,bus,log,clock,filter = {},{},{},0,nil
