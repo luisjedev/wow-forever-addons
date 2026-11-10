@@ -2,6 +2,7 @@
 
 - Stop bag items flickering after each crafted item: profession updates no longer hide every useful-material badge before redrawing them.
 - Remove the **Scan all prices** button and the automatic full auction scan on opening the auction house. In the game the full scan froze the client, gave little feedback and saved no prices. Prices now update only from the commodity/item searches you make in the auction house, which already worked.
+
 Lua syntax and all repository suites pass, including a regression for the crafting flicker. Not yet verified while crafting in the game. No saved-data or protocol change; 1.0.x and 1.1.0 clients stay compatible. Target: WoW Forever 1.60.1, interface 16001.
 
 # GuildStock 1.1.0
