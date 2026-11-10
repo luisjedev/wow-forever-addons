@@ -207,6 +207,8 @@ saved.catalog[10] = {Mining = secret}; addon.BagHintsChanged(); assert(not Visib
 saved.catalog[10] = {}; addon.BagHintsChanged(); assert(not Visible(first))
 saved.catalog[10].Mining = true
 Event("TRADE_SKILL_LIST_UPDATE"); Drain(); assert(Visible(first), "new discoveries become visible")
+Event("TRADE_SKILL_LIST_UPDATE"); assert(Visible(first), "crafting does not blank badges before the refresh")
+Drain(); assert(Visible(first))
 
 Tooltip(first, 10); combat = true; Event("PLAYER_REGEN_DISABLED")
 assert(not Visible(first) and not GameTooltip:IsShown() and #Tooltip(first, 10) == 0)

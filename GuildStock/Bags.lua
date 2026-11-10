@@ -225,8 +225,8 @@ events:SetScript("OnEvent", function(_, event)
         if hinted and GameTooltip then GameTooltip:Hide() end
     else
         if event == "SKILL_LINES_CHANGED" or event == "TRADE_SKILL_LIST_UPDATE" or event == "TRADE_SKILL_SHOW" then
+            -- Keep badges until the scheduled refresh: crafting fires this per item and hiding made bags flicker.
             learned = nil
-            HideBadges()
             if hinted and GameTooltip then GameTooltip:Hide() end
         end
         Schedule()
