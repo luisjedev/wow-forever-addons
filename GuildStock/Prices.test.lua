@@ -3,10 +3,12 @@ local source = assert(loadfile("GuildStock/Prices.lua"))
 local secret = setmetatable({}, {__tostring = function() error("secret used") end})
 local function Client(saved)
     local clock, epoch, combat = 100, 1800000000, false
+    said = {} -- global on purpose: the scenarios below read it.
     local timers, frames, rows, calls, refreshes = {}, {}, {}, 0, 0
     local ready, full, results = true, true, {}
     local env = setmetatable({GuildStockDB = saved}, {__index = _G})
     env.GetLocale = function() return "enUS" end
+    env.print = function(text) said[#said + 1] = text end
     env.GetTime = function() return clock end
     env.time = function() return epoch end
     env.canaccessvalue = function(value) return value ~= secret end
@@ -131,7 +133,7 @@ c.combat(false)
 
 -- Full scans are batched and committed only after the complete readable result.
 local large = {}
-for i = 1, 401 do large[i] = Row(10, 1, i == 401 and 100 or 400) end
+for i = 1, 4001 do large[i] = Row(10, 1, i == 4001 and 100 or 400) end
 c.rows(large); c.event("REPLICATE_ITEM_LIST_UPDATE")
 assert(c.pending() == 1 and a.AuctionPrice(10) == previous)
 c.drain()

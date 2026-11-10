@@ -1,9 +1,13 @@
 local _, addon = ...
 local L = addon.L
+local BATCH = 2000 -- records per frame: 200 took ~1100 frames, long enough for a newer event to cancel the scan.
 local MAX_MONEY = 9007199254740991 -- Only exactly representable, accessible copper amounts.
 local temporary = {version = 1, items = {}}
 local auctionOpen, requested, lastRequest, generation = false, false, nil, 0
 local observation, latest = 0, {}
+local scanWait -- set while a manual scan waits for the server; only manual scans print to chat.
+
+local function Say(key, ...) print("|cffffd100GuildStock:|r " .. string.format(L[key], ...)) end
 
 local function Table(value) return addon.Accessible(value) and type(value) == "table" end
 
@@ -43,15 +47,17 @@ local function CanRead()
 end
 
 local function Save(prices, observedAt, order)
-    local saved = Prices()
+    local saved, count = Prices(), 0
     for id, copper in pairs(prices) do
         local previous = addon.AuctionPrice(id)
         if (not previous or previous.observedAt <= observedAt) and (latest[id] or 0) <= order then
             saved[id] = {copper = copper, observedAt = observedAt}
             latest[id] = order
+            count = count + 1
         end
     end
     addon.ScheduleRefresh()
+    return count
 end
 
 local function Request(manual)
@@ -69,7 +75,14 @@ function addon.ScanAuctionHouse()
     if not CanRead() then return false end
     requested = false
     Request(true)
-    return requested
+    if not requested then Say("The auction house is busy. Try again in a moment."); return false end
+    local mine = GetTime()
+    scanWait = mine
+    Say("Scanning auction prices…")
+    C_Timer.After(30, function()
+        if scanWait == mine then scanWait = nil; Say("No response from the auction house yet. Try again later.") end
+    end)
+    return true
 end
 
 function addon.CanScanAuctionHouse() return CanRead() and true or false end
@@ -79,12 +92,14 @@ local function ReplicatedPrices()
     local total = addon.Read(C_AuctionHouse.GetNumReplicateItems)
     if not addon.Integer(total, 1, 1000000) or type(C_AuctionHouse.GetReplicateItemInfo) ~= "function" then return end
     generation, observation = generation + 1, observation + 1
+    local report = scanWait
+    scanWait = nil
     local token, index, observedAt = generation, 0, time()
     local order = observation
     local prices, blocked, catalog = {}, {}, addon.Catalog()
     local function Batch()
         if token ~= generation or not CanRead() then return end
-        for i = index, math.min(index + 199, total - 1) do
+        for i = index, math.min(index + BATCH - 1, total - 1) do
             -- Do not retain names, owners, links or any other auction identity data.
             local ok, _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, saleStatus, id =
                 pcall(C_AuctionHouse.GetReplicateItemInfo, i)
@@ -101,12 +116,13 @@ local function ReplicatedPrices()
                 end
             end
         end
-        index = index + 200
+        index = index + BATCH
         if index < total then C_Timer.After(0, Batch); return end
         if addon.Read(C_AuctionHouse.GetNumReplicateItems) ~= total then return end
         for id in pairs(blocked) do prices[id] = nil end
         -- Missing, bid-only and unreadable items keep their earlier price AND date.
-        Save(prices, observedAt, order)
+        local count = Save(prices, observedAt, order)
+        if report then Say("Auction scan finished: %d prices updated.", count) end
     end
     Batch()
 end
