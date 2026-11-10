@@ -1,4 +1,4 @@
-# GuildStock (unreleased)
+# GuildStock 1.1.1-snapshot-1 (unreleased)
 
 - Remove the **Scan all prices** button and the automatic full auction scan on opening the auction house. In the game the full scan froze the client, gave little feedback and saved no prices. Prices now update only from the commodity/item searches you make in the auction house, which already worked.
 

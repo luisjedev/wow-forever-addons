@@ -16,13 +16,13 @@ WoW Forever Addons/
 
 The game reads the same files you edit. There is no need to copy changes or keep two versions in sync. GitHub stores the history and lets you share it; daily work happens in your local clone.
 
-The symlinks are already set up on this machine for the former beta client. The launch client lives in `_forever_`, where the addon folders are currently separate copies: update or link them before testing there. Open the **WoW Forever Addons** folder on the desktop as a project in your editor or in Codex to include the shared instructions.
+The launch client lives in `_forever_`; its GuildStock and TDL folders are symlinks to this repository, as are the former beta client's. Replace any copy with a symlink before testing. Unreleased work uses a `X.Y.Z-snapshot-N` `.toc` version until it is published (see `AGENTS.md`). Open the **WoW Forever Addons** folder on the desktop as a project in your editor or in Codex to include the shared instructions.
 
 To set up another Mac or a Linux installation, replace the paths in this example:
 
 ```sh
 repo="$HOME/Desktop/WoW Forever Addons"
-addons="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns"
+addons="/Applications/World of Warcraft/_forever_/Interface/AddOns"
 ln -s "$repo/TDL" "$addons/TDL"
 ln -s "$repo/Revenge" "$addons/Revenge"
 ln -s "$repo/GuildStock" "$addons/GuildStock"
