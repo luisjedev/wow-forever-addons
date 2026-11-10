@@ -1,3 +1,12 @@
+# GuildStock 1.1.0
+
+- Shift-click an item row, or its icon, in GuildStock to link it in the focused chat box or paste it into the auction house search, like a bag item.
+- Add a **Scan all prices** button to Materials. While the auction house is open it requests a full auction replication on demand, bypassing only the addon's own 15-minute cooldown, and reports in chat when the scan starts, how many prices were saved, or that the server did not respond.
+- Fix auction scans discarding prices for records whose seller names were still loading; nearly every material price from a bulk scan was dropped.
+- Process scan batches in larger groups so a later replication event cannot cancel a long scan.
+
+Lua syntax and all repository suites pass. Shift-click linking to chat verified in the game after `/reload`; auction search insertion, the reworked scan button and multi-client validation remain pending. No saved-data or protocol change; 1.0.x clients stay compatible. Target: WoW Forever 1.60.1, interface 16001.
+
 # GuildStock 1.0.1
 
 - Show "Useful for" in bag tooltips with bag addons such as Bagnon, and with any other native bag-item tooltip. Blizzard bag buttons keep their search filter behavior.

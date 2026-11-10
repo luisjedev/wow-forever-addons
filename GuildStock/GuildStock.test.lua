@@ -28,6 +28,7 @@ for _, method in ipairs({ "SetSize", "SetFrameLevel", "SetFrameStrata", "SetClam
     "SetThumbTexture", "SetDesaturated", "SetAlpha" }) do
     methods[method] = function() end
 end
+function methods:GetParent() return self.parent end
 function methods:SetRoundLayoutToNearestPixel() end
 function methods:SetScript(event, fn) self.scripts[event] = fn end
 function methods:HookScript(event, fn)
@@ -190,6 +191,7 @@ C_Container = {
 GetInventoryItemID = function(_, slot) return equipped[slot] end
 GetProfessions = function() return nil, 2, nil, nil, 5 end
 GetProfessionInfo = function(index) return index == 2 and "Engineering" or "Cooking", nil, nil, nil, nil, nil, index * 100 end
+IsShiftKeyDown = function() return false end
 C_Item = { GetItemInfo = function(id)
     if id == 10 then return "Sample item", nil, nil, nil, nil, nil, nil, nil, nil, 123, nil, nil, nil, nil, nil, nil, true end
 end }
@@ -726,7 +728,16 @@ do
     assert(#sent == before, "price rendering creates no addon messages")
 end
 local function CheckItemTooltip(slot, id)
-    assert(slot and slot.mouseClickEnabled == false, "item hover leaves row clicks available")
+    assert(slot and slot.scripts.OnMouseUp, "the icon handles its own clicks")
+    local parent, clicked, linked = slot:GetParent(), 0
+    parent.Click = function() clicked = clicked + 1 end
+    ChatEdit_InsertLink = function(link) linked = link; return true end
+    slot.scripts.OnMouseUp(slot)
+    assert(clicked == 1 and not linked, "plain icon clicks still reach the row")
+    IsShiftKeyDown = function() return true end
+    slot.scripts.OnMouseUp(slot)
+    assert(clicked == 1 and linked and linked:find("Hitem:" .. id, 1, true), "Shift-click links the item instead of selecting")
+    IsShiftKeyDown, ChatEdit_InsertLink, parent.Click = function() return false end, nil, nil
     slot.scripts.OnEnter(slot)
     assert(GameTooltip:IsOwned(slot) and GameTooltip.anchor == "ANCHOR_RIGHT"
         and GameTooltip.tooltipItemID == id and GameTooltip:IsShown(), "native tooltip receives the displayed item ID")
