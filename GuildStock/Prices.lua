@@ -54,15 +54,25 @@ local function Save(prices, observedAt, order)
     addon.ScheduleRefresh()
 end
 
-local function Request()
+local function Request(manual)
     if not CanRead() or requested or not C_AuctionHouse or type(C_AuctionHouse.ReplicateItems) ~= "function"
-        or (lastRequest and GetTime() - lastRequest < 900) then return end
+        or (not manual and lastRequest and GetTime() - lastRequest < 900) then return end
     if C_AuctionHouse.IsThrottledMessageSystemReady
         and addon.Read(C_AuctionHouse.IsThrottledMessageSystemReady) ~= true then return end
     requested, lastRequest = true, GetTime()
     -- One request per visit, at most every 15 minutes; never retry a native denial.
     pcall(C_AuctionHouse.ReplicateItems)
 end
+
+-- Manual scan: the user's click replaces the 15-minute addon cooldown; the server may still refuse to answer.
+function addon.ScanAuctionHouse()
+    if not CanRead() then return false end
+    requested = false
+    Request(true)
+    return requested
+end
+
+function addon.CanScanAuctionHouse() return CanRead() and true or false end
 
 local function ReplicatedPrices()
     if not CanRead() or not requested or not C_AuctionHouse then return end

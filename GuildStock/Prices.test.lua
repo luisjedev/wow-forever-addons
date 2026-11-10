@@ -120,6 +120,11 @@ c.advance(900); c.event("AUCTION_HOUSE_CLOSED"); c.ready(false); c.event("AUCTIO
 assert(c.calls() == 1)
 c.ready(true); c.event("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
 assert(c.calls() == 2)
+-- The manual scan button ignores the addon cooldown, but only with the window open and outside combat.
+c.event("AUCTION_HOUSE_CLOSED")
+assert(a.ScanAuctionHouse() == false and a.CanScanAuctionHouse() == false and c.calls() == 2)
+c.event("AUCTION_HOUSE_SHOW")
+assert(a.CanScanAuctionHouse() == true and a.ScanAuctionHouse() == true and c.calls() == 3)
 c.combat(true); c.observe({Row(10, 1, 1)})
 assert(a.AuctionPrice(10) == previous)
 c.combat(false)

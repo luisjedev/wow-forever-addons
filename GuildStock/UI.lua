@@ -930,7 +930,21 @@ local function CreateWindow(colors, SectionHeading)
     search = Search(middle, "Search materials...", 11, 13, 301)
     listTitle = Label(middle, "", 14, 64, 295, 19)
     listHint = Label(middle, "", 14, 90, 295, 12, muted)
-    materialList = Scroll(middle, 8, 119, 307, 434)
+    materialList = Scroll(middle, 8, 119, 307, 400)
+    local scan = Button(middle, L["Scan all prices"], 8, 527, 283, 28, function() addon.ScanAuctionHouse() end)
+    local scanElapsed = 0
+    scan:SetScript("OnUpdate", function(self, delta)
+        scanElapsed = scanElapsed + delta
+        if scanElapsed < 0.5 then return end
+        scanElapsed = 0
+        self:SetEnabled(addon.CanScanAuctionHouse())
+        self:SetAlpha(self:IsEnabled() and 1 or 0.45)
+    end)
+    scan:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self:IsEnabled() and L["Scan all prices"] or L["Open the auction house to scan prices."], 1, 1, 1, 1, true)
+    end)
+    scan:HookScript("OnLeave", function() GameTooltip:Hide() end)
     search.list = materialList
     materialList.empty = Label(middle, "", 22, 184, 278, 15, muted)
     materialList.empty:SetJustifyH("CENTER")
