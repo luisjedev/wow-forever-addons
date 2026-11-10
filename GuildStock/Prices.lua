@@ -1,13 +1,8 @@
 local _, addon = ...
 local L = addon.L
-local BATCH = 2000 -- records per frame: 200 took ~1100 frames, long enough for a newer event to cancel the scan.
 local MAX_MONEY = 9007199254740991 -- Only exactly representable, accessible copper amounts.
 local temporary = {version = 1, items = {}}
-local auctionOpen, requested, lastRequest, generation = false, false, nil, 0
-local observation, latest = 0, {}
-local scanWait -- set while a manual scan waits for the server; only manual scans print to chat.
-
-local function Say(key, ...) print("|cffffd100GuildStock:|r " .. string.format(L[key], ...)) end
+local auctionOpen = false
 
 local function Table(value) return addon.Accessible(value) and type(value) == "table" end
 
@@ -46,85 +41,15 @@ local function CanRead()
     return auctionOpen and addon.db and addon.Read(InCombatLockdown) == false
 end
 
-local function Save(prices, observedAt, order)
-    local saved, count = Prices(), 0
+local function Save(prices, observedAt)
+    local saved = Prices()
     for id, copper in pairs(prices) do
         local previous = addon.AuctionPrice(id)
-        if (not previous or previous.observedAt <= observedAt) and (latest[id] or 0) <= order then
+        if not previous or previous.observedAt <= observedAt then
             saved[id] = {copper = copper, observedAt = observedAt}
-            latest[id] = order
-            count = count + 1
         end
     end
     addon.ScheduleRefresh()
-    return count
-end
-
-local function Request(manual)
-    if not CanRead() or requested or not C_AuctionHouse or type(C_AuctionHouse.ReplicateItems) ~= "function"
-        or (not manual and lastRequest and GetTime() - lastRequest < 900) then return end
-    if C_AuctionHouse.IsThrottledMessageSystemReady
-        and addon.Read(C_AuctionHouse.IsThrottledMessageSystemReady) ~= true then return end
-    requested, lastRequest = true, GetTime()
-    -- One request per visit, at most every 15 minutes; never retry a native denial.
-    pcall(C_AuctionHouse.ReplicateItems)
-end
-
--- Manual scan: the user's click replaces the 15-minute addon cooldown; the server may still refuse to answer.
-function addon.ScanAuctionHouse()
-    if not CanRead() then return false end
-    requested = false
-    Request(true)
-    if not requested then Say("The auction house is busy. Try again in a moment."); return false end
-    local mine = GetTime()
-    scanWait = mine
-    Say("Scanning auction prices…")
-    C_Timer.After(30, function()
-        if scanWait == mine then scanWait = nil; Say("No response from the auction house yet. Try again later.") end
-    end)
-    return true
-end
-
-function addon.CanScanAuctionHouse() return CanRead() and true or false end
-
-local function ReplicatedPrices()
-    if not CanRead() or not requested or not C_AuctionHouse then return end
-    local total = addon.Read(C_AuctionHouse.GetNumReplicateItems)
-    if not addon.Integer(total, 1, 1000000) or type(C_AuctionHouse.GetReplicateItemInfo) ~= "function" then return end
-    generation, observation = generation + 1, observation + 1
-    local report = scanWait
-    scanWait = nil
-    local token, index, observedAt = generation, 0, time()
-    local order = observation
-    local prices, blocked, catalog = {}, {}, addon.Catalog()
-    local function Batch()
-        if token ~= generation or not CanRead() then return end
-        for i = index, math.min(index + BATCH - 1, total - 1) do
-            -- Do not retain names, owners, links or any other auction identity data.
-            local ok, _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, saleStatus, id =
-                pcall(C_AuctionHouse.GetReplicateItemInfo, i)
-            if not ok or not addon.Integer(id, 1, 2147483647) then return end
-            if catalog[id] then
-                -- hasAllInfo is ignored: it is false while seller names load, but price fields are already valid.
-                if not addon.Integer(count, 1, 2147483647)
-                    or not addon.Integer(buyout, 0, MAX_MONEY)
-                    or not addon.Integer(saleStatus, 0, 1) then
-                    blocked[id] = true
-                elseif saleStatus == 0 and buyout > 0 then
-                    local unit = math.max(1, math.floor(buyout / count + 0.5))
-                    prices[id] = math.min(prices[id] or unit, unit)
-                end
-            end
-        end
-        index = index + BATCH
-        if index < total then C_Timer.After(0, Batch); return end
-        if addon.Read(C_AuctionHouse.GetNumReplicateItems) ~= total then return end
-        for id in pairs(blocked) do prices[id] = nil end
-        -- Missing, bid-only and unreadable items keep their earlier price AND date.
-        local count = Save(prices, observedAt, order)
-        if report then Say("Auction scan finished: %d prices updated.", count) end
-    end
-    Batch()
 end
 
 local function SearchPrices(key, commodity)
@@ -159,33 +84,23 @@ local function SearchPrices(key, commodity)
             end
         elseif commodity then return end
     end
-    if minimum then
-        observation = observation + 1
-        Save({[id] = minimum}, time(), observation)
-    end
+    if minimum then Save({[id] = minimum}, time()) end
 end
 
+-- Prices come only from searches the player makes; GuildStock never requests a full auction replication.
 local events = CreateFrame("Frame")
-for _, event in ipairs({"AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "REPLICATE_ITEM_LIST_UPDATE",
-    "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "COMMODITY_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_ADDED",
-    "ITEM_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
+for _, event in ipairs({"AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "COMMODITY_SEARCH_RESULTS_UPDATED",
+    "COMMODITY_SEARCH_RESULTS_ADDED", "ITEM_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED",
     "PLAYER_ENTERING_WORLD"}) do events:RegisterEvent(event) end
 events:SetScript("OnEvent", function(_, event, key)
     if event == "AUCTION_HOUSE_SHOW" then
-        auctionOpen, requested = true, false
-        Request()
+        auctionOpen = true
     elseif event == "AUCTION_HOUSE_CLOSED" or event == "PLAYER_ENTERING_WORLD" then
-        auctionOpen, requested, generation = false, false, generation + 1
-    elseif event == "PLAYER_REGEN_DISABLED" then
-        generation = generation + 1
-    elseif event == "REPLICATE_ITEM_LIST_UPDATE" then
-        ReplicatedPrices()
+        auctionOpen = false
     elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "COMMODITY_SEARCH_RESULTS_ADDED" then
         SearchPrices(key, true)
-    elseif event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_ADDED" then
-        SearchPrices(key, false)
     else
-        Request()
+        SearchPrices(key, false)
     end
 end)
 

@@ -947,27 +947,7 @@ local function CreateWindow(colors, SectionHeading)
     search = Search(middle, "Search materials...", 11, 13, 301)
     listTitle = Label(middle, "", 14, 64, 295, 19)
     listHint = Label(middle, "", 14, 90, 295, 12, muted)
-    materialList = Scroll(middle, 8, 119, 307, 400)
-    local scan = CreateFrame("Button", nil, middle, "UIPanelButtonTemplate")
-    scan:SetPoint("TOPLEFT", 8, -527)
-    scan:SetSize(283, 28)
-    scan:SetText(L["Scan all prices"])
-    scan:SetMotionScriptsWhileDisabled(true) -- the tooltip must explain why it is disabled
-    scan:SetScript("OnClick", function() addon.ScanAuctionHouse() end)
-    local function UpdateScan() scan:SetEnabled(addon.CanScanAuctionHouse()) end
-    UpdateScan()
-    local scanElapsed = 0
-    scan:SetScript("OnUpdate", function(_, delta)
-        scanElapsed = scanElapsed + delta
-        if scanElapsed >= 0.5 then scanElapsed = 0; UpdateScan() end
-    end)
-    scan:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["Scan all prices"], 1, 1, 1)
-        if not self:IsEnabled() then GameTooltip:AddLine(L["Open the auction house to scan prices."], 1, 0.3, 0.3, true) end
-        GameTooltip:Show()
-    end)
-    scan:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    materialList = Scroll(middle, 8, 119, 307, 434)
     search.list = materialList
     materialList.empty = Label(middle, "", 22, 184, 278, 15, muted)
     materialList.empty:SetJustifyH("CENTER")

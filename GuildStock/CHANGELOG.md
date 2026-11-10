@@ -1,3 +1,7 @@
+# GuildStock (unreleased)
+
+- Remove the **Scan all prices** button and the automatic full auction scan on opening the auction house. In the game the full scan froze the client, gave little feedback and saved no prices. Prices now update only from the commodity/item searches you make in the auction house, which already worked.
+
 # GuildStock 1.1.0
 
 - Shift-click an item row, or its icon, in GuildStock to link it in the focused chat box or paste it into the auction house search, like a bag item.

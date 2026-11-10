@@ -104,6 +104,8 @@ FrameXML moves the native nameplate level display to the right side of the healt
 
 **Observed, unexplained:** after `/reload` and two reopenings of the auction house within minutes, `AUCTION_HOUSE_SHOW` and `AUCTION_HOUSE_THROTTLED_SYSTEM_READY` fired, but no `REPLICATE_ITEM_LIST_UPDATE` arrived and the count stayed 0, including after a manual `ReplicateItems()`. This is compatible with a server-side interval between replications, which is not measured. **Pending:** a fresh replication after the fix, with a bulk-timestamp save and reload persistence.
 
+**Replication removed (November 10, 2026):** in the game the manual scan froze the client while processing, gave insufficient feedback and, when it finished, no updated prices were visible. GuildStock no longer calls `ReplicateItems` or listens for `REPLICATE_ITEM_LIST_UPDATE`, neither on opening the auction house nor from a button. Prices come only from completed commodity/item searches made by the player, which were confirmed to update prices. The pending replication tests above no longer apply to GuildStock.
+
 ### GuildStock auction-price acquisition investigation · October 6, 2026
 
 **Reference:** installed product `wow_classic_beta`, version `1.60.1.70205`; a native read again returned `1.60.1 / 70205 / 16001`. **Affected addon:** GuildStock 1.0.0. The installed manifest loads `Prices.lua`, and that module matches the repository byte for byte. This installation is currently a separate directory rather than the development symlink; no installed files or personal SavedVariables were changed.
