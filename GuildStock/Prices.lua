@@ -76,12 +76,12 @@ local function ReplicatedPrices()
         if token ~= generation or not CanRead() then return end
         for i = index, math.min(index + 199, total - 1) do
             -- Do not retain names, owners, links or any other auction identity data.
-            local ok, _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, saleStatus, id, complete =
+            local ok, _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, saleStatus, id =
                 pcall(C_AuctionHouse.GetReplicateItemInfo, i)
             if not ok or not addon.Integer(id, 1, 2147483647) then return end
             if catalog[id] then
-                if not addon.Accessible(complete) or complete ~= true
-                    or not addon.Integer(count, 1, 2147483647)
+                -- hasAllInfo is ignored: it is false while seller names load, but price fields are already valid.
+                if not addon.Integer(count, 1, 2147483647)
                     or not addon.Integer(buyout, 0, MAX_MONEY)
                     or not addon.Integer(saleStatus, 0, 1) then
                     blocked[id] = true

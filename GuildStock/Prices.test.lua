@@ -100,7 +100,8 @@ for _, bad in ipairs({0, -1, 0.5, secret}) do
     assert(a.AuctionPrice(10) == previous)
 end
 c.observe({Row(10, 1, 300, false), Row(10, 1, 600)})
-assert(a.AuctionPrice(10) == previous)
+assert(a.AuctionPrice(10).copper == 300, "records still loading seller names keep valid price fields")
+previous = a.AuctionPrice(10)
 c.observe({Row(10, 1, 300, true, 1)})
 assert(a.AuctionPrice(10) == previous, "sold auctions do not update estimates")
 c.observe({Row(secret, 1, 1), Row(10, 1, 600)})
