@@ -141,10 +141,25 @@ local function HideItemTooltip(self)
     if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
 end
 
-local function SetSlotItem(slot, itemID)
+-- Shift-click inserts the item link into the focused chat/Auction House box.
+local function LinkItem(itemID, name)
+    if not (IsShiftKeyDown() and itemID) then return false end
+    local link = C_Item and C_Item.GetItemInfo and select(2, C_Item.GetItemInfo(itemID))
+        or ("|cffffffff|Hitem:%d::::::::::::|h[%s]|h|r"):format(itemID, name or "")
+    return (HandleModifiedItemClick or ChatEdit_InsertLink)(link)
+end
+
+local function SetSlotItem(slot, itemID, name)
+    slot.itemName = name
     if not slot:GetScript("OnEnter") then
         slot:EnableMouse(true)
-        slot:SetMouseClickEnabled(false) -- Keep row selection clickable through the icon.
+        slot:SetScript("OnMouseUp", function(self)
+            -- Plain clicks still reach the parent row; only Shift is handled here.
+            if not LinkItem(self.itemID, self.itemName) then
+                local parent = self:GetParent()
+                if parent.Click then parent:Click() end
+            end
+        end)
         slot:SetScript("OnEnter", function(self)
             if not addon.Integer(self.itemID, 1, 2147483647) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -508,6 +523,7 @@ local function RenderVisibleRows(list)
         local row = list.rows[i]
         if not row then
             row = Button(list.content, "", 0, (i - 1) * 55, list.width, 55, function(self)
+                if LinkItem(self.itemID, self.label:GetText()) then return end
                 if not own and not hidden and selected ~= self.itemID then
                     selected = self.itemID
                     for _, visible in ipairs(list.rows) do Highlight(visible, visible.itemID == selected) end
@@ -562,7 +578,7 @@ local function RenderVisibleRows(list)
         row:SetPoint("TOPLEFT", 0, -(index - 1) * 55)
         row.separator:SetShown(index < #entries)
         row.itemID = entry.id
-        SetSlotItem(row.itemSlot, entry.id)
+        SetSlotItem(row.itemSlot, entry.id, entry.name)
         row.label:SetText(entry.name)
         addon.SetPriceItem(row.price, entry.id)
         row.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -761,6 +777,7 @@ RefreshMaterialDetail = function()
     if selected then
         local data = addon.ItemData(selected)
         detailName:SetText(data.name)
+        detailSlot.itemName = data.name
         detailIcon:SetTexture(data.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         SetMaterialProfessions(detailProfessions, addon.Catalog()[selected])
         Star(detailStar, selected)
@@ -931,20 +948,26 @@ local function CreateWindow(colors, SectionHeading)
     listTitle = Label(middle, "", 14, 64, 295, 19)
     listHint = Label(middle, "", 14, 90, 295, 12, muted)
     materialList = Scroll(middle, 8, 119, 307, 400)
-    local scan = Button(middle, L["Scan all prices"], 8, 527, 283, 28, function() addon.ScanAuctionHouse() end)
+    local scan = CreateFrame("Button", nil, middle, "UIPanelButtonTemplate")
+    scan:SetPoint("TOPLEFT", 8, -527)
+    scan:SetSize(283, 28)
+    scan:SetText(L["Scan all prices"])
+    scan:SetMotionScriptsWhileDisabled(true) -- the tooltip must explain why it is disabled
+    scan:SetScript("OnClick", function() addon.ScanAuctionHouse() end)
+    local function UpdateScan() scan:SetEnabled(addon.CanScanAuctionHouse()) end
+    UpdateScan()
     local scanElapsed = 0
-    scan:SetScript("OnUpdate", function(self, delta)
+    scan:SetScript("OnUpdate", function(_, delta)
         scanElapsed = scanElapsed + delta
-        if scanElapsed < 0.5 then return end
-        scanElapsed = 0
-        self:SetEnabled(addon.CanScanAuctionHouse())
-        self:SetAlpha(self:IsEnabled() and 1 or 0.45)
+        if scanElapsed >= 0.5 then scanElapsed = 0; UpdateScan() end
     end)
     scan:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self:IsEnabled() and L["Scan all prices"] or L["Open the auction house to scan prices."], 1, 1, 1, 1, true)
+        GameTooltip:SetText(L["Scan all prices"], 1, 1, 1)
+        if not self:IsEnabled() then GameTooltip:AddLine(L["Open the auction house to scan prices."], 1, 0.3, 0.3, true) end
+        GameTooltip:Show()
     end)
-    scan:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    scan:SetScript("OnLeave", function() GameTooltip:Hide() end)
     search.list = materialList
     materialList.empty = Label(middle, "", 22, 184, 278, 15, muted)
     materialList.empty:SetJustifyH("CENTER")
