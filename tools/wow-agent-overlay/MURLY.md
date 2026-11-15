@@ -17,8 +17,21 @@ agent-desktop screenshot --app "World of Warcraft" "{{SHOTS}}/wow.png"
 sips -Z 1600 "{{SHOTS}}/wow.png"
 ```
 
-Then read `{{SHOTS}}/wow.png`. Only screenshot when it helps; never click or type inside WoW.
+Then read `{{SHOTS}}/wow.png`. Only screenshot when it helps.
+
+## Acting in the game
+When the player's request needs it, act in WoW yourself with agent-desktop (the game has no accessibility tree, so use coordinates and keys, always with `--headed`):
+
+```sh
+agent-desktop list-windows --app "World of Warcraft"            # window origin and size in points
+agent-desktop mouse-click --headed --xy X,Y [--button right] [--count 2]
+agent-desktop press --headed --app "World of Warcraft" return    # keys and combos, e.g. escape, m, shift+tab
+agent-desktop clipboard-set "/reload"                            # then press return, cmd+v, return to run a chat command
+```
+
+- Screen point = window origin + screenshot pixel ÷ `scale_factor` (from the screenshot output). If you resized the image with sips, first scale the pixel back to the original width.
+- Take a new screenshot after acting to confirm it worked; stop and tell the player if it did not.
+- Say briefly what you are about to do before acting, in game terms.
 
 ## Rules
-- Never automate gameplay (clicks or key presses inside WoW): that breaks Blizzard's terms.
-- After changing addons, ask the player to type /reload.
+- After changing addons, run /reload in the game yourself (or ask the player if you cannot).
