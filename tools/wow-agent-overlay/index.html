@@ -41,19 +41,17 @@
   .agent pre { padding: 6px; overflow-x: auto; white-space: pre; border: 1px solid #2c2416; }
   .note { font-size: 11.5px; color: var(--muted); padding: 0 4px; }
   .error { color: #ff5a4a; }
-  /* The art's divider sits at 25.4% of the stretched edge above the bottom border: the composer fills that band. */
-  form { position: relative; display: flex; gap: 6px; height: calc((100vh - 75px) * 0.2537); padding: 9px 0 2px;
-    border-top: 1px solid #c08a36; }
+  form { position: relative; display: flex; align-items: flex-end; gap: 6px; padding: 10px 0 2px; border-top: 1px solid #c08a36; }
   form::before { content: ""; position: absolute; top: -4px; left: 50%; width: 6px; height: 6px; margin-left: -3px;
     transform: rotate(45deg); background: #e0aa4a; border: 1px solid #5a3b10; }
   textarea {
-    flex: 1; resize: none; padding: 6px 9px; outline: none; border-radius: 4px;
+    flex: 1; resize: none; height: 30px; max-height: 120px; overflow-y: hidden; padding: 5px 9px; line-height: 18px; outline: none; border-radius: 4px;
     background: #050403; color: var(--text); border: 1px solid #5a4a32; box-shadow: inset 0 1px 3px #000; font: inherit;
   }
   textarea::placeholder { color: #6f6553; }
   textarea:focus { border-color: #9c7c3c; }
   .send {
-    align-self: flex-end; height: 30px; min-width: 70px; padding: 0 12px; cursor: pointer; border-radius: 4px; font: 13px "Friz Quadrata TT", Optima, sans-serif;
+    height: 30px; min-width: 70px; padding: 0 12px; cursor: pointer; border-radius: 4px; font: 13px "Friz Quadrata TT", Optima, sans-serif;
     color: var(--yellow); text-shadow: 1px 1px 0 #000;
     background: linear-gradient(#a3160f, #6a0905 55%, #4a0603); border: 1px solid #2b0503;
     box-shadow: inset 0 1px 0 rgba(255,140,110,.35), 0 0 0 1px #6b5531;
@@ -67,7 +65,7 @@
 <div class="frame">
   <div id="log"><div class="note">Mrrglll! Ask about the game, your addons or the interface. Enter sends, Shift+Enter adds a line.</div></div>
   <form id="f">
-    <textarea id="t" placeholder="Speak, adventurer…"></textarea>
+    <textarea id="t" rows="1" placeholder="Speak, adventurer…"></textarea>
     <button class="send" id="b">Send</button>
   </form>
 </div>
@@ -126,13 +124,28 @@ document.getElementById('f').onsubmit = ev => {
   if (!text || busy) return;
   add('msg user', text);
   t.value = '';
+  grow();
   setBusy(true);
   post('send', { text });
 };
+// One line until the text needs more, up to the CSS max-height.
+function grow() {
+  t.style.height = 'auto';
+  t.style.height = t.scrollHeight + 2 + 'px';
+  t.style.overflowY = t.scrollHeight > 118 ? 'auto' : 'hidden';
+}
+t.addEventListener('input', grow);
 t.addEventListener('keydown', ev => {
   if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); document.getElementById('f').requestSubmit(); }
 });
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape') post('close'); });
+documen// One line until the text needs more, up to the CSS max-height.
+function grow() {
+  t.style.height = 'auto';
+  t.style.height = t.scrollHeight + 2 + 'px';
+  t.style.overflowY = t.scrollHeight > 118 ? 'auto' : 'hidden';
+}
+t.addEventListener('input', grow);
+t.addEventListener('keydown', ev => { if (ev.key === 'Escape') post('close'); });
 </script>
 </body>
 </html>

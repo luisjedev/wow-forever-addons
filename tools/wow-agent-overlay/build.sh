@@ -10,7 +10,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 swiftc -O -o "$app/Contents/MacOS/Murly" "$here/main.swift"
 cp "$here/index.html" "$app/Contents/Resources/"
 # Frame art shared with the TDL addon, so Murly matches the in-game windows.
-sips -s format png "$repo/TDL/Assets/Window.tga" --out "$app/Contents/Resources/frame.png" >/dev/null
+swift "$here/frame.swift" "$repo/TDL/Assets/Window.tga" "$app/Contents/Resources/frame.png"
 sips -s format png "$repo/TDL/Assets/Background.tga" --out "$app/Contents/Resources/background.png" >/dev/null
 cat > "$app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
