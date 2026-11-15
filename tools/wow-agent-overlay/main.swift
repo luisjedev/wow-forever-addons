@@ -7,20 +7,21 @@ let info = Bundle.main.infoDictionary ?? [:]
 let repoDir = info["WoWAgentRepo"] as? String ?? FileManager.default.currentDirectoryPath
 let wowDir = "/Applications/World of Warcraft/_forever_"
 
-let systemPrompt = """
-Your name is Murly, a friendly guide (a murloc at heart) running in a small overlay window on top of World of Warcraft: Forever (macOS client). \
-Keep answers short: the window is small and the player is in the game.
-- Game client: \(wowDir) (AddOns: \(wowDir)/Interface/AddOns, saved settings: \(wowDir)/WTF, logs: \(wowDir)/Logs).
-- Addon repository (working directory): \(repoDir). Follow its AGENTS.md; read docs/BLIZZARD_API.md before API work.
-- Forever is neither Classic Era nor Retail; check the build before assuming an API exists.
-- Use the agent-desktop skill to take screenshots of the game window when you need to see the screen.
-- Never automate gameplay (clicks or key presses inside WoW): that breaks Blizzard's terms. \
-After changing addons, ask the player to type /reload.
-"""
+let shotsDir = NSTemporaryDirectory() + "murly"
+
+/// Murly's instructions live in MURLY.md (copied into the app); placeholders get this machine's paths.
+let systemPrompt: String = {
+    try? FileManager.default.createDirectory(atPath: shotsDir, withIntermediateDirectories: true)
+    let file = Bundle.main.url(forResource: "MURLY", withExtension: "md")
+    let text = file.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "Your name is Murly, a World of Warcraft guide."
+    return text.replacingOccurrences(of: "{{WOW}}", with: wowDir)
+        .replacingOccurrences(of: "{{REPO}}", with: repoDir)
+        .replacingOccurrences(of: "{{SHOTS}}", with: shotsDir)
+}()
 
 // Tools that run without a prompt; anything else is denied and reported in the chat.
 let allowedTools = ["Read", "Glob", "Grep", "Edit", "Write", "WebSearch", "WebFetch", "Skill", "TodoWrite",
-                    "Bash(agent-desktop:*)", "Bash(ls:*)", "Bash(git status:*)", "Bash(git diff:*)",
+                    "Bash(agent-desktop:*)", "Bash(sips:*)", "Bash(ls:*)", "Bash(git status:*)", "Bash(git diff:*)",
                     "Bash(git log:*)", "Bash(lua:*)", "Bash(luac:*)", "Bash(find:*)"]
 
 /// PATH from the user's interactive shell, so `claude` and nvm's `agent-desktop` resolve when launched from Finder.
@@ -48,7 +49,7 @@ final class Claude {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         p.arguments = ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json",
-                       "--verbose", "--model", "claude-sonnet-5-5", "--permission-mode", "acceptEdits", "--add-dir", wowDir,
+                       "--verbose", "--model", "claude-sonnet-5-5", "--permission-mode", "acceptEdits", "--add-dir", wowDir, "--add-dir", shotsDir,
                        "--append-system-prompt", systemPrompt, "--allowedTools"] + allowedTools
         p.currentDirectoryURL = URL(fileURLWithPath: repoDir)
         var env = ProcessInfo.processInfo.environment

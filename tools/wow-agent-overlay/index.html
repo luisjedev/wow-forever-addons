@@ -41,6 +41,9 @@
   .agent pre { padding: 6px; overflow-x: auto; white-space: pre; border: 1px solid #2c2416; }
   .note { font-size: 11.5px; color: var(--muted); padding: 0 4px; }
   .error { color: #ff5a4a; }
+  .working { color: var(--yellow); font-style: italic; }
+  .working::after { content: ""; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
   form { position: relative; display: flex; align-items: flex-end; gap: 6px; padding: 10px 0 2px; border-top: 1px solid #c08a36; }
   form::before { content: ""; position: absolute; top: -4px; left: 50%; width: 6px; height: 6px; margin-left: -3px;
     transform: rotate(45deg); background: #e0aa4a; border: 1px solid #5a3b10; }
@@ -90,31 +93,33 @@ const md = s => esc(s)
   .replace(/`([^`\n]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
 
-function setBusy(v) { busy = v; b.disabled = v; b.textContent = v ? '…' : 'Send'; }
+// While Murly works, only a friendly indicator shows; tool calls and raw output stay hidden.
+const working = document.createElement('div');
+working.className = 'note working';
+working.textContent = 'Murly is working on it';
+function setBusy(v) {
+  busy = v; b.disabled = v; b.textContent = v ? '…' : 'Send';
+  v ? log.appendChild(working) : working.remove();
+  log.scrollTop = log.scrollHeight;
+}
 function clearLog() { log.innerHTML = ''; setBusy(false); }
 function focusInput() { t.focus(); }
 
-function toolSummary(u) {
-  const i = u.input || {};
-  const what = i.command || i.file_path || i.pattern || i.query || i.url || i.skill || '';
-  return `⚙ ${u.name}${what ? ': ' + String(what).slice(0, 80) : ''}`;
-}
-
 function onClaude(line) {
   let e;
-  try { e = JSON.parse(line); } catch { return add('note', line); }
+  try { e = JSON.parse(line); } catch { return; }
   if (e.type === 'assistant') {
     for (const c of e.message?.content || []) {
       if (c.type === 'text' && c.text.trim()) add('msg agent', md(c.text), true);
-      if (c.type === 'tool_use') add('note', toolSummary(c));
     }
+    if (busy) log.appendChild(working);
   } else if (e.type === 'result') {
     setBusy(false);
-    for (const d of e.permission_denials || []) add('note error', `✋ Not allowed without approval: ${d.tool_name}`);
-    if (e.is_error) add('note error', e.result || e.subtype || 'Error');
+    if (e.permission_denials?.length) add('note error', 'Mrgl… Murly was not allowed to do part of that.');
+    if (e.is_error) add('note error', 'Mrgl… something went wrong. Try again.');
   } else if (e.type === 'exited') {
     setBusy(false);
-    add('note error', e.error || 'Session ended; the next message starts a new one.');
+    add('note error', 'Murly dozed off; your next message wakes Murly up.');
   }
 }
 
@@ -138,14 +143,7 @@ t.addEventListener('input', grow);
 t.addEventListener('keydown', ev => {
   if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); document.getElementById('f').requestSubmit(); }
 });
-documen// One line until the text needs more, up to the CSS max-height.
-function grow() {
-  t.style.height = 'auto';
-  t.style.height = t.scrollHeight + 2 + 'px';
-  t.style.overflowY = t.scrollHeight > 118 ? 'auto' : 'hidden';
-}
-t.addEventListener('input', grow);
-t.addEventListener('keydown', ev => { if (ev.key === 'Escape') post('close'); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') post('close'); });
 </script>
 </body>
 </html>
