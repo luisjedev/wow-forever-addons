@@ -20,6 +20,10 @@ The installed version comes from the active row of `.build.info`; the published 
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
 
+### ProfGuide 0.1.0-snapshot-1 · November 15, 2026
+
+**Affected addon:** ProfGuide (new). **Reference:** interface `16001`, existing local reference; no new client source consulted. The window uses classic dialog textures, `BackdropTemplate`, `UIPanelScrollFrameTemplate` and the TDL minimap pattern, and reads the Blacksmithing rank through `GetProfessions()` / `GetProfessionInfo()` (skill line `164`) under `pcall` and `canaccessvalue`. **Pending in-game tests:** the window layout and text wrapping per tab, `Interface\DialogFrame\UI-DialogBox-*` and `Interface\Icons\Trade_BlackSmithing` rendering, skill-based tier jump after learning the profession, and `ProfGuideDB` after `/reload` and a restart. **Data limitation:** guide content is copied from a third-party site for the Forever beta; its 270-300 range is untested upstream.
+
 ### Forever launch · build 70790 · GuildStock 1.0.1 · November 5, 2026
 
 **Reference:** product `wowf`, `1.60.1.70790`, confirmed in the local `.build.info` and on the US and EU version services. The mirror compares `ca8368f` (70532) with `eac30af` (70790). Affected addon: GuildStock. TDL and Revenge were not reviewed for this update beyond running their suites. Three user reports triggered this review. They arrive through players, so no multi-client reproduction exists yet.
