@@ -5,9 +5,14 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 app="$here/Murly.app"
 
-rm -rf "$app"
+bin="$app/Contents/MacOS/Murly"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-swiftc -O -o "$app/Contents/MacOS/Murly" "$here/main.swift"
+# macOS ties Accessibility/Screen Recording grants to this ad-hoc binary's hash:
+# recompile only when main.swift changes so UI and MURLY.md edits keep the permissions.
+if [ ! -x "$bin" ] || [ "$here/main.swift" -nt "$bin" ]; then
+  swiftc -O -o "$bin" "$here/main.swift"
+  echo "Recompiled Murly: grant Accessibility and Screen Recording again if macOS asks."
+fi
 cp "$here/index.html" "$here/MURLY.md" "$app/Contents/Resources/"
 # Frame art shared with the TDL addon, so Murly matches the in-game windows.
 swift "$here/frame.swift" "$repo/TDL/Assets/Window.tga" "$app/Contents/Resources/frame.png"
