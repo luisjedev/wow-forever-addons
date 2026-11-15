@@ -48,7 +48,7 @@ final class Claude {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         p.arguments = ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json",
-                       "--verbose", "--permission-mode", "acceptEdits", "--add-dir", wowDir,
+                       "--verbose", "--model", "claude-sonnet-5-5", "--permission-mode", "acceptEdits", "--add-dir", wowDir,
                        "--append-system-prompt", systemPrompt, "--allowedTools"] + allowedTools
         p.currentDirectoryURL = URL(fileURLWithPath: repoDir)
         var env = ProcessInfo.processInfo.environment
