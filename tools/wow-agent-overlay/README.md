@@ -23,4 +23,4 @@ tools/wow-agent-overlay/build.sh --open
 
 There is no approval prompt. Edits and the tools in `allowedTools` (`main.swift`) run automatically, and the chat reports any other tool as not allowed. Add tools to that list and rebuild if you need more.
 
-Murly can click and press keys inside WoW with agent-desktop when a request needs it (see [`MURLY.md`](MURLY.md)). Blizzard's terms forbid automating gameplay with third-party software; that risk is the player's to take.
+Murly controls the game with agent-desktop (clicks, keys, map, menus, chat commands) and creates addons in this repository, without asking (see [`MURLY.md`](MURLY.md)). Blizzard's terms forbid automating gameplay with third-party software; that risk is the player's to take.

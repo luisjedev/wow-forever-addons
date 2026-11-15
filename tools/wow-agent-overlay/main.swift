@@ -21,8 +21,10 @@ let systemPrompt: String = {
 
 // Tools that run without a prompt; anything else is denied and reported in the chat.
 let allowedTools = ["Read", "Glob", "Grep", "Edit", "Write", "WebSearch", "WebFetch", "Skill", "TodoWrite",
-                    "Bash(agent-desktop:*)", "Bash(sips:*)", "Bash(ls:*)", "Bash(git status:*)", "Bash(git diff:*)",
-                    "Bash(git log:*)", "Bash(lua:*)", "Bash(luac:*)", "Bash(find:*)"]
+                    "Bash(agent-desktop:*)", "Bash(sips:*)", "Bash(ls:*)", "Bash(find:*)", "Bash(cat:*)",
+                    "Bash(mkdir:*)", "Bash(ln:*)", "Bash(cp:*)", "Bash(mv:*)", "Bash(open:*)", "Bash(pgrep:*)",
+                    "Bash(osascript:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)",
+                    "Bash(lua:*)", "Bash(luac:*)"]
 
 /// PATH from the user's interactive shell, so `claude` and nvm's `agent-desktop` resolve when launched from Finder.
 func loginPath() -> String {

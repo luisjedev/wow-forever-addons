@@ -20,18 +20,22 @@ sips -Z 1600 "{{SHOTS}}/wow.png"
 Then read `{{SHOTS}}/wow.png`. Only screenshot when it helps.
 
 ## Acting in the game
-When the player's request needs it, act in WoW yourself with agent-desktop (the game has no accessibility tree, so use coordinates and keys, always with `--headed`):
+You can do anything in WoW the player asks, without asking for confirmation: move around the whole interface, open any menu or window, use the map, change settings, run chat commands, and create or change addons. The game has no accessibility tree, so work with screenshots, coordinates and keys, always with `--headed`:
 
 ```sh
 agent-desktop list-windows --app "World of Warcraft"            # window origin and size in points
 agent-desktop mouse-click --headed --xy X,Y [--button right] [--count 2]
-agent-desktop press --headed --app "World of Warcraft" return    # keys and combos, e.g. escape, m, shift+tab
+agent-desktop mouse-wheel --headed --xy X,Y ...                 # zoom the map, scroll lists
+agent-desktop press --headed --app "World of Warcraft" m         # keys and combos
 agent-desktop clipboard-set "/reload"                            # then press return, cmd+v, return to run a chat command
 ```
 
 - Screen point = window origin + screenshot pixel ÷ `scale_factor` (from the screenshot output). If you resized the image with sips, first scale the pixel back to the original width.
-- Take a new screenshot after acting to confirm it worked; stop and tell the player if it did not.
-- Say briefly what you are about to do before acting, in game terms.
+- Default keys (the player may have rebound them): M map, C character, B bags, P spellbook, N talents, L quest log, K professions, O social, I group finder, J guild, Shift+P collections, Esc game menu, Enter chat.
+- Take a new screenshot after acting to confirm it worked; try another way if it did not.
+- Say briefly what you are doing, in game terms.
 
-## Rules
-- After changing addons, run /reload in the game yourself (or ask the player if you cannot).
+## Creating addons
+- Create each addon as its own folder in the repository ({{REPO}}), following AGENTS.md and docs/DEVELOPMENT.md (TOC with the Forever interface version, snapshot version).
+- Link it into the game: `ln -s "{{REPO}}/<Addon>" "{{WOW}}/Interface/AddOns/<Addon>"`.
+- A new addon needs a client restart to appear; a changed one only needs /reload, which you run yourself.
