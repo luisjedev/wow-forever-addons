@@ -1,4 +1,4 @@
-// WoW Agent overlay: a floating gem button that opens a WoW-styled chat backed by the local `claude` CLI.
+// Murly: a floating gem button that opens a WoW-styled chat backed by the local `claude` CLI.
 import Cocoa
 import WebKit
 
@@ -8,7 +8,7 @@ let repoDir = info["WoWAgentRepo"] as? String ?? FileManager.default.currentDire
 let wowDir = "/Applications/World of Warcraft/_forever_"
 
 let systemPrompt = """
-You are a guide running in a small overlay window on top of World of Warcraft: Forever (macOS client). \
+Your name is Murly, a friendly guide (a murloc at heart) running in a small overlay window on top of World of Warcraft: Forever (macOS client). \
 Keep answers short: the window is small and the player is in the game.
 - Game client: \(wowDir) (AddOns: \(wowDir)/Interface/AddOns, saved settings: \(wowDir)/WTF, logs: \(wowDir)/Logs).
 - Addon repository (working directory): \(repoDir). Follow its AGENTS.md; read docs/BLIZZARD_API.md before API work.
@@ -119,16 +119,19 @@ final class GemView: NSView {
     private var start = NSPoint.zero, moved = false
 
     override func draw(_ dirtyRect: NSRect) {
+        // Minimap-button look: dark rim, bronze ring like the frame art, dark stone core with a yellow M.
         let r = bounds.insetBy(dx: 3, dy: 3)
-        let ring = NSBezierPath(ovalIn: r)
-        NSGradient(starting: NSColor(red: 0.98, green: 0.85, blue: 0.45, alpha: 1),
-                   ending: NSColor(red: 0.55, green: 0.38, blue: 0.12, alpha: 1))?.draw(in: ring, angle: -90)
+        NSColor.black.setFill()
+        NSBezierPath(ovalIn: r).fill()
+        NSGradient(colors: [NSColor(red: 0.85, green: 0.62, blue: 0.25, alpha: 1),
+                            NSColor(red: 0.42, green: 0.27, blue: 0.09, alpha: 1),
+                            NSColor(red: 0.78, green: 0.55, blue: 0.2, alpha: 1)])?.draw(in: NSBezierPath(ovalIn: r.insetBy(dx: 1.5, dy: 1.5)), angle: -90)
         let core = NSBezierPath(ovalIn: r.insetBy(dx: 5, dy: 5))
-        NSGradient(colors: [NSColor(red: 0.35, green: 0.75, blue: 1, alpha: 1),
-                            NSColor(red: 0.05, green: 0.15, blue: 0.4, alpha: 1)])?.draw(in: core, relativeCenterPosition: NSPoint(x: -0.3, y: 0.4))
-        let glyph = NSAttributedString(string: "✦", attributes: [
-            .font: NSFont.systemFont(ofSize: r.height * 0.42, weight: .bold),
-            .foregroundColor: NSColor(red: 1, green: 0.93, blue: 0.7, alpha: 1)])
+        NSGradient(colors: [NSColor(red: 0.2, green: 0.17, blue: 0.12, alpha: 1),
+                            NSColor(red: 0.04, green: 0.03, blue: 0.02, alpha: 1)])?.draw(in: core, relativeCenterPosition: NSPoint(x: -0.3, y: 0.4))
+        let glyph = NSAttributedString(string: "M", attributes: [
+            .font: NSFont(name: "Optima-Bold", size: r.height * 0.5) ?? NSFont.boldSystemFont(ofSize: r.height * 0.5),
+            .foregroundColor: NSColor(red: 1, green: 0.82, blue: 0, alpha: 1)])
         let s = glyph.size()
         glyph.draw(at: NSPoint(x: bounds.midX - s.width / 2, y: bounds.midY - s.height / 2))
     }
@@ -146,7 +149,7 @@ final class GemView: NSView {
     override func mouseUp(with e: NSEvent) { if !moved { onClick() } }
     override func rightMouseDown(with e: NSEvent) {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Quit WoW Agent", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: "Quit Murly", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         NSMenu.popUpContextMenu(menu, with: e, for: self)
     }
 }

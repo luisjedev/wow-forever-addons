@@ -3,61 +3,76 @@
 <head>
 <meta charset="utf-8">
 <style>
-  :root { --gold: #f8d26a; --gold-dim: #b08a3e; --ink: #f2e6c9; --parch: #e9d9b0; }
+  /* Matches the Forever addon frames in this repo (TDL/GuildStock): bronze frame, dark stone, WoW yellow. */
+  :root { --yellow: #ffd100; --text: #f1ece0; --muted: #a39780; --line: #6b5531; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: transparent; font: 13px/1.45 "Palatino", "Hoefler Text", Georgia, serif; color: var(--ink); }
+  html, body { margin: 0; height: 100%; background: transparent; color: var(--text);
+    font: 13px/1.45 "Friz Quadrata TT", "Optima", "Avenir Next", sans-serif; }
   .frame {
-    position: absolute; inset: 6px; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
-    background: radial-gradient(ellipse at top, #2a1d12 0%, #120c08 70%), #120c08;
-    border: 3px solid var(--gold-dim);
-    box-shadow: 0 0 0 1px #3b2a14, inset 0 0 0 1px #6b5226, inset 0 0 24px #000, 0 6px 22px rgba(0,0,0,.6);
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    /* Slices measured on TDL/Assets/Window.tga (1024px), drawn at 0.36 scale. */
+    border-style: solid; border-width: 46px 29px 29px 29px;
+    border-image: url(frame.png) 128 80 80 80 / 46px 29px 29px 29px stretch;
+    background: linear-gradient(rgba(8,6,4,.78), rgba(8,6,4,.86)), url(background.png) center / cover, #0c0a07;
+    background-clip: padding-box;
   }
-  header {
-    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-    background: linear-gradient(#7a1414, #4a0b0b); border-bottom: 2px solid var(--gold-dim);
+  .title {
+    position: absolute; top: 11px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 1;
+    color: var(--yellow); font-size: 15px; letter-spacing: .6px; text-shadow: 1px 1px 1px #000;
   }
-  header h1 { flex: 1; margin: 0; font-size: 14px; color: var(--gold); letter-spacing: .5px; text-shadow: 1px 1px 0 #000; }
-  header button {
-    width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--gold-dim); cursor: pointer;
-    background: radial-gradient(#9b1c1c, #4a0808); color: var(--gold); font: bold 12px serif; line-height: 1; padding: 0;
+  .btn-x {
+    position: absolute; top: 12px; width: 20px; height: 22px; padding: 0; cursor: pointer; border-radius: 3px;
+    border: 1px solid #c9a43c; box-shadow: inset 0 0 0 1px #000, 0 1px 2px #000;
+    color: var(--yellow); font: bold 13px/1 Arial, sans-serif; text-shadow: 1px 1px 0 #000;
   }
-  header button:hover { filter: brightness(1.3); }
-  #log { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-  #log::-webkit-scrollbar { width: 8px; }
-  #log::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }
-  .msg { padding: 7px 9px; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; user-select: text; }
-  .user { align-self: flex-end; max-width: 85%; background: #2b2213; border: 1px solid #5c4720; color: var(--gold); }
-  .agent { background: linear-gradient(#efe0b8, #dcc68f); color: #2a1a08; border: 1px solid #8a6a2c; }
-  .agent code, .agent pre { font: 11.5px Menlo, monospace; background: rgba(0,0,0,.08); border-radius: 3px; }
-  .agent pre { padding: 6px; overflow-x: auto; white-space: pre; }
-  .note { font-size: 11px; color: #9c8a66; font-style: italic; }
-  .error { color: #ff6b5b; }
-  form { display: flex; gap: 6px; padding: 8px; border-top: 2px solid var(--gold-dim); background: #0c0805; }
+  .close { right: 34px; background: radial-gradient(circle at 40% 35%, #c8241b, #5e0a06); }
+  .reset { right: 58px; background: radial-gradient(circle at 40% 35%, #3a3326, #14110b); }
+  .btn-x:hover { filter: brightness(1.35); }
+  #log { flex: 1; overflow-y: auto; padding: 4px 6px 8px 2px; display: flex; flex-direction: column; gap: 6px; }
+  #log::-webkit-scrollbar { width: 7px; }
+  #log::-webkit-scrollbar-thumb { background: #4c3e26; border: 1px solid #8a6d38; border-radius: 4px; }
+  .msg { padding: 6px 9px; white-space: pre-wrap; word-wrap: break-word; user-select: text; }
+  .user { align-self: flex-end; max-width: 85%; color: var(--yellow); background: rgba(255,209,0,.06);
+    border: 1px solid #3d3220; border-radius: 3px; }
+  .agent { background: rgba(60,46,20,.35); border-left: 3px solid var(--yellow); }
+  .agent b { color: var(--yellow); font-weight: normal; }
+  .agent code, .agent pre { font: 11.5px Menlo, monospace; color: #e8dcc0; background: rgba(0,0,0,.45); border-radius: 2px; }
+  .agent code { padding: 0 3px; }
+  .agent pre { padding: 6px; overflow-x: auto; white-space: pre; border: 1px solid #2c2416; }
+  .note { font-size: 11.5px; color: var(--muted); padding: 0 4px; }
+  .error { color: #ff5a4a; }
+  /* The art's divider sits at 25.4% of the stretched edge above the bottom border: the composer fills that band. */
+  form { position: relative; display: flex; gap: 6px; height: calc((100vh - 75px) * 0.2537); padding: 9px 0 2px;
+    border-top: 1px solid #c08a36; }
+  form::before { content: ""; position: absolute; top: -4px; left: 50%; width: 6px; height: 6px; margin-left: -3px;
+    transform: rotate(45deg); background: #e0aa4a; border: 1px solid #5a3b10; }
   textarea {
-    flex: 1; resize: none; height: 38px; padding: 6px 8px; border-radius: 4px; outline: none;
-    background: #000; color: var(--ink); border: 1px solid #5c4720; font: inherit;
+    flex: 1; resize: none; padding: 6px 9px; outline: none; border-radius: 4px;
+    background: #050403; color: var(--text); border: 1px solid #5a4a32; box-shadow: inset 0 1px 3px #000; font: inherit;
   }
-  textarea:focus { border-color: var(--gold); }
+  textarea::placeholder { color: #6f6553; }
+  textarea:focus { border-color: #9c7c3c; }
   .send {
-    padding: 0 12px; border-radius: 4px; cursor: pointer; font: bold 12px serif; color: var(--gold);
-    border: 1px solid var(--gold-dim); background: linear-gradient(#8f1a1a, #4f0c0c); text-shadow: 1px 1px 0 #000;
+    align-self: flex-end; height: 30px; min-width: 70px; padding: 0 12px; cursor: pointer; border-radius: 4px; font: 13px "Friz Quadrata TT", Optima, sans-serif;
+    color: var(--yellow); text-shadow: 1px 1px 0 #000;
+    background: linear-gradient(#a3160f, #6a0905 55%, #4a0603); border: 1px solid #2b0503;
+    box-shadow: inset 0 1px 0 rgba(255,140,110,.35), 0 0 0 1px #6b5531;
   }
-  .send:disabled { filter: grayscale(1) brightness(.6); cursor: default; }
+  .send:hover { filter: brightness(1.2); }
+  .send:disabled { filter: grayscale(1) brightness(.55); cursor: default; }
 </style>
 </head>
 <body>
+<div class="title">Murly</div>
 <div class="frame">
-  <header>
-    <h1>✦ Claude, Agent of Azeroth</h1>
-    <button title="New conversation" onclick="post('reset'); clearLog()">↺</button>
-    <button title="Close (Esc)" onclick="post('close')">✕</button>
-  </header>
-  <div id="log"><div class="note">Ask about the game, your addons or the interface. Enter sends, Shift+Enter adds a line.</div></div>
+  <div id="log"><div class="note">Mrrglll! Ask about the game, your addons or the interface. Enter sends, Shift+Enter adds a line.</div></div>
   <form id="f">
     <textarea id="t" placeholder="Speak, adventurer…"></textarea>
     <button class="send" id="b">Send</button>
   </form>
 </div>
+<button class="btn-x reset" title="New conversation" onclick="post('reset'); clearLog()">↺</button>
+<button class="btn-x close" title="Close (Esc)" onclick="post('close')">✕</button>
 <script>
 const log = document.getElementById('log'), t = document.getElementById('t'), b = document.getElementById('b');
 let busy = false;
