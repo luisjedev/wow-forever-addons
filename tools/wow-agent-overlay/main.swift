@@ -164,6 +164,9 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler {
     var web: WKWebView!
 
     func applicationDidFinishLaunching(_ n: Notification) {
+        // agent-desktop runs as Murly's child, so macOS checks Murly's own grants: ask for them up front.
+        _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        if !CGPreflightScreenCaptureAccess() { CGRequestScreenCaptureAccess() }
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         gem = makePanel(NSRect(x: screen.maxX - 90, y: screen.minY + 120, width: 56, height: 56))
         gem.hasShadow = false
