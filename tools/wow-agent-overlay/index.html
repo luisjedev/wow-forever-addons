@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --gold: #f8d26a; --gold-dim: #b08a3e; --ink: #f2e6c9; --parch: #e9d9b0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: transparent; font: 13px/1.45 "Palatino", "Hoefler Text", Georgia, serif; color: var(--ink); }
+  .frame {
+    position: absolute; inset: 6px; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
+    background: radial-gradient(ellipse at top, #2a1d12 0%, #120c08 70%), #120c08;
+    border: 3px solid var(--gold-dim);
+    box-shadow: 0 0 0 1px #3b2a14, inset 0 0 0 1px #6b5226, inset 0 0 24px #000, 0 6px 22px rgba(0,0,0,.6);
+  }
+  header {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    background: linear-gradient(#7a1414, #4a0b0b); border-bottom: 2px solid var(--gold-dim);
+  }
+  header h1 { flex: 1; margin: 0; font-size: 14px; color: var(--gold); letter-spacing: .5px; text-shadow: 1px 1px 0 #000; }
+  header button {
+    width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--gold-dim); cursor: pointer;
+    background: radial-gradient(#9b1c1c, #4a0808); color: var(--gold); font: bold 12px serif; line-height: 1; padding: 0;
+  }
+  header button:hover { filter: brightness(1.3); }
+  #log { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #log::-webkit-scrollbar { width: 8px; }
+  #log::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }
+  .msg { padding: 7px 9px; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; user-select: text; }
+  .user { align-self: flex-end; max-width: 85%; background: #2b2213; border: 1px solid #5c4720; color: var(--gold); }
+  .agent { background: linear-gradient(#efe0b8, #dcc68f); color: #2a1a08; border: 1px solid #8a6a2c; }
+  .agent code, .agent pre { font: 11.5px Menlo, monospace; background: rgba(0,0,0,.08); border-radius: 3px; }
+  .agent pre { padding: 6px; overflow-x: auto; white-space: pre; }
+  .note { font-size: 11px; color: #9c8a66; font-style: italic; }
+  .error { color: #ff6b5b; }
+  form { display: flex; gap: 6px; padding: 8px; border-top: 2px solid var(--gold-dim); background: #0c0805; }
+  textarea {
+    flex: 1; resize: none; height: 38px; padding: 6px 8px; border-radius: 4px; outline: none;
+    background: #000; color: var(--ink); border: 1px solid #5c4720; font: inherit;
+  }
+  textarea:focus { border-color: var(--gold); }
+  .send {
+    padding: 0 12px; border-radius: 4px; cursor: pointer; font: bold 12px serif; color: var(--gold);
+    border: 1px solid var(--gold-dim); background: linear-gradient(#8f1a1a, #4f0c0c); text-shadow: 1px 1px 0 #000;
+  }
+  .send:disabled { filter: grayscale(1) brightness(.6); cursor: default; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <h1>✦ Claude, Agent of Azeroth</h1>
+    <button title="New conversation" onclick="post('reset'); clearLog()">↺</button>
+    <button title="Close (Esc)" onclick="post('close')">✕</button>
+  </header>
+  <div id="log"><div class="note">Ask about the game, your addons or the interface. Enter sends, Shift+Enter adds a line.</div></div>
+  <form id="f">
+    <textarea id="t" placeholder="Speak, adventurer…"></textarea>
+    <button class="send" id="b">Send</button>
+  </form>
+</div>
+<script>
+const log = document.getElementById('log'), t = document.getElementById('t'), b = document.getElementById('b');
+let busy = false;
+const post = (type, extra = {}) => window.webkit.messageHandlers.host.postMessage({ type, ...extra });
+
+function add(cls, text, html = false) {
+  const d = document.createElement('div');
+  d.className = cls;
+  html ? d.innerHTML = text : d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+// Just enough markdown for code and bold; the rest stays plain text.
+const md = s => esc(s)
+  .replace(/```\w*\n?([\s\S]*?)```/g, '<pre>$1</pre>')
+  .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+
+function setBusy(v) { busy = v; b.disabled = v; b.textContent = v ? '…' : 'Send'; }
+function clearLog() { log.innerHTML = ''; setBusy(false); }
+function focusInput() { t.focus(); }
+
+function toolSummary(u) {
+  const i = u.input || {};
+  const what = i.command || i.file_path || i.pattern || i.query || i.url || i.skill || '';
+  return `⚙ ${u.name}${what ? ': ' + String(what).slice(0, 80) : ''}`;
+}
+
+function onClaude(line) {
+  let e;
+  try { e = JSON.parse(line); } catch { return add('note', line); }
+  if (e.type === 'assistant') {
+    for (const c of e.message?.content || []) {
+      if (c.type === 'text' && c.text.trim()) add('msg agent', md(c.text), true);
+      if (c.type === 'tool_use') add('note', toolSummary(c));
+    }
+  } else if (e.type === 'result') {
+    setBusy(false);
+    for (const d of e.permission_denials || []) add('note error', `✋ Not allowed without approval: ${d.tool_name}`);
+    if (e.is_error) add('note error', e.result || e.subtype || 'Error');
+  } else if (e.type === 'exited') {
+    setBusy(false);
+    add('note error', e.error || 'Session ended; the next message starts a new one.');
+  }
+}
+
+document.getElementById('f').onsubmit = ev => {
+  ev.preventDefault();
+  const text = t.value.trim();
+  if (!text || busy) return;
+  add('msg user', text);
+  t.value = '';
+  setBusy(true);
+  post('send', { text });
+};
+t.addEventListener('keydown', ev => {
+  if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); document.getElementById('f').requestSubmit(); }
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') post('close'); });
+</script>
+</body>
+</html>
