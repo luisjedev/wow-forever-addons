@@ -1,6 +1,15 @@
 local _, addon = ...
 local L = addon.L
 
+-- Loaded before Data/*.lua: each data file registers addon.guides[key] using addon.Step.
+addon.guides = {}
+function addon.Step(from, to, count, item, mats, note, alts)
+    return { from = from, to = to, count = count, item = item, mats = mats or {}, note = note, alts = alts }
+end
+-- Order of the tiles in the overview.
+addon.guideOrder = { "alchemy", "blacksmithing", "enchanting", "engineering", "leatherworking", "tailoring",
+    "mining", "herbalism", "skinning", "firstaid", "cooking", "fishing", "lockpicking" }
+
 addon.tabs = {
     { key = "leveling", label = L["Leveling"] },
     { key = "shopping", label = L["Shopping List"] },
@@ -11,10 +20,10 @@ addon.tabs = {
 -- Current skill in the guide's profession, or nil when unknown or not learned.
 function addon.ReadSkill(skillLine)
     if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return end
-    local ok, a, b, c, d, e = pcall(GetProfessions)
+    local ok, a, b, c, d, e, f = pcall(GetProfessions)
     if not ok then return end
-    local indices = { a, b, c, d, e }
-    for i = 1, 5 do
+    local indices = { a, b, c, d, e, f }
+    for i = 1, 6 do
         if type(indices[i]) == "number" then
             local success, _, _, skill, _, _, _, line = pcall(GetProfessionInfo, indices[i])
             if success and line == skillLine and type(skill) == "number"
@@ -47,13 +56,14 @@ local function MaterialText(mats)
 end
 
 local function StepBlock(step)
-    local lines = { "|cffffd100" .. L["Materials:"] .. "|r " .. MaterialText(step.mats) }
+    local lines = {}
+    if #step.mats > 0 then lines[1] = "|cffffd100" .. L["Materials:"] .. "|r " .. MaterialText(step.mats) end
     if step.note then lines[#lines + 1] = step.note end
     for _, alt in ipairs(step.alts or {}) do
         lines[#lines + 1] = "|cff66ccff" .. L["Alternative:"] .. "|r " .. alt
     end
-    return { kind = "step", badge = step.from .. "-" .. step.to, title = step.count .. "x " .. step.item,
-        body = table.concat(lines, "\n"), step = step }
+    return { kind = "step", badge = step.from .. "-" .. step.to, title = step.count and (step.count .. "x " .. step.item) or step.item,
+        body = #lines > 0 and table.concat(lines, "\n") or nil, step = step }
 end
 
 local function Leveling(guide)
@@ -86,7 +96,7 @@ local function Trainers(guide)
         for _, group in ipairs(page.groups) do
             blocks[#blocks + 1] = { kind = "heading", title = group[1] }
             for _, npc in ipairs(group[2]) do
-                blocks[#blocks + 1] = { kind = "row", title = npc[1], body = npc[2] }
+                blocks[#blocks + 1] = { kind = "row", title = npc[1], body = npc[2], pin = guide.pins and guide.pins[npc[1]] }
             end
         end
         pages[i] = { title = page.title, blocks = blocks }
@@ -95,20 +105,38 @@ local function Trainers(guide)
 end
 
 local function Extras(guide)
-    local quests = { { kind = "note", body = "Thorium Bar needed in total: 140 (included in the shopping list)." } }
-    for _, quest in ipairs(guide.quests) do
-        quests[#quests + 1] = { kind = "row", badge = quest[2], title = quest[1], body = quest[3] }
+    local pages = {}
+    for i, page in ipairs(guide.extras) do
+        local blocks = {}
+        for _, text in ipairs(page.notes or {}) do blocks[#blocks + 1] = { kind = "note", body = text } end
+        for _, row in ipairs(page.rows or {}) do
+            blocks[#blocks + 1] = { kind = "row", title = row[1], badge = row[2], body = row[3] }
+        end
+        pages[i] = { title = page.title, blocks = blocks }
     end
-    local notes = {}
-    for i, text in ipairs(guide.notes) do notes[i] = { kind = "note", body = text } end
-    return {
-        { title = "Specializations", blocks = { { kind = "note", body = guide.specializations } } },
-        { title = "Imperial Plate quests", blocks = quests },
-        { title = "About this guide", blocks = notes },
-    }
+    return pages
 end
 
 local builders = { leveling = Leveling, shopping = Shopping, trainers = Trainers, extras = Extras }
+
+-- Marks the NPC on the world map and opens it; false when the map API is missing.
+function addon.ShowOnMap(pin)
+    if type(pin) ~= "table" or not (C_Map and C_Map.SetUserWaypoint and UiMapPoint) then return false end
+    return (pcall(function()
+        C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(pin[1], pin[2] / 100, pin[3] / 100))
+        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+        if OpenWorldMap then OpenWorldMap(pin[1]) else ToggleWorldMap() end
+    end))
+end
+
+-- Tabs that have content in this guide (gathering guides have no shopping list, for example).
+function addon.TabsFor(guide)
+    local list = {}
+    for _, tab in ipairs(addon.tabs) do
+        if tab.key == "leveling" or guide[tab.key] then list[#list + 1] = tab end
+    end
+    return list
+end
 
 function addon.BuildPages(guide, key)
     return builders[key](guide)

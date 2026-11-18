@@ -1,22 +1,55 @@
 -- Run from the repository root: luajit ProfGuide/ProfGuide.test.lua
 GetLocale = function() return "enUS" end
-local addon = {}
-for _, file in ipairs({ "Locales", "Data/Blacksmithing", "Pages" }) do
-    assert(loadfile("ProfGuide/" .. file .. ".lua"))("ProfGuide", addon)
+-- Every Data file listed in the .toc, in .toc order.
+local files = {}
+for line in io.lines("ProfGuide/ProfGuide.toc") do
+    if line:match("%.lua$") then files[#files + 1] = line:gsub("\\", "/"):gsub("%.lua$", "") end
 end
+local function Load(target)
+    for _, file in ipairs(files) do
+        if file ~= "ProfGuide" then assert(loadfile("ProfGuide/" .. file .. ".lua"))("ProfGuide", target) end
+    end
+end
+local addon = {}
+Load(addon)
 local guide = addon.guides.blacksmithing
 
--- Steps are contiguous from 1 to 300 and each tier ends where the next begins.
-local expected = 1
-for _, tier in ipairs(guide.tiers) do
-    assert(tier.from == expected, "tier gap before " .. tier.name)
-    for _, step in ipairs(tier.steps) do
-        assert(step.from == expected and step.to > step.from, "step gap at " .. step.from)
-        expected = step.to
+-- Each overview tile has a guide, and every guide has a tile.
+local count = 0
+for _ in pairs(addon.guides) do count = count + 1 end
+assert(count == #addon.guideOrder and count == 13, "guide count")
+
+for _, key in ipairs(addon.guideOrder) do
+    local g = assert(addon.guides[key], key)
+    assert(type(g.name) == "string" and type(g.skillLine) == "number" and type(g.icon) == "string" and g.max == 300, key)
+    -- Steps are contiguous from 1 to max and each tier ends where the next begins.
+    local expected = 1
+    for _, tier in ipairs(g.tiers) do
+        assert(tier.from == expected, key .. ": tier gap before " .. tier.name)
+        for _, step in ipairs(tier.steps) do
+            assert(step.from == expected and step.to > step.from, key .. ": step gap at " .. step.from)
+            assert(type(step.item) == "string" and type(step.mats) == "table", key .. ": step " .. step.from)
+            expected = step.to
+        end
+        assert(expected == tier.to, key .. ": " .. tier.name .. " tier end")
     end
-    assert(expected == tier.to, tier.name .. " tier end")
+    assert(expected == g.max, key .. " ends at max")
+    -- Every tab the guide offers builds 1-6 pages whose blocks have the fields the window reads.
+    for _, tab in ipairs(addon.TabsFor(g)) do
+        local pages = addon.BuildPages(g, tab.key)
+        assert(#pages >= 1 and #pages <= 6, key .. " " .. tab.key .. " page count")
+        for _, page in ipairs(pages) do
+            assert(type(page.title) == "string" and #page.blocks > 0, key .. " " .. tab.key .. " empty page")
+            for _, block in ipairs(page.blocks) do
+                assert(block.kind == "heading" and block.title or block.kind == "note" and block.body
+                    or (block.kind == "step" or block.kind == "row") and type(block.title) == "string", key .. " " .. tab.key .. " block")
+            end
+        end
+    end
 end
-assert(expected == 300)
+assert(#addon.TabsFor(addon.guides.mining) == 3 and #addon.TabsFor(guide) == 4, "gathering guides have no shopping tab")
+local gather = addon.BuildPages(addon.guides.mining, "leveling")[1].blocks[3]
+assert(gather.title:find("^Copper Vein") and not gather.body:find("Materials", 1, true), "gathering step has no count or materials")
 
 -- Shopping totals equal the sum of the matching step materials (Thorium adds the 140 quest bars).
 for _, list in ipairs(guide.shopping) do
@@ -42,19 +75,8 @@ assert(addon.StepState(step, nil) == "todo")
 assert(addon.TierForSkill(guide, 1) == 1 and addon.TierForSkill(guide, 75) == 2)
 assert(addon.TierForSkill(guide, 214) == 3 and addon.TierForSkill(guide, 300) == 4 and addon.TierForSkill(guide, nil) == nil)
 
--- Every tab builds pages whose blocks have the fields the window reads.
 local counts = { leveling = 4, shopping = 3, trainers = 3, extras = 3 }
-for _, tab in ipairs(addon.tabs) do
-    local pages = addon.BuildPages(guide, tab.key)
-    assert(#pages == counts[tab.key] and #pages <= 6, tab.key .. " page count")
-    for _, page in ipairs(pages) do
-        assert(type(page.title) == "string" and #page.blocks > 0)
-        for _, block in ipairs(page.blocks) do
-            assert(block.kind == "heading" and block.title or block.kind == "note" and block.body
-                or (block.kind == "step" or block.kind == "row") and block.title)
-        end
-    end
-end
+for _, tab in ipairs(addon.tabs) do assert(#addon.BuildPages(guide, tab.key) == counts[tab.key], tab.key .. " page count") end
 local first = addon.BuildPages(guide, "leveling")[2].blocks[2]
 assert(first.title == "5x Silver Rod" and first.badge == "75-80" and first.body:find("5x Silver Bar, 10x Rough Grinding Stone", 1, true))
 
@@ -75,7 +97,7 @@ GetLocale = function() return "esES" end
 local es = {}
 assert(loadfile("ProfGuide/Locales.lua"))("ProfGuide", es)
 for _, key in ipairs({ "Leveling", "Shopping List", "Trainers", "Extras", "Previous", "Next", "Page %d / %d", "Materials:",
-    "Alternative:", "Now", "Done", "Not learned", "Left-click: Open / close", "Drag: Move" }) do
+    "Alternative:", "Now", "Done", "Not learned", "Left-click: Open / close", "Drag: Move", "Professions", "Back" }) do
     assert(rawget(es.L, key), "missing esES " .. key)
 end
 -- Window smoke test with permissive frame stubs: open, switch tabs, page through everything.
@@ -103,29 +125,46 @@ UISpecialFrames, SlashCmdList = {}, {}
 CreateFrame = function() local f = newFrame(); f.ScrollBar = newFrame(); return f end
 GetProfessions = function() return 1 end
 GetProfessionInfo = function() return "Blacksmithing", "i", 100, 150, 0, 0, 164 end
-ProfGuideDB = { tab = "shopping", pages = { shopping = 2, leveling = "bad", bogus = 9 } }
+-- Old flat Blacksmithing pages migrate; invalid entries are dropped.
+ProfGuideDB = { tab = "shopping", pages = { shopping = 2, leveling = "bad", bogus = 9, alchemy = { extras = 2, trainers = 0 } } }
 local ui = {}
-for _, file in ipairs({ "Locales", "Data/Blacksmithing", "Pages", "ProfGuide" }) do
-    assert(loadfile("ProfGuide/" .. file .. ".lua"))("ProfGuide", ui)
-end
+Load(ui)
+assert(loadfile("ProfGuide/ProfGuide.lua"))("ProfGuide", ui)
 for _, f in ipairs(frames) do if f.events.PLAYER_LOGIN then f.scripts.OnEvent(f, "PLAYER_LOGIN") end end
-assert(ProfGuideDB.pages.shopping == 2 and ProfGuideDB.pages.leveling == nil, "keeps valid saved page, drops invalid")
+local saved = ProfGuideDB.pages
+assert(saved.blacksmithing.shopping == 2 and saved.blacksmithing.leveling == nil and saved.shopping == nil, "migrates flat pages")
+assert(saved.alchemy.extras == 2 and saved.alchemy.trainers == nil and saved.bogus == nil, "keeps valid saved pages, drops invalid")
 SlashCmdList.PROFGUIDE()
 local window
 for _, f in ipairs(frames) do if f.scripts.OnShow and f.shown then window = f end end
 assert(window and window.shown, "slash opens window")
 local function click(button) button.scripts.OnClick(button) end
-local tabs = {}
-for _, f in ipairs(frames) do if f.key then tabs[f.key] = f end end
-for _, key in ipairs({ "leveling", "shopping", "trainers", "extras" }) do
-    click(tabs[key])
-    assert(ProfGuideDB.tab == key)
-    for _, f in ipairs(frames) do
-        if f.text == "Next" and f.enabled ~= false then
-            for _ = 1, 5 do if f.enabled ~= false then click(f) end end
+local tabs, tiles, back = {}, {}
+for _, f in ipairs(frames) do
+    if f.key and ui.guides[f.key] then tiles[f.key] = f elseif f.key then tabs[f.key] = f end
+    if f.text == "Back" then back = f end
+end
+assert(tiles.alchemy.shown and not tabs.leveling.shown, "opens on the overview")
+for _, key in ipairs(ui.guideOrder) do
+    click(tiles[key])
+    assert(not tiles[key].shown and back.shown, key .. " opens its guide")
+    for _, tab in ipairs(ui.TabsFor(ui.guides[key])) do
+        click(tabs[tab.key])
+        assert(ProfGuideDB.tab == tab.key)
+        for _, f in ipairs(frames) do
+            if f.text == "Next" and f.enabled ~= false then
+                for _ = 1, 5 do if f.enabled ~= false then click(f) end end
+            end
         end
     end
+    click(back)
+    assert(tiles[key].shown and not back.shown, "back returns to the overview")
 end
+click(tiles.mining)
+assert(not tabs.shopping.shown and tabs.trainers.shown, "mining hides the shopping tab")
+-- Skill 100 Blacksmithing opens on the Journeyman tier.
+click(back); click(tiles.blacksmithing)
+assert(ProfGuideDB.tab == "leveling" and saved.blacksmithing.leveling == 2, "jumps to current tier")
 SlashCmdList.PROFGUIDE()
 assert(not window.shown, "slash toggles window closed")
 print("ProfGuide data and page logic: OK")

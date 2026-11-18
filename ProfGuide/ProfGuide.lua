@@ -1,6 +1,7 @@
 local _, addon = ...
 local L = addon.L
-local guide = addon.guides.blacksmithing
+local BOOK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
+local guide -- nil while the overview is shown
 
 local WIDTH, HEIGHT, CONTENT_W = 740, 580, 662
 local GOLD = { 1, 0.82, 0 }
@@ -9,9 +10,9 @@ local anchors = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENT
     BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 
 local db, window, scroll, content, pager
-local tabButtons, pageButtons, cards, pages = {}, {}, {}, {}
-local state = { tab = "leveling", pages = {} }
-local jumped
+local tabButtons, pageButtons, cards, pages, tiles, guideParts = {}, {}, {}, {}, {}, {}
+-- pages[guideKey][tabKey] = page number; saved as db.pages.
+local state = { key = nil, tab = "leveling", pages = {} }
 local Render
 
 local function Button(parent, text, width)
@@ -41,6 +42,17 @@ local function Card(i)
     card.title = Text(card, "GameFontHighlight", 15)
     card.body = Text(card, "GameFontHighlightSmall", 12)
     card.body:SetSpacing(3)
+    card.map = CreateFrame("Button", nil, card)
+    card.map:SetSize(22, 22)
+    card.map:SetPoint("TOPRIGHT", -8, -8)
+    card.map:SetNormalTexture("Interface\\Icons\\INV_Misc_Map_01")
+    card.map:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    card.map:SetScript("OnClick", function(self) addon.ShowOnMap(self.pin) end)
+    card.map:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText(L["Show on map"])
+    end)
+    card.map:SetScript("OnLeave", GameTooltip_Hide)
     card.line = card:CreateTexture(nil, "ARTWORK")
     card.line:SetColorTexture(0.45, 0.34, 0.16, 0.7)
     card.line:SetHeight(1)
@@ -57,6 +69,8 @@ local function Place(card, block, y, skill)
     for _, part in ipairs({ card.badge, card.status, card.title, card.body, card.line }) do part:Hide() end
     card.title:ClearAllPoints()
     card.body:ClearAllPoints()
+    card.map.pin = block.pin
+    card.map:SetShown(block.pin ~= nil)
     local kind = block.kind
     if kind == "heading" then
         card:SetBackdropColor(0, 0, 0, 0)
@@ -110,7 +124,7 @@ local function Place(card, block, y, skill)
             card.status:Show()
         end
     end
-    local width = CONTENT_W - left - 14
+    local width = CONTENT_W - left - (block.pin and 40 or 14)
     card.title:SetFontObject("GameFontHighlight")
     card.title:SetPoint("TOPLEFT", left, -11)
     card.title:SetWidth(width)
@@ -126,21 +140,39 @@ local function Place(card, block, y, skill)
         card.body:Show()
         height = height + 5 + card.body:GetStringHeight()
     end
+    if block.badge then height = math.max(height, 12 + card.badge:GetStringHeight()) end
     height = math.max(height + 12, block.step and 68 or 36)
     card:SetHeight(height)
     return y + height + 6
 end
 
+local function GuidePages()
+    state.pages[state.key] = state.pages[state.key] or {}
+    return state.pages[state.key]
+end
+
 local function SetPage(index)
-    state.pages[state.tab] = math.max(1, math.min(index, #pages))
+    GuidePages()[state.tab] = math.max(1, math.min(index, #pages))
     Render()
 end
 
 local function SelectTab(key)
-    state.tab = key
-    if db then db.tab = key end
-    pages = addon.BuildPages(guide, key)
-    state.pages[key] = math.max(1, math.min(state.pages[key] or 1, #pages))
+    local valid
+    for _, tab in ipairs(addon.TabsFor(guide)) do valid = valid or tab.key == key end
+    state.tab = valid and key or "leveling"
+    if db then db.tab = state.tab end
+    pages = addon.BuildPages(guide, state.tab)
+    local saved = GuidePages()
+    saved[state.tab] = math.max(1, math.min(saved[state.tab] or 1, #pages))
+end
+
+-- nil shows the overview. Opening a guide jumps to the tier of your current skill when it is known.
+local function SelectGuide(key)
+    state.key, guide = key, key and addon.guides[key]
+    if not guide then return end
+    local tier = addon.TierForSkill(guide, addon.ReadSkill(guide.skillLine))
+    if tier then state.tab, GuidePages().leveling = "leveling", tier end
+    SelectTab(state.tab)
 end
 
 local function UpdateProgress(skill)
@@ -151,17 +183,37 @@ local function UpdateProgress(skill)
     bar.text:SetText(skill and (guide.name .. " " .. skill .. " / " .. guide.max) or (guide.name .. " - " .. L["Not learned"]))
 end
 
+local function RenderOverview()
+    window.icon:SetTexture(BOOK_ICON)
+    window.name:SetText(L["Professions"])
+    for _, tile in ipairs(tiles) do
+        local tileGuide = addon.guides[tile.key]
+        local skill = addon.ReadSkill(tileGuide.skillLine)
+        tile.skill:SetText(skill and (skill .. " / " .. tileGuide.max) or L["Not learned"])
+        tile.skill:SetTextColor(skill and 1 or 0.55, skill and 0.82 or 0.5, skill and 0 or 0.45)
+        tile:SetBackdropBorderColor(skill and 1 or 0.45, skill and 0.82 or 0.34, skill and 0 or 0.16, skill and 0.9 or 0.7)
+    end
+end
+
 Render = function()
     if not window then return end
+    for _, tile in ipairs(tiles) do tile:SetShown(guide == nil) end
+    for _, part in ipairs(guideParts) do part:SetShown(guide ~= nil) end
+    if not guide then return RenderOverview() end
+    window.icon:SetTexture(guide.icon)
+    window.name:SetText(guide.name)
     local skill = addon.ReadSkill(guide.skillLine)
     UpdateProgress(skill)
+    local x = 30
     for _, tab in ipairs(tabButtons) do
+        tab:SetShown(guide[tab.key] ~= nil or tab.key == "leveling")
+        if tab:IsShown() then tab:SetPoint("TOPLEFT", x, -98); x = x + 154 end
         local selected = tab.key == state.tab
         tab:SetBackdropColor(selected and 0.28 or 0.1, selected and 0.2 or 0.09, selected and 0.05 or 0.07, 0.95)
         tab:SetBackdropBorderColor(selected and 1 or 0.45, selected and 0.82 or 0.34, selected and 0 or 0.16, selected and 1 or 0.7)
         tab.label:SetTextColor(selected and 1 or 0.75, selected and 0.82 or 0.7, selected and 0 or 0.55)
     end
-    local index = state.pages[state.tab]
+    local index = GuidePages()[state.tab]
     local page = pages[index]
     local y = 4
     for i, block in ipairs(page.blocks) do y = Place(cards[i] or Card(i), block, y, skill) end
@@ -222,12 +274,12 @@ local function CreateWindow()
     local icon = window:CreateTexture(nil, "ARTWORK")
     icon:SetSize(44, 44)
     icon:SetPoint("TOPLEFT", 30, -38)
-    icon:SetTexture(guide.icon)
     icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    window.icon = icon
     local name = window:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     name:SetFontHeight(24)
     name:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -1)
-    name:SetText(guide.name)
+    window.name = name
     local subtitle = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     subtitle:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
     subtitle:SetText(L["Based on wow-professions.com · Forever beta"])
@@ -246,6 +298,37 @@ local function CreateWindow()
     bar.text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     bar.text:SetPoint("CENTER")
     window.progress = bar
+    guideParts[#guideParts + 1] = bar
+
+    -- Overview: one tile per profession, 4 per row.
+    for i, key in ipairs(addon.guideOrder) do
+        local tileGuide = addon.guides[key]
+        local tile = CreateFrame("Button", nil, window, "BackdropTemplate")
+        tile:SetSize(162, 92)
+        tile:SetPoint("TOPLEFT", 31 + ((i - 1) % 4) * 172, -104 - math.floor((i - 1) / 4) * 102)
+        tile:SetBackdrop(cardBackdrop)
+        tile:SetBackdropColor(0.08, 0.075, 0.055, 0.9)
+        tile:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+        tile.key = key
+        local tileIcon = tile:CreateTexture(nil, "ARTWORK")
+        tileIcon:SetSize(40, 40)
+        tileIcon:SetPoint("TOP", 0, -10)
+        tileIcon:SetTexture(tileGuide.icon)
+        tileIcon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        local label = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("TOP", tileIcon, "BOTTOM", 0, -5)
+        label:SetText(tileGuide.name)
+        tile.skill = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        tile.skill:SetPoint("TOP", label, "BOTTOM", 0, -3)
+        tile:SetScript("OnClick", function() SelectGuide(key); Render() end)
+        tiles[i] = tile
+    end
+
+    local back = Button(window, L["Back"], 70)
+    back:SetPoint("RIGHT", bar, "LEFT", -10, 0)
+    back:SetHeight(22)
+    back:SetScript("OnClick", function() SelectGuide(nil); Render() end)
+    guideParts[#guideParts + 1] = back
 
     for i, tab in ipairs(addon.tabs) do
         local button = CreateFrame("Button", nil, window, "BackdropTemplate")
@@ -258,6 +341,7 @@ local function CreateWindow()
         button.label:SetText(tab.label)
         button:SetScript("OnClick", function() SelectTab(tab.key); Render() end)
         tabButtons[i] = button
+        guideParts[#guideParts + 1] = button
     end
 
     local panel = CreateFrame("Frame", nil, window, "BackdropTemplate")
@@ -266,12 +350,14 @@ local function CreateWindow()
     panel:SetBackdrop(cardBackdrop)
     panel:SetBackdropColor(0.03, 0.025, 0.02, 0.7)
     panel:SetBackdropBorderColor(0.45, 0.34, 0.16, 0.9)
+    guideParts[#guideParts + 1] = panel
     scroll = CreateFrame("ScrollFrame", "ProfGuideScrollFrame", window, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 28, -132)
     scroll:SetPoint("BOTTOMRIGHT", -50, 82)
     scroll.ScrollBar:ClearAllPoints()
     scroll.ScrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 8, -16)
     scroll.ScrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 8, 16)
+    guideParts[#guideParts + 1] = scroll
     content = CreateFrame("Frame", nil, scroll)
     content:SetSize(CONTENT_W, 1)
     scroll:SetScrollChild(content)
@@ -280,12 +366,13 @@ local function CreateWindow()
     pager:SetPoint("BOTTOMLEFT", 28, 22)
     pager:SetPoint("BOTTOMRIGHT", -28, 22)
     pager:SetHeight(30)
+    guideParts[#guideParts + 1] = pager
     pager.previous = Button(pager, L["Previous"], 100)
     pager.previous:SetPoint("LEFT")
-    pager.previous:SetScript("OnClick", function() SetPage(state.pages[state.tab] - 1) end)
+    pager.previous:SetScript("OnClick", function() SetPage(GuidePages()[state.tab] - 1) end)
     pager.next = Button(pager, L["Next"], 100)
     pager.next:SetPoint("RIGHT")
-    pager.next:SetScript("OnClick", function() SetPage(state.pages[state.tab] + 1) end)
+    pager.next:SetScript("OnClick", function() SetPage(GuidePages()[state.tab] + 1) end)
     pager.label = pager:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pager.label:SetPoint("BOTTOM", pager, "TOP", 0, 6)
     for i = 1, 6 do
@@ -296,12 +383,7 @@ local function CreateWindow()
     end
 
     window:SetScript("OnShow", function()
-        if not jumped then
-            jumped = true
-            local tier = addon.TierForSkill(guide, addon.ReadSkill(guide.skillLine))
-            if tier then state.tab, state.pages.leveling = "leveling", tier end
-        end
-        SelectTab(state.tab)
+        if guide then SelectTab(state.tab) end
         Render()
     end)
     window:SetScript("OnHide", function() GameTooltip:Hide() end)
@@ -324,7 +406,7 @@ minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Hig
 local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
 minimapIcon:SetSize(20, 20)
 minimapIcon:SetPoint("CENTER", 0, 1)
-minimapIcon:SetTexture(guide.icon)
+minimapIcon:SetTexture(BOOK_ICON)
 minimapIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 local border = minimapButton:CreateTexture(nil, "OVERLAY")
 border:SetSize(54, 54)
@@ -389,10 +471,20 @@ events:SetScript("OnEvent", function(self, event)
     local valid = {}
     for _, tab in ipairs(addon.tabs) do valid[tab.key] = true end
     if valid[db.tab] then state.tab = db.tab end
+    local function ValidPage(page) return type(page) == "number" and page >= 1 and page == math.floor(page) end
     if type(db.pages) == "table" then
-        for key, page in pairs(db.pages) do
-            if valid[key] and type(page) == "number" and page >= 1 and page == math.floor(page) then
-                state.pages[key] = page
+        for key, value in pairs(db.pages) do
+            if addon.guides[key] and type(value) == "table" then
+                for tab, page in pairs(value) do
+                    if valid[tab] and ValidPage(page) then
+                        state.pages[key] = state.pages[key] or {}
+                        state.pages[key][tab] = page
+                    end
+                end
+            elseif valid[key] and ValidPage(value) then
+                -- 0.1.0-snapshot-1 saved one flat table for Blacksmithing.
+                state.pages.blacksmithing = state.pages.blacksmithing or {}
+                state.pages.blacksmithing[key] = state.pages.blacksmithing[key] or value
             end
         end
     end

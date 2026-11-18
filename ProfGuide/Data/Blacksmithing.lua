@@ -1,11 +1,8 @@
 local _, addon = ...
 -- Source: https://www.wow-professions.com/forever/blacksmithing-leveling-guide (Forever beta).
 -- The 270-300 range comes from game-file data upstream and is untested; shopping totals are estimates.
-local function S(from, to, count, item, mats, note, alts)
-    return { from = from, to = to, count = count, item = item, mats = mats, note = note, alts = alts }
-end
+local S = addon.Step
 
-addon.guides = addon.guides or {}
 addon.guides.blacksmithing = {
     name = "Blacksmithing",
     skillLine = 164,
@@ -80,6 +77,21 @@ addon.guides.blacksmithing = {
             { 1910, "Thorium Bar", "Includes the 140 needed for the four Imperial Plate quests." },
             { 30, "Rugged Leather" }, { 67, "Star Ruby" }, { 25, "Aquamarine" } } },
     },
+    -- NPC name -> { uiMapID, x, y } in percent. Approximate town-level spots, not exact NPC positions.
+    -- Skipped: NPCs whose spot is unknown or that appear in two places (Thrag Stonehoof, Daeann Steelwind, ...).
+    pins = (function()
+        local orgrimmar, stormwind, ironforge = { 1637, 80, 32 }, { 1453, 63.5, 37.5 }, { 1455, 50.5, 42.5 }
+        local razorHill, goldshire, kharanos, auberdine = { 1411, 52.5, 43 }, { 1429, 41, 66 }, { 1426, 46, 52 }, { 1439, 37, 41 }
+        return {
+            ["Ug'thok"] = orgrimmar, ["Sumi"] = orgrimmar, ["Snarl"] = orgrimmar, ["Saru Steelfury"] = orgrimmar,
+            ["Dane Lindgren"] = stormwind, ["Kaita Deepforge"] = stormwind, ["Therum Deepforge"] = stormwind,
+            ["Groum Stonebeard"] = ironforge, ["Thurgrum Deepforge"] = ironforge, ["Rotgath Stonebeard"] = ironforge,
+            ["Bengus Deepforge"] = ironforge, ["Dwukk"] = razorHill, ["Flakk"] = razorHill,
+            ["Smith Argus"] = goldshire, ["Tharynn Bouden"] = goldshire, ["Tognus Flintfire"] = kharanos,
+            ["Thrawn Boltar"] = kharanos, ["Delfrum Flintbeard"] = auberdine, ["Elisa Steelhand"] = auberdine,
+            ["Brikk Keencraft"] = { 1434, 27, 77 },
+        }
+    end)(),
     trainers = {
         { title = "Apprentice (1-75)", groups = {
             { "Capital cities - Horde", {
@@ -123,18 +135,20 @@ addon.guides.blacksmithing = {
                 { "Brikk Keencraft", "Booty Bay, Stranglethorn Vale (both factions)" } } },
         } },
     },
-    specializations = "At Blacksmithing 200 and character level 40 you can choose Armorsmithing or Weaponsmithing. It is optional and can be done later. Keep the pieces the leveling steps mention (Golden Scale Bracers, Heavy Mithril Breastplate and Boots for Armorsmithing, Heavy Mithril Axe for Weaponsmithing) in case you choose one.",
-    quests = {
-        { "Imperial Plate Belt", "Quest 7653", "Level 50 - 20 Thorium Bar. Derotain Mudsipper, Tanaris. Unlocks the belt (240-245) and he has the next three recipes." },
-        { "Imperial Plate Bracers", "Quest 7655", "20 Thorium Bar. Unlocks the bracers (245-270)." },
-        { "Imperial Plate Boots", "Quest 7654", "40 Thorium Bar. Unlocks the boots (270-290)." },
-        { "Imperial Plate Leggings", "Quest 7658", "60 Thorium Bar. Unlocks the leggings (290-300)." },
-    },
-    notes = {
-        "This guide is based on the Forever beta.",
-        "In Classic these quests need Blacksmithing 265. Forever lowered the belt to 240; the author assumes the quests were lowered too, but this is untested.",
-        "The 270-300 section relies on game-file data because the author could not level that far on the beta. There may be recipes not yet discovered.",
-        "Material totals are estimates: yellow recipes may need a few more or fewer.",
-        "Content from wow-professions.com. See the full guide, the specialization guides and the trainer list there.",
+    extras = {
+        { title = "Specializations", notes = { "At Blacksmithing 200 and character level 40 you can choose Armorsmithing or Weaponsmithing. It is optional and can be done later. Keep the pieces the leveling steps mention (Golden Scale Bracers, Heavy Mithril Breastplate and Boots for Armorsmithing, Heavy Mithril Axe for Weaponsmithing) in case you choose one." } },
+        { title = "Imperial Plate quests", notes = { "Thorium Bar needed in total: 140 (included in the shopping list)." }, rows = {
+            { "Imperial Plate Belt", "Quest 7653", "Level 50 - 20 Thorium Bar. Derotain Mudsipper, Tanaris. Unlocks the belt (240-245) and he has the next three recipes." },
+            { "Imperial Plate Bracers", "Quest 7655", "20 Thorium Bar. Unlocks the bracers (245-270)." },
+            { "Imperial Plate Boots", "Quest 7654", "40 Thorium Bar. Unlocks the boots (270-290)." },
+            { "Imperial Plate Leggings", "Quest 7658", "60 Thorium Bar. Unlocks the leggings (290-300)." },
+        } },
+        { title = "About this guide", notes = {
+            "This guide is based on the Forever beta.",
+            "In Classic these quests need Blacksmithing 265. Forever lowered the belt to 240; the author assumes the quests were lowered too, but this is untested.",
+            "The 270-300 section relies on game-file data because the author could not level that far on the beta. There may be recipes not yet discovered.",
+            "Material totals are estimates: yellow recipes may need a few more or fewer.",
+            "Content from wow-professions.com. See the full guide, the specialization guides and the trainer list there.",
+        } },
     },
 }

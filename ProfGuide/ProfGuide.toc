@@ -1,11 +1,23 @@
 ## Interface: 16001
 ## Title: ProfGuide
-## IconTexture: Interface\Icons\Trade_BlackSmithing
-## Notes: In-game profession leveling guides. Blacksmithing 1-300 for WoW Forever.
-## Version: 0.1.0-snapshot-1
+## IconTexture: Interface\Icons\INV_Misc_Book_09
+## Notes: In-game profession leveling guides. All 13 WoW Forever profession guides, 1-300.
+## Version: 0.1.0-snapshot-2
 ## SavedVariablesPerCharacter: ProfGuideDB
 
 Locales.lua
-Data\Blacksmithing.lua
 Pages.lua
+Data\Alchemy.lua
+Data\Blacksmithing.lua
+Data\Enchanting.lua
+Data\Engineering.lua
+Data\Leatherworking.lua
+Data\Tailoring.lua
+Data\Mining.lua
+Data\Herbalism.lua
+Data\Skinning.lua
+Data\FirstAid.lua
+Data\Cooking.lua
+Data\Fishing.lua
+Data\Lockpicking.lua
 ProfGuide.lua
