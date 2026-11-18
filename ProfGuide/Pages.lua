@@ -3,8 +3,9 @@ local L = addon.L
 
 -- Loaded before Data/*.lua: each data file registers addon.guides[key] using addon.Step.
 addon.guides = {}
-function addon.Step(from, to, count, item, mats, note, alts)
-    return { from = from, to = to, count = count, item = item, mats = mats or {}, note = note, alts = alts }
+-- source: where to get the step's recipe, { "Recipe name", "where line", ..., pins = { Horde = pin, Alliance = pin } }.
+function addon.Step(from, to, count, item, mats, note, alts, source)
+    return { from = from, to = to, count = count, item = item, mats = mats or {}, note = note, alts = alts, source = source }
 end
 -- Order of the tiles in the overview.
 addon.guideOrder = { "alchemy", "blacksmithing", "enchanting", "engineering", "leatherworking", "tailoring",
@@ -58,12 +59,17 @@ end
 local function StepBlock(step)
     local lines = {}
     if #step.mats > 0 then lines[1] = "|cffffd100" .. L["Materials:"] .. "|r " .. MaterialText(step.mats) end
-    if step.note then lines[#lines + 1] = step.note end
+    local note, source = step.note, step.source
+    if note and source then
+        local first, last = note:find(source[1], 1, true)
+        if first then note = note:sub(1, first - 1) .. "|cff66ccff" .. source[1] .. "|r" .. note:sub(last + 1) end
+    end
+    if note then lines[#lines + 1] = note end
     for _, alt in ipairs(step.alts or {}) do
         lines[#lines + 1] = "|cff66ccff" .. L["Alternative:"] .. "|r " .. alt
     end
     return { kind = "step", badge = step.from .. "-" .. step.to, title = step.count and (step.count .. "x " .. step.item) or step.item,
-        body = #lines > 0 and table.concat(lines, "\n") or nil, step = step }
+        body = #lines > 0 and table.concat(lines, "\n") or nil, step = step, source = source }
 end
 
 local function Leveling(guide)
@@ -130,6 +136,12 @@ function addon.ShowOnMap(pin)
 end
 
 -- Tabs that have content in this guide (gathering guides have no shopping list, for example).
+-- Vendor pin for the player's faction; nil for drops, quests or factions without one.
+function addon.SourcePin(source)
+    local faction = UnitFactionGroup and UnitFactionGroup("player")
+    return source and source.pins and faction and source.pins[faction]
+end
+
 function addon.TabsFor(guide)
     local list = {}
     for _, tab in ipairs(addon.tabs) do

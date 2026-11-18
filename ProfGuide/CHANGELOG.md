@@ -1,3 +1,7 @@
+# ProfGuide 0.1.0-snapshot-3
+
+- First Aid manual steps: hover the card to see where the manual comes from (vendor, quest or Auction House). Vendor manuals get a **Show on map** button that marks your faction's vendor.
+
 # ProfGuide 0.1.0-snapshot-2
 
 - Guides for all 13 professions on wow-professions.com/forever: Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking, Tailoring, Mining, Herbalism, Skinning, First Aid, Cooking, Fishing and Lockpicking.

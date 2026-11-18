@@ -2,7 +2,7 @@
 ## Title: ProfGuide
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## Notes: In-game profession leveling guides. All 13 WoW Forever profession guides, 1-300.
-## Version: 0.1.0-snapshot-2
+## Version: 0.1.0-snapshot-3
 ## SavedVariablesPerCharacter: ProfGuideDB
 
 Locales.lua

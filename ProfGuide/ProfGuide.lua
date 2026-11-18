@@ -53,6 +53,15 @@ local function Card(i)
         GameTooltip:SetText(L["Show on map"])
     end)
     card.map:SetScript("OnLeave", GameTooltip_Hide)
+    -- Hovering a step with a recipe source shows where to get it.
+    card:SetScript("OnEnter", function(self)
+        if not self.source then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.source[1], 0.4, 0.8, 1)
+        for i = 2, #self.source do GameTooltip:AddLine(self.source[i], 1, 1, 1, true) end
+        GameTooltip:Show()
+    end)
+    card:SetScript("OnLeave", GameTooltip_Hide)
     card.line = card:CreateTexture(nil, "ARTWORK")
     card.line:SetColorTexture(0.45, 0.34, 0.16, 0.7)
     card.line:SetHeight(1)
@@ -69,8 +78,11 @@ local function Place(card, block, y, skill)
     for _, part in ipairs({ card.badge, card.status, card.title, card.body, card.line }) do part:Hide() end
     card.title:ClearAllPoints()
     card.body:ClearAllPoints()
-    card.map.pin = block.pin
-    card.map:SetShown(block.pin ~= nil)
+    local pin = block.pin or addon.SourcePin(block.source)
+    card.source = block.source
+    card:EnableMouse(block.source ~= nil)
+    card.map.pin = pin
+    card.map:SetShown(pin ~= nil)
     local kind = block.kind
     if kind == "heading" then
         card:SetBackdropColor(0, 0, 0, 0)
@@ -124,7 +136,7 @@ local function Place(card, block, y, skill)
             card.status:Show()
         end
     end
-    local width = CONTENT_W - left - (block.pin and 40 or 14)
+    local width = CONTENT_W - left - (pin and 40 or 14)
     card.title:SetFontObject("GameFontHighlight")
     card.title:SetPoint("TOPLEFT", left, -11)
     card.title:SetWidth(width)

@@ -51,6 +51,15 @@ assert(#addon.TabsFor(addon.guides.mining) == 3 and #addon.TabsFor(guide) == 4, 
 local gather = addon.BuildPages(addon.guides.mining, "leveling")[1].blocks[3]
 assert(gather.title:find("^Copper Vein") and not gather.body:find("Materials", 1, true), "gathering step has no count or materials")
 
+-- Recipe sources: highlighted in the note, map pin only for the player's faction.
+local manual = addon.guides.firstaid.tiers[3].steps[2]
+UnitFactionGroup = function() return "Alliance" end
+assert(addon.SourcePin(manual.source)[1] == 1417 and addon.SourcePin(addon.guides.firstaid.tiers[4].steps[4].source) == nil, "faction vendor pin")
+UnitFactionGroup = function() return "Skyborne" end
+assert(addon.SourcePin(manual.source) == nil, "no pin without a faction vendor")
+UnitFactionGroup = nil
+local manualBlock = addon.BuildPages(addon.guides.firstaid, "leveling")[3].blocks[3]
+assert(manualBlock.source == manual.source and manualBlock.body:find("|cff66ccffManual: Heavy Silk Bandage|r", 1, true), "highlights the recipe")
 -- Shopping totals equal the sum of the matching step materials (Thorium adds the 140 quest bars).
 for _, list in ipairs(guide.shopping) do
     local sums = {}

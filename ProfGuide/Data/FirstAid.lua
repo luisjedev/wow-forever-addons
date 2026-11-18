@@ -1,6 +1,13 @@
 local _, addon = ...
 -- Source: https://www.wow-professions.com/forever/first-aid-leveling-guide (Forever beta). Shopping totals are estimates.
 local S = addon.Step
+-- Both manuals are sold by the same vendors. Pins use the Classic map IDs and coordinates.
+local function Manual(name)
+    return { "Manual: " .. name, "Vendor, 1g.",
+        "Horde: Balai Lok'Wein, Brackenwall Village, Dustwallow Marsh (36.4, 30.4).",
+        "Alliance: Deneb Walker, Stromgarde Keep, Arathi Highlands (26.8, 59.6).",
+        pins = { Horde = { 1445, 36.4, 30.4 }, Alliance = { 1417, 26.8, 59.6 } } }
+end
 
 addon.guides.firstaid = {
     name = "First Aid",
@@ -22,8 +29,8 @@ addon.guides.firstaid = {
         } },
         { name = "Expert", from = 150, to = 225, requires = "First Aid 125: buy Expert First Aid - Under Wraps (no level requirement).", steps = {
             S(150, 180, 47, "Silk Bandage", { { 47, "Silk Cloth" } }, "Learn it from your trainer before you leave: it is the last recipe trainers teach."),
-            S(180, 210, 47, "Heavy Silk Bandage", { { 94, "Silk Cloth" } }, "Learn it from Manual: Heavy Silk Bandage."),
-            S(210, 225, 19, "Mageweave Bandage", { { 19, "Mageweave Cloth" } }, "Learn it from Manual: Mageweave Bandage."),
+            S(180, 210, 47, "Heavy Silk Bandage", { { 94, "Silk Cloth" } }, "Learn it from Manual: Heavy Silk Bandage.", nil, Manual("Heavy Silk Bandage")),
+            S(210, 225, 19, "Mageweave Bandage", { { 19, "Mageweave Cloth" } }, "Learn it from Manual: Mageweave Bandage.", nil, Manual("Mageweave Bandage")),
         } },
         { name = "Artisan", from = 225, to = 300, requires = "First Aid 225 and level 35; complete the Triage quest (quest level 45).", steps = {
             S(225, 240, 29, "Mageweave Bandage", { { 29, "Mageweave Cloth" } }, "Triage must be done to train past 225 (see Extras)."),
@@ -31,7 +38,9 @@ addon.guides.firstaid = {
             S(260, 275, 20, "Runecloth Bandage", { { 20, "Runecloth" } }, "The Triage doctor teaches it at 260."),
             S(275, 300, 30, "Major Healing Potion", { { 30, "Golden Sansam" }, { 90, "Soothing Spices", "Vendor" }, { 30, "Crystal Vial", "Vendor" } },
                 "Manual: Major Healing Potion. Buy it on the Auction House if under 8g.",
-                { "Pexmit in Mount Hyjal sells the manual for 8g.", "Horde: reward of A Rest Without Pain (Ortak Lomgok, Elderwild, Mount Hyjal)." }),
+                { "Pexmit in Mount Hyjal sells the manual for 8g.", "Horde: reward of A Rest Without Pain (Ortak Lomgok, Elderwild, Mount Hyjal)." },
+                { "Manual: Major Healing Potion", "Vendor: Pexmit, Mount Hyjal (8g).", "Horde quest: A Rest Without Pain, from Ortak Lomgok in Elderwild, Mount Hyjal.",
+                    "Also on the Auction House." }),
         } },
     },
     shopping = {
