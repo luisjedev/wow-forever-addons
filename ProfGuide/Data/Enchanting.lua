@@ -69,6 +69,17 @@ addon.guides.enchanting = {
             { "Artisan (225-300)", { { "Annora", "Uldaman (Badlands), back entrance; appears only after every mob in her area is killed" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Enchanting trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Enchanting 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Hgarth (Sun Rock Retreat, Stonetalon Mountains, Horde) or Kitta Firewind (Tower of Azora, Elwynn Forest, Alliance): Enchanting 125, level 20, 50 silver.",
+                { 1442, 47, 61 }, { 1429, 65, 69.5 }),
+            R("Artisan (225-300)", "Trainer", "Annora, inside Uldaman (Badlands), back entrance; she appears once every mob in her area is dead. Enchanting 200, level 35. No map pin: she is in the dungeon."),
+        }
+    end)(),
     extras = {
         { title = "Disenchanting and macro", notes = {
             "Disenchant comes with Apprentice Enchanting. It is not in your spellbook: it is in the Enchanting box of the Professions window.",

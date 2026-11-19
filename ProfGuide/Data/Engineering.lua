@@ -69,6 +69,16 @@ addon.guides.engineering = {
             { "Artisan (200-300)", { { "Buzzek Bracketswing", "Gadgetzan, Tanaris, outside the inn near the mailbox (both factions)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Engineering trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Engineering 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Roxxik (Orgrimmar, Horde) or Springspindle Fizzlegear (Ironforge, Alliance): Engineering 125, level 20, 50 silver."),
+            R("Artisan (225-300)", "Trainer", "Buzzek Bracketswing, outside the Gadgetzan inn, Tanaris (both factions): Engineering 200, level 35.", { 1446, 52, 28 }),
+        }
+    end)(),
     extras = {
         { title = "Tools and specializations", notes = {
             "At Engineering 200 and level 30 you can specialize in Gnomish or Goblin Engineering. Keep 5 Explosive Sheep for Goblin and 6 Mithril Tubes for Gnomish.",

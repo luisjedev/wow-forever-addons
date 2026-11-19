@@ -33,6 +33,18 @@ addon.guides.fishing = {
             { "Skyborne", { { "Baelann Swiftcurrent", "Valanaar, Zephras Isle" }, { "Fenn Fairweather", "Shen'dar Village, Zephras Isle" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Fishing trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "Any trainer: Fishing 50 and level 10."),
+            R("Expert (150-225)", "Item", "Book: Expert Fishing - The Bass and You (Fishing 125, level 20). Sold by Old Man Heming, Booty Bay, Stranglethorn Vale (both factions).",
+                { 1434, 27, 77 }),
+            R("Artisan (225-300)", "Quest", "Nat Pagle, Angler Extreme (Fishing 225, level 35), from Nat Pagle in Dustwallow Marsh. See Nat Pagle's quest page.",
+                { 1445, 58.5, 60 }),
+        }
+    end)(),
     extras = {
         { title = "Gear and lures", rows = {
             { "Fishing Pole", "Vendor", "Fishing Supply or Trade Supply vendors. In capitals the vendor stands next to the trainer." },

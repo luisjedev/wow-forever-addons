@@ -46,6 +46,16 @@ addon.guides.herbalism = {
                 { "Syriel Nightrain", "Valanaar, Zephras Isle" }, { "Halassa Fernbreeze", "Shen'dar Village, Zephras Isle" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Herbalism trainer (see Trainers). Skyborne: Wild Harvest, reward of the Harvesting Windstones quest."),
+            R("Journeyman (75-150)", "Trainer", "Herbalism 50. Starting-area Junior trainers stop at 75: use a town or capital trainer."),
+            R("Expert (150-225)", "Trainer", "Herbalism 125, from a town or capital trainer."),
+            R("Artisan (225-300)", "Trainer", "Herbalism 200, from a town or capital trainer. Learn it before leaving for Tanaris or Searing Gorge."),
+        }
+    end)(),
     extras = {
         { title = "Skill bonuses", notes = { "Not required, but with +5 you can pick Kingsblood at 120 instead of 125." }, rows = {
             { "Enchant Gloves - Herbalism", "+2", "From an enchanter." },

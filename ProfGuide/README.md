@@ -6,6 +6,7 @@ In-game profession leveling guides for **WoW Forever**. It covers all 13 profess
 - **Overview:** the window opens on a grid of profession tiles with your current skill. Click a tile to open its guide; **Back** returns to the grid.
 - **Leveling:** one page per tier; if you know the profession, it opens on your current tier and marks steps *Now* / *Done*. Lockpicking is not a profession entry, so its skill is not read.
 - **Shopping List, Trainers, Extras:** paged with the buttons at the bottom. Gathering guides have no shopping list.
+- **Extras** opens on how each rank (Apprentice to Artisan) is learned: trainer, quest or book, with a map button when it is in one place.
 - Interface chrome is translated (Spanish for now); guide content is English only.
 
 ## Source and limits

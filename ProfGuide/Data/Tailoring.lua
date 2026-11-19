@@ -66,6 +66,17 @@ addon.guides.tailoring = {
             { "Artisan (200-300)", { { "Daryl Stack", "Tarren Mill, Hillsbrad Foothills (Horde)" }, { "Timothy Worthington", "Theramore Isle, Dustwallow Marsh (Alliance)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Tailoring trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Tailoring 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Josef Gregorian (Undercity, Horde) or Georgio Bolero (Stormwind City, Alliance): Tailoring 125, level 20, 50 silver."),
+            R("Artisan (225-300)", "Trainer", "Daryl Stack (Tarren Mill, Hillsbrad Foothills, Horde) or Timothy Worthington (Theramore Isle, Dustwallow Marsh, Alliance): Tailoring 200, level 35.",
+                { 1424, 62, 20 }, { 1445, 66.5, 49.5 }),
+        }
+    end)(),
     extras = {
         { title = "Patterns and quests", rows = {
             { "Runecloth Gloves", nil, "Sold by Qia in Winterspring." },

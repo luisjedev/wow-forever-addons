@@ -51,6 +51,16 @@ addon.guides.mining = {
                 { "Halavuul Cragwind", "Valanaar" }, { "Messana Crestwind", "Shen'dar Village" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Mining trainer (see Trainers). Skyborne: Mining for Dummies, reward of the Harvesting Windstones quest."),
+            R("Journeyman (75-150)", "Trainer", "Mining 50. Starting-area Junior trainers stop at 75: use a town or capital trainer."),
+            R("Expert (150-225)", "Trainer", "Mining 125, from a town or capital trainer."),
+            R("Artisan (225-300)", "Trainer", "Mining 200, from a town or capital trainer."),
+        }
+    end)(),
     extras = {
         { title = "Smelting to 105", notes = { "Optional: buy about 140 Copper Ore and 70 Tin Ore and smelt to 105 instead of mining. Bars often sell close to the ore price." }, rows = {
             { "Smelt Copper", "1-65", "120-140x. Keep 70 Copper Bars for Bronze." },

@@ -7,6 +7,10 @@ addon.guides = {}
 function addon.Step(from, to, count, item, mats, note, alts, source)
     return { from = from, to = to, count = count, item = item, mats = mats or {}, note = note, alts = alts, source = source }
 end
+-- How a rank (Apprentice, Journeyman, ...) is learned. horde/alliance: map pins { uiMapID, x, y }; alliance defaults to horde.
+function addon.Rank(name, method, where, horde, alliance)
+    return { name, method, where, pins = horde and { Horde = horde, Alliance = alliance or horde } }
+end
 -- Order of the tiles in the overview.
 addon.guideOrder = { "alchemy", "blacksmithing", "enchanting", "engineering", "leatherworking", "tailoring",
     "mining", "herbalism", "skinning", "firstaid", "cooking", "fishing", "lockpicking" }
@@ -112,13 +116,20 @@ end
 
 local function Extras(guide)
     local pages = {}
+    if guide.ranks then
+        local blocks = {}
+        for i, rank in ipairs(guide.ranks) do
+            blocks[i] = { kind = "row", title = rank[1], badge = rank[2], body = rank[3], pin = addon.SourcePin(rank) }
+        end
+        pages[1] = { title = "Learning each rank", blocks = blocks }
+    end
     for i, page in ipairs(guide.extras) do
         local blocks = {}
         for _, text in ipairs(page.notes or {}) do blocks[#blocks + 1] = { kind = "note", body = text } end
         for _, row in ipairs(page.rows or {}) do
             blocks[#blocks + 1] = { kind = "row", title = row[1], badge = row[2], body = row[3] }
         end
-        pages[i] = { title = page.title, blocks = blocks }
+        pages[#pages + 1] = { title = page.title, blocks = blocks }
     end
     return pages
 end

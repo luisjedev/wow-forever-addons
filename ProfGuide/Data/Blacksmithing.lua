@@ -135,6 +135,17 @@ addon.guides.blacksmithing = {
                 { "Brikk Keencraft", "Booty Bay, Stranglethorn Vale (both factions)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Blacksmithing trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Blacksmithing 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Saru Steelfury (Orgrimmar, Horde) or Bengus Deepforge (Ironforge, Alliance): Blacksmithing 125, level 20, 50 silver.",
+                { 1637, 80, 32 }, { 1455, 50.5, 42.5 }),
+            R("Artisan (225-300)", "Trainer", "Brikk Keencraft, Booty Bay, Stranglethorn Vale (both factions): Blacksmithing 200, level 35.", { 1434, 27, 77 }),
+        }
+    end)(),
     extras = {
         { title = "Specializations", notes = { "At Blacksmithing 200 and character level 40 you can choose Armorsmithing or Weaponsmithing. It is optional and can be done later. Keep the pieces the leveling steps mention (Golden Scale Bracers, Heavy Mithril Breastplate and Boots for Armorsmithing, Heavy Mithril Axe for Weaponsmithing) in case you choose one." } },
         { title = "Imperial Plate quests", notes = { "Thorium Bar needed in total: 140 (included in the shopping list)." }, rows = {

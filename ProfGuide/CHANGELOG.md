@@ -1,3 +1,9 @@
+# ProfGuide 0.1.0-snapshot-4
+
+- Extras now opens on **Learning each rank**: where Apprentice, Journeyman, Expert and Artisan are learned and whether it is a trainer, a quest or a book. Ranks learned at a specific place (Artisan trainers, Expert books, Artisan quests) get a **Show on map** button for your faction. Lockpicking has no ranks and is unchanged.
+
+Lua syntax and the data/page checks pass. Not yet verified in the game; pins are approximate town-level spots.
+
 # ProfGuide 0.1.0-snapshot-3
 
 - First Aid manual steps: hover the card to see where the manual comes from (vendor, quest or Auction House). Vendor manuals get a **Show on map** button that marks your faction's vendor.

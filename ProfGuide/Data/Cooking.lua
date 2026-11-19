@@ -49,6 +49,18 @@ addon.guides.cooking = {
             { "Skyborne", { { "Nyalah Brightfire", "Valanaar, Zephras Isle" }, { "Zerril Softbreeze", "Shen'dar Village, Zephras Isle" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Cooking trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "Any trainer: Cooking 50."),
+            R("Expert (150-225)", "Item", "Book: Expert Cookbook (Cooking 125). Sold by Wulan (Shadowprey Village, Desolace, Horde) or Shandrina (Mystral Lake, Ashenvale, Alliance).",
+                { 1443, 26, 69.5 }, { 1440, 50, 67 }),
+            R("Artisan (225-300)", "Quest", "Clamlette Surprise (Cooking 225, level 35), turned in to Dirge Quikcleave in Gadgetzan, Tanaris. Starts with Zamja (Orgrimmar) or Daryl Riknussun (Ironforge). See the Artisan quest page.",
+                { 1446, 52.5, 29 }),
+        }
+    end)(),
     extras = {
         { title = "Artisan quest", notes = { "Artisan Cooking is the reward of Clamlette Surprise; you need level 35 and Cooking 225." }, rows = {
             { "Start", nil, "Horde: To Gadgetzan You Go! from Zamja (Orgrimmar). Alliance: I Know A Guy... from Daryl Riknussun (Ironforge)." },

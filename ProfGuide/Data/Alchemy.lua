@@ -67,6 +67,17 @@ addon.guides.alchemy = {
             { "Artisan (225-300)", { { "Rogvar", "Stonard, Swamp of Sorrows (Horde)" }, { "Kylanna Windwhisper", "Feathermoon Stronghold, Feralas (Alliance)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Alchemy trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Alchemy 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Doctor Herbert Halsey (Undercity, Horde) or Ainethil (Darnassus, Alliance): Alchemy 125, level 20, 50 silver."),
+            R("Artisan (225-300)", "Trainer", "Rogvar (Stonard, Swamp of Sorrows, Horde) or Kylanna Windwhisper (Feathermoon Stronghold, Feralas, Alliance): Alchemy 200, level 35.",
+                { 1435, 48, 55 }, { 1444, 32.5, 43.5 }),
+        }
+    end)(),
     extras = {
         { title = "Vials and recipes", notes = {
             "Vials are sold by Alchemy Supply and Trade Supply vendors. Most trainers have one nearby (for example Algernon in Undercity, Narret Shadowgrove in Dolanaar).",

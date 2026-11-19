@@ -66,6 +66,18 @@ addon.guides.firstaid = {
                 { "Doctor Gustaf VanHowzen", "Foothold Citadel, Dustwallow Marsh (Alliance)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any First Aid trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "Any trainer: First Aid 50."),
+            R("Expert (150-225)", "Item", "Book: Expert First Aid - Under Wraps (First Aid 125). Sold by Balai Lok'Wein (Brackenwall Village, Dustwallow Marsh, Horde) or Deneb Walker (Stromgarde Keep, Arathi Highlands, Alliance).",
+                { 1445, 36.4, 30.4 }, { 1417, 26.8, 59.6 }),
+            R("Artisan (225-300)", "Quest", "Triage (First Aid 225, level 35): Doctor Gregory Victor (Hammerfall, Arathi Highlands, Horde) or Doctor Gustaf VanHowzen (Foothold Citadel, Dustwallow Marsh, Alliance). See the Triage page.",
+                { 1417, 73.5, 37 }, { 1445, 68, 48 }),
+        }
+    end)(),
     extras = {
         { title = "Triage quest", notes = {
             "Needed to train past 225. You get a stack of Triage Bandages and must save 15 patients, healing the critically injured first. Set aside about 10 minutes.",

@@ -38,6 +38,16 @@ addon.guides.skinning = {
                 { "Ishlee Breezewhisper", "Valanaar, Zephras Isle" }, { "Mendalass Tattermend", "Shen'dar Village, Zephras Isle" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Skinning trainer (see Trainers). Skyborne: Pelt Collecting for Beginners, reward of the Harvesting Windstones quest."),
+            R("Journeyman (75-150)", "Trainer", "Skinning 50. Starting-area Junior trainers stop at 75: use a town or capital trainer."),
+            R("Expert (150-225)", "Trainer", "Skinning 125, from a town or capital trainer."),
+            R("Artisan (225-300)", "Trainer", "Skinning 200, from a town or capital trainer."),
+        }
+    end)(),
     extras = {
         { title = "Which mobs can I skin?", rows = {
             { "Mob level 20+", "5x", "Skinning needed = 5 times the mob level (level 30 needs 150)." },

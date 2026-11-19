@@ -60,6 +60,17 @@ assert(addon.SourcePin(manual.source) == nil, "no pin without a faction vendor")
 UnitFactionGroup = nil
 local manualBlock = addon.BuildPages(addon.guides.firstaid, "leveling")[3].blocks[3]
 assert(manualBlock.source == manual.source and manualBlock.body:find("|cff66ccffManual: Heavy Silk Bandage|r", 1, true), "highlights the recipe")
+-- Extras open on how each rank is learned, with a map pin for the player's faction.
+UnitFactionGroup = function() return "Horde" end
+local ranks = addon.BuildPages(addon.guides.cooking, "extras")[1]
+assert(ranks.title == "Learning each rank" and #ranks.blocks == 4 and ranks.blocks[3].badge == "Item", "rank page")
+assert(ranks.blocks[1].pin == nil and ranks.blocks[3].pin[1] == 1443 and ranks.blocks[4].pin[1] == 1446, "rank pins per faction")
+UnitFactionGroup = nil
+for _, key in ipairs(addon.guideOrder) do
+    for _, rank in ipairs(addon.guides[key].ranks or {}) do
+        for _, pin in pairs(rank.pins or {}) do assert(#pin == 3 and pin[2] > 0 and pin[2] < 100 and pin[3] > 0 and pin[3] < 100, key .. " pin") end
+    end
+end
 -- Shopping totals equal the sum of the matching step materials (Thorium adds the 140 quest bars).
 for _, list in ipairs(guide.shopping) do
     local sums = {}
@@ -84,7 +95,7 @@ assert(addon.StepState(step, nil) == "todo")
 assert(addon.TierForSkill(guide, 1) == 1 and addon.TierForSkill(guide, 75) == 2)
 assert(addon.TierForSkill(guide, 214) == 3 and addon.TierForSkill(guide, 300) == 4 and addon.TierForSkill(guide, nil) == nil)
 
-local counts = { leveling = 4, shopping = 3, trainers = 3, extras = 3 }
+local counts = { leveling = 4, shopping = 3, trainers = 3, extras = 4 }
 for _, tab in ipairs(addon.tabs) do assert(#addon.BuildPages(guide, tab.key) == counts[tab.key], tab.key .. " page count") end
 local first = addon.BuildPages(guide, "leveling")[2].blocks[2]
 assert(first.title == "5x Silver Rod" and first.badge == "75-80" and first.body:find("5x Silver Bar, 10x Rough Grinding Stone", 1, true))

@@ -68,6 +68,17 @@ addon.guides.leatherworking = {
             { "Artisan (205-300)", { { "Hahrana Ironhide", "Camp Mojache, Feralas (Horde)" }, { "Drakk Stonehand", "Aerie Peak, The Hinterlands (Alliance)" } } },
         } },
     },
+    -- How each rank is learned (Extras). Pins: Classic map IDs, approximate town-level spots.
+    ranks = (function()
+        local R = addon.Rank
+        return {
+            R("Apprentice (1-75)", "Trainer", "Any Leatherworking trainer, no level requirement (see Trainers)."),
+            R("Journeyman (75-150)", "Trainer", "A capital-city trainer: Leatherworking 50 and level 10."),
+            R("Expert (150-225)", "Trainer", "Una (Thunder Bluff, Horde) or Telonis (Darnassus, Alliance): Leatherworking 125, level 20, 50 silver."),
+            R("Artisan (225-300)", "Trainer", "Hahrana Ironhide (Camp Mojache, Feralas, Horde) or Drakk Stonehand (Aerie Peak, The Hinterlands, Alliance): Leatherworking 200, level 35.",
+                { 1444, 74.5, 43 }, { 1425, 13.5, 43.5 }),
+        }
+    end)(),
     extras = {
         { title = "Specializations", notes = { "At Leatherworking 225 and level 40 you can choose one specialization. Each unlocks its own patterns." }, rows = {
             { "Dragonscale", nil, "Mail gear." },
