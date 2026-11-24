@@ -4,6 +4,7 @@ addon = addon or {}
 local WELL_FED_SPELL = 19705 -- any "Well Fed" spell; only its localized name is used
 local WELL_FED_ICON = 136000 -- Spell_Misc_Food, shared by Well Fed buffs
 local FIND_MINERALS_SPELL = 2580
+local WELL_RESTED_SPELL = 429959 -- Cozy Sleeping Bag buff (+1% XP per stack)
 
 -- Returns the ordered list of keys to show for a plain state table.
 function addon.Missing(state)
@@ -18,7 +19,7 @@ if not CreateFrame then return addon end
 
 local ICONS = {
     wellFed = WELL_FED_ICON,
-    rested = "Interface\\Icons\\Spell_Nature_Sleep",
+    rested = C_Spell.GetSpellTexture(WELL_RESTED_SPELL) or 133662, -- 133662: the bag's item icon
     minerals = C_Spell.GetSpellTexture(FIND_MINERALS_SPELL) or "Interface\\Icons\\Spell_Nature_Earthquake",
 }
 local SIZE, GAP = 40, 6
@@ -55,7 +56,7 @@ local function ReadState()
     local wellFedName = C_Spell.GetSpellName(WELL_FED_SPELL)
     local state = {
         canRest = UnitLevel("player") < GetMaxPlayerLevel(),
-        rested = (GetXPExhaustion() or 0) > 0,
+        rested = C_UnitAuras.GetPlayerAuraBySpellID(WELL_RESTED_SPELL) ~= nil,
         knowsMinerals = IsPlayerSpell(FIND_MINERALS_SPELL),
         minerals = C_UnitAuras.GetPlayerAuraBySpellID(FIND_MINERALS_SPELL) ~= nil,
     }
@@ -108,7 +109,7 @@ bar:SetScript("OnEvent", function(_, event, name)
     Update()
 end)
 bar:RegisterEvent("ADDON_LOADED")
-for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "UPDATE_EXHAUSTION", "PLAYER_XP_UPDATE",
+for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED",
     "PLAYER_LEVEL_UP", "SPELLS_CHANGED" }) do
     bar:RegisterEvent(event)
 end

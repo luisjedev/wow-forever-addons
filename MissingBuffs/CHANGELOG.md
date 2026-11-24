@@ -1,3 +1,9 @@
+# MissingBuffs 0.1.0-snapshot-3
+
+- The rested icon now tracks the **Well-Rested** buff from the Cozy Sleeping Bag (spell 429959) instead of rested experience, and uses its icon. It still only shows below the level cap.
+
+Syntax and logic checks pass. Not yet verified in the game.
+
 # MissingBuffs 0.1.0-snapshot-2
 
 - MissingBuffs now appears in the minimap's addon list with a food icon. Click it to show all three icons on a blue placeholder and drag the row anywhere; click it again to lock it. The position is saved (`MissingBuffsDB`).

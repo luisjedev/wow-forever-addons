@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MissingBuffs
 ## Notes: Shows icons in the middle of the screen for Well Fed, rested experience and Find Minerals when they are missing.
-## Version: 0.1.0-snapshot-2
+## Version: 0.1.0-snapshot-3
 ## IconTexture: Interface\Icons\Spell_Misc_Food
 ## AddonCompartmentFunc: MissingBuffs_OnCompartmentClick
 ## SavedVariables: MissingBuffsDB
