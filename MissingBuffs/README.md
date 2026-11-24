@@ -7,3 +7,5 @@ Shows a row of icons in the middle of the screen for the buffs you are missing:
 - **Find Minerals** — only if your character knows it.
 
 Icons disappear when the buff is active. During combat the row keeps its last state, because aura data can be restricted then.
+
+To move the row, click **MissingBuffs** in the minimap's addon list: all three icons appear on a blue placeholder you can drag. Click it again to lock it. The position is saved.

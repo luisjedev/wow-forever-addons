@@ -1,3 +1,9 @@
+# MissingBuffs 0.1.0-snapshot-2
+
+- MissingBuffs now appears in the minimap's addon list with a food icon. Click it to show all three icons on a blue placeholder and drag the row anywhere; click it again to lock it. The position is saved (`MissingBuffsDB`).
+
+After `/reload` the minimap addon counter went from 7 to 8, so the entry is registered. Not yet verified in the game: opening the list, dragging, and the saved position after `/reload`.
+
 # MissingBuffs 0.1.0-snapshot-1
 
 - A row of icons in the middle of the screen shows which of these you are missing: **Well Fed**, **rested experience** (only below the level cap) and **Find Minerals** (only if you know it). Present buffs are hidden, so the row disappears when you have all three.
