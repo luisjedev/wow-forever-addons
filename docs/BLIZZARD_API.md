@@ -20,6 +20,10 @@ The installed version comes from the active row of `.build.info`; the published 
 
 Gethe is a **community mirror of Blizzard's interface code**, not an official service or a guarantee of immediate publication. Match each commit to its declared Forever build; do not assume the `classic_beta` branch represents Forever.
 
+### MissingBuffs 0.1.0-snapshot-1 · November 24, 2026
+
+**Affected addon:** MissingBuffs (new). **Reference:** interface `16001`; the `forever` branch of the Gethe mirror documents `C_UnitAuras.GetBuffDataByIndex` and `GetPlayerAuraBySpellID` as `SecretWhenUnitAuraRestricted`, so the addon only reads auras outside combat and skips the update if `issecretvalue` reports a secret name or icon. **Verified in the game:** `IsPlayerSpell(2580)`, `GetXPExhaustion()`, `GetPlayerAuraBySpellID(2580)`, `C_Spell.GetSpellName(19705)` ("Well Fed") and `GetMaxPlayerLevel()` (60) return usable values out of combat; the Find Minerals icon shows after `/cancelaura` and hides after recasting. **Pending:** a missing Well Fed buff and a level-60 character without rested XP; food buffs with an icon other than `136000` and a name other than "Well Fed" would not be recognized.
+
 ### ProfGuide 0.1.0-snapshot-1 · November 15, 2026
 
 **Affected addon:** ProfGuide (new). **Reference:** interface `16001`, existing local reference; no new client source consulted. The window uses classic dialog textures, `BackdropTemplate`, `UIPanelScrollFrameTemplate` and the TDL minimap pattern, and reads the Blacksmithing rank through `GetProfessions()` / `GetProfessionInfo()` (skill line `164`) under `pcall` and `canaccessvalue`. **Pending in-game tests:** the window layout and text wrapping per tab, `Interface\DialogFrame\UI-DialogBox-*` and `Interface\Icons\Trade_BlackSmithing` rendering, skill-based tier jump after learning the profession, and `ProfGuideDB` after `/reload` and a restart. **Data limitation:** guide content is copied from a third-party site for the Forever beta; its 270-300 range is untested upstream.
