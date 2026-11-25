@@ -5,7 +5,8 @@ A list of every **Craftsman's Writ** in WoW Forever: the item each one asks for,
 Open it with `/writs` (or `/writboard`), or click **WritBoard** in the minimap's addon list.
 
 - **All** lists the 150 orders. **In bags** shows only the writs you are carrying, with how many of each. A writ the addon does not know yet still shows up there.
-- Writs are grouped by the zone where you deliver them, with the highest-reputation zones first. Writs whose recipient is unknown are grouped at the end.
+- Writs are grouped by the zone where you deliver them. Zones go from best to worst value: the total price of their priced writs plus 50 silver for the trip, divided by the reputation they give. Doing several writs in one zone shares the trip, so busy zones usually come first. Zones without prices follow, and writs whose recipient is unknown are grouped at the end.
+- Each zone header shows the reputation, cost per reputation point and total cost of its priced writs.
 - **Rep** is the reputation per delivery: 75 Journeyman, 125 Expert, 200 Artisan.
 - **Deliver to** names the recipient. The map button places a waypoint where coordinates are published (Journeyman orders). Many Expert and Artisan recipients are still unknown.
 - **Item price** is Auctionator's latest price for the requested item, times the quantity asked. **Writ price** is the price of the writ itself, and **Total** adds both, so you can see what buying the writ and its items would cost. Scan the auction house with Auctionator to fill them in. Without Auctionator they show a dash.

@@ -75,14 +75,27 @@ function addon.Summary(owned, lookup)
     return count, rep, cost, unpriced
 end
 
--- Groups writs by recipient zone: zones with the highest reputation first (then by name, unknown zone last),
--- writs inside a zone cheapest total first (unpriced last, then by reputation). Returns { zone = name } headers and writs.
+-- One trip to a zone, priced like gold: a zone with several writs shares it, so it wins over a lone cheap writ.
+-- shortcut: fixed at 50 silver for every zone; make it a setting if players want to weigh travel differently.
+addon.TRAVEL = 5000
+
+-- A zone's value: copper per reputation point for doing all its priced writs, plus one trip. Lower is better.
+function addon.ZoneScore(cost, rep)
+    return rep > 0 and (cost + addon.TRAVEL) / rep or nil
+end
+
+-- Groups writs by recipient zone. Zones go from the best score (ZoneScore) to the worst, then zones without
+-- prices, and the unknown zone last. Inside a zone: cheapest total first, unpriced last, then by reputation.
+-- Returns headers { zone = name or false, count, cost, rep, score } followed by their writs.
 function addon.Grouped(list, lookup)
     local zones, order = {}, {}
     for _, writ in ipairs(list) do
         local zone = writ.zone or false
-        if not zones[zone] then zones[zone] = {}; order[#order + 1] = zone end
-        table.insert(zones[zone], writ)
+        if not zones[zone] then
+            zones[zone] = { zone = zone, count = 0, cost = 0, rep = 0, best = 0, writs = {} }
+            order[#order + 1] = zones[zone]
+        end
+        table.insert(zones[zone].writs, writ)
     end
     local total = {}
     for _, writ in ipairs(list) do total[writ] = addon.Total(writ, lookup) or math.huge end
@@ -91,22 +104,30 @@ function addon.Grouped(list, lookup)
         if (a.tier or 0) ~= (b.tier or 0) then return (a.tier or 0) > (b.tier or 0) end
         return a.item < b.item
     end
-    local best = {}
-    for _, zone in ipairs(order) do
-        best[zone] = 0
-        for _, writ in ipairs(zones[zone]) do best[zone] = math.max(best[zone], writ.tier or 0) end
-        table.sort(zones[zone], ByPrice)
+    for _, group in ipairs(order) do
+        for _, writ in ipairs(group.writs) do
+            group.best = math.max(group.best, writ.tier or 0)
+            if total[writ] < math.huge then
+                group.count = group.count + 1
+                group.cost = group.cost + total[writ]
+                group.rep = group.rep + addon.REP[writ.tier]
+            end
+        end
+        group.score = addon.ZoneScore(group.cost, group.rep)
+        table.sort(group.writs, ByPrice)
     end
-    local function Best(zone) return best[zone] end
     table.sort(order, function(a, b)
-        if not a or not b then return b == false and a ~= false end
-        if Best(a) ~= Best(b) then return Best(a) > Best(b) end
-        return a < b
+        if (a.zone == false) ~= (b.zone == false) then return b.zone == false end
+        if (a.score ~= nil) ~= (b.score ~= nil) then return a.score ~= nil end
+        if a.score and a.score ~= b.score then return a.score < b.score end
+        if a.best ~= b.best then return a.best > b.best end
+        return tostring(a.zone) < tostring(b.zone)
     end)
     local entries = {}
-    for _, zone in ipairs(order) do
-        entries[#entries + 1] = { zone = zone }
-        for _, writ in ipairs(zones[zone]) do entries[#entries + 1] = writ end
+    for _, group in ipairs(order) do
+        entries[#entries + 1] = group
+        for _, writ in ipairs(group.writs) do entries[#entries + 1] = writ end
+        group.writs = nil
     end
     return entries
 end

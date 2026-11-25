@@ -125,13 +125,18 @@ local function Refresh()
         local row = rows[i] or Row(i)
         local header = writ.ids == nil
         row.writ = not header and writ or nil
-        for _, part in ipairs({ row.icon, row.prof, row.rep, row.to, row.price, row.writPrice, row.total }) do part:SetShown(not header) end
+        for _, part in ipairs({ row.icon, row.prof, row.price, row.writPrice }) do part:SetShown(not header) end
         row.stripe:SetColorTexture(0.45, 0.34, 0.16, header and 0.35 or (i % 2 == 0 and 0.04 or 0))
         row.item:SetPoint("LEFT", header and 6 or COL[1], 0)
         if header then
             row.item:SetText(writ.zone or L["Unknown"])
             row.item:SetTextColor(1, 0.82, 0)
             row.map:Hide()
+            -- Zone summary over its priced writs: count, reputation, cost per reputation point (with travel), total.
+            row.rep:SetText(writ.count > 0 and writ.rep or "")
+            row.to:SetText(writ.score and L["%d writs · %s per rep"]:format(writ.count, Money(math.floor(writ.score + 0.5))) or "")
+            row.to:SetTextColor(1, 0.82, 0)
+            row.total:SetText(writ.count > 0 and Money(writ.cost) or "")
         else
             row.icon:SetTexture(writ.ids[1] and C_Item.GetItemIconByID(writ.ids[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
             local held = owned[writ.item]

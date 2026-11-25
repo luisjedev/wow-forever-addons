@@ -1,3 +1,8 @@
+# WritBoard 0.1.0-snapshot-6
+
+- Zones are ordered by value: the cost per reputation point of doing all their priced writs, plus a fixed 50 silver for the trip. A zone with several writs shares one trip, so 3 writs for 1g 50s (about 89 copper per reputation point) come before a single writ for 70 silver (160 copper). Zones without prices follow, and the unknown zone stays last.
+- Each zone header shows how many of its writs have a price, their total reputation, the cost per reputation point and their total cost.
+
 # WritBoard 0.1.0-snapshot-5
 
 - Two new columns: **Writ price** (Auctionator price of the writ itself) and **Total** (writ plus the items it asks for). The window is wider to fit them.

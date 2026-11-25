@@ -82,3 +82,17 @@ local totals = { [writ("Heavy Quiver").writ] = 50, [writ("Heavy Quiver").ids[1]]
 local sorted = addon.Grouped(stonetalon, function(id) return totals[id] end)
 assert(sorted[1].zone == "Stonetalon Mountains" and sorted[2].item == "Red Woolen Boots" and sorted[3].item == "Heavy Quiver", "price order")
 print("WritBoard price order ok")
+
+-- Zones: 3 Journeyman writs for 1g 50s in total beat 1 writ for 70s (shared trip); unpriced zones after priced ones.
+local zoneA, zoneB, zoneC = {}, {}, {}
+for i = 1, 3 do zoneA[i] = { item = "A" .. i, tier = 1, zone = "A", ids = { i }, writ = 100 + i } end
+zoneB[1] = { item = "B1", tier = 1, zone = "B", ids = { 4 }, writ = 104 }
+zoneC[1] = { item = "C1", tier = 3, zone = "C", ids = { 5 }, writ = 105 }
+local cost = { [1] = 4000, [101] = 1000, [2] = 4000, [102] = 1000, [3] = 4000, [103] = 1000, [4] = 6000, [104] = 1000 }
+local mixed = {}
+for _, z in ipairs({ zoneC, zoneB, zoneA }) do for _, w in ipairs(z) do mixed[#mixed + 1] = w end end
+local zones = addon.Grouped(mixed, function(id) return cost[id] end)
+assert(zones[1].zone == "A" and zones[1].count == 3 and zones[1].cost == 15000 and zones[1].rep == 225, "zone A first")
+assert(zones[5].zone == "B" and zones[7].zone == "C" and zones[7].score == nil, "zone order")
+assert(addon.ZoneScore(15000, 225) < addon.ZoneScore(7000, 75) and addon.ZoneScore(0, 0) == nil)
+print("WritBoard zone order ok")
