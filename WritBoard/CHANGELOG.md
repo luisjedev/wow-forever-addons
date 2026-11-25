@@ -1,3 +1,9 @@
+# WritBoard 0.1.0-snapshot-5
+
+- Two new columns: **Writ price** (Auctionator price of the writ itself) and **Total** (writ plus the items it asks for). The window is wider to fit them.
+- Inside each zone, writs are sorted by total, cheapest first; writs without both prices go last.
+- Writs in your bags are recognized by item ID. Four writs whose in-game name differs from the guides (for example *Elixir of Ogre's Strength*) were not detected before, and the In bags filter now works in any client language for the 150 known writs.
+
 # WritBoard 0.1.0-snapshot-4
 
 - Shift-click a writ to link its requested item in chat or put it in a search box such as the auction house's; Ctrl-click previews it. If the item is not cached yet, Shift-click inserts its name.

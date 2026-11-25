@@ -1,9 +1,10 @@
 local _, addon = ...
 local L = addon.L
 
-local WIDTH, HEIGHT, ROW_H, LIST_W = 860, 560, 24, 790
--- Column x offsets inside a row: item, profession, reputation, recipient, price.
-local COL = { 28, 280, 390, 450, 690 }
+local WIDTH, HEIGHT, ROW_H, LIST_W = 1000, 560, 24, 930
+-- Column x offsets inside a row: item, profession, reputation, recipient, item price, writ price, total.
+local COL = { 28, 260, 360, 410, 610, 720, 830 }
+local PRICE_W = 100
 local db, window, content, summary
 local rows, buttons = {}, {}
 local filter = "all"
@@ -27,7 +28,7 @@ local function ScanBags()
         for slot = 1, ok and type(slots) == "number" and slots or 0 do
             local okInfo, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
             if okInfo and type(info) == "table" then
-                stacks[#stacks + 1] = { link = info.hyperlink, count = info.stackCount }
+                stacks[#stacks + 1] = { id = info.itemID, link = info.hyperlink, count = info.stackCount }
             end
         end
     end
@@ -87,8 +88,10 @@ local function Row(i)
     row.prof = Text(row, "GameFontHighlightSmall", COL[2], COL[3] - COL[2] - 6)
     row.rep = Text(row, "GameFontNormal", COL[3], COL[4] - COL[3] - 6)
     row.to = Text(row, "GameFontHighlightSmall", COL[4], COL[5] - COL[4] - 30)
-    row.price = Text(row, "GameFontHighlightSmall", COL[5], LIST_W - COL[5] - 4)
-    row.price:SetJustifyH("RIGHT")
+    row.price = Text(row, "GameFontHighlightSmall", COL[5], PRICE_W)
+    row.writPrice = Text(row, "GameFontHighlightSmall", COL[6], PRICE_W)
+    row.total = Text(row, "GameFontHighlight", COL[7], PRICE_W)
+    for _, text in ipairs({ row.price, row.writPrice, row.total }) do text:SetJustifyH("RIGHT") end
     row.map = CreateFrame("Button", nil, row)
     row.map:SetSize(18, 18)
     row.map:SetPoint("LEFT", COL[5] - 26, 0)
@@ -117,12 +120,12 @@ local function Refresh()
     if not (window and window:IsShown()) then return end
     local owned = ScanBags()
     local list = addon.Rows(filter, owned)
-    local entries = addon.Grouped(list)
+    local entries = addon.Grouped(list, Price)
     for i, writ in ipairs(entries) do
         local row = rows[i] or Row(i)
         local header = writ.ids == nil
         row.writ = not header and writ or nil
-        for _, part in ipairs({ row.icon, row.prof, row.rep, row.to, row.price }) do part:SetShown(not header) end
+        for _, part in ipairs({ row.icon, row.prof, row.rep, row.to, row.price, row.writPrice, row.total }) do part:SetShown(not header) end
         row.stripe:SetColorTexture(0.45, 0.34, 0.16, header and 0.35 or (i % 2 == 0 and 0.04 or 0))
         row.item:SetPoint("LEFT", header and 6 or COL[1], 0)
         if header then
@@ -140,6 +143,8 @@ local function Refresh()
             row.to:SetText(writ.npc or L["Unknown"])
             if writ.npc then row.to:SetTextColor(1, 1, 1) else row.to:SetTextColor(0.6, 0.6, 0.6) end
             row.price:SetText(writ.ids[1] and Money(addon.Price(writ, Price)) or "")
+            row.writPrice:SetText(writ.writ and Money(addon.WritPrice(writ, Price)) or "")
+            row.total:SetText(writ.writ and Money(addon.Total(writ, Price)) or "")
             row.map:SetShown(writ.pin ~= nil)
         end
         row:Show()
@@ -194,10 +199,11 @@ local function CreateWindow()
     window.count = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     window.count:SetPoint("TOPRIGHT", -40, -40)
 
-    local labels = { L["Item"], L["Profession"], L["Rep"], L["Deliver to"], L["Auction"] }
+    local labels = { L["Item"], L["Profession"], L["Rep"], L["Deliver to"], L["Item price"], L["Writ price"], L["Total"] }
     for i, label in ipairs(labels) do
         local text = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         text:SetPoint("TOPLEFT", 24 + COL[i], -66)
+        if i >= 5 then text:SetWidth(PRICE_W); text:SetJustifyH("RIGHT") end
         text:SetText(label)
     end
 

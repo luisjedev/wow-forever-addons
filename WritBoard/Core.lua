@@ -13,11 +13,13 @@ function addon.RequestedItem(name)
     return name:sub(#PREFIX + 1)
 end
 
--- stacks: { { link = itemHyperlink, count = n }, ... } -> { [requested item name] = writs held }
+-- stacks: { { id = itemID, link = itemHyperlink, count = n }, ... } -> { [requested item name] = writs held }
+-- Known writs match by item ID (any client language); others by their English name.
 function addon.CountWrits(stacks)
-    local owned = {}
+    local byID, owned = {}, {}
+    for _, writ in ipairs(addon.writs) do byID[writ.writ] = writ.item end
     for _, stack in ipairs(stacks) do
-        local item = addon.RequestedItem(type(stack.link) == "string" and stack.link:match("%[(.-)%]"))
+        local item = byID[stack.id] or addon.RequestedItem(type(stack.link) == "string" and stack.link:match("%[(.-)%]"))
         if item then owned[item] = (owned[item] or 0) + (stack.count or 1) end
     end
     return owned
@@ -48,6 +50,18 @@ function addon.Price(writ, lookup)
     return best and best * (writ.qty or 1)
 end
 
+-- Auction price of the writ itself; nil when unknown.
+function addon.WritPrice(writ, lookup)
+    local price = writ.writ and lookup(writ.writ)
+    return type(price) == "number" and price > 0 and price or nil
+end
+
+-- Writ plus the items it asks for; nil unless both prices are known.
+function addon.Total(writ, lookup)
+    local item, paper = addon.Price(writ, lookup), addon.WritPrice(writ, lookup)
+    return item and paper and item + paper
+end
+
 -- Totals for the held writs: count, reputation, cost of the known prices, and how many lack a price.
 function addon.Summary(owned, lookup)
     local count, rep, cost, unpriced = 0, 0, 0, 0
@@ -62,20 +76,28 @@ function addon.Summary(owned, lookup)
 end
 
 -- Groups writs by recipient zone: zones with the highest reputation first (then by name, unknown zone last),
--- writs inside a zone from most to least reputation. Returns entries: { zone = name } headers and writs.
-function addon.Grouped(list)
+-- writs inside a zone cheapest total first (unpriced last, then by reputation). Returns { zone = name } headers and writs.
+function addon.Grouped(list, lookup)
     local zones, order = {}, {}
     for _, writ in ipairs(list) do
         local zone = writ.zone or false
         if not zones[zone] then zones[zone] = {}; order[#order + 1] = zone end
         table.insert(zones[zone], writ)
     end
-    local function Best(zone) return zones[zone][1].tier or 0 end
-    local function ByRep(a, b)
+    local total = {}
+    for _, writ in ipairs(list) do total[writ] = addon.Total(writ, lookup) or math.huge end
+    local function ByPrice(a, b)
+        if total[a] ~= total[b] then return total[a] < total[b] end
         if (a.tier or 0) ~= (b.tier or 0) then return (a.tier or 0) > (b.tier or 0) end
         return a.item < b.item
     end
-    for _, zone in ipairs(order) do table.sort(zones[zone], ByRep) end
+    local best = {}
+    for _, zone in ipairs(order) do
+        best[zone] = 0
+        for _, writ in ipairs(zones[zone]) do best[zone] = math.max(best[zone], writ.tier or 0) end
+        table.sort(zones[zone], ByPrice)
+    end
+    local function Best(zone) return best[zone] end
     table.sort(order, function(a, b)
         if not a or not b then return b == false and a ~= false end
         if Best(a) ~= Best(b) then return Best(a) > Best(b) end
