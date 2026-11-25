@@ -29,6 +29,8 @@ local translations = {
         ["No Auctionator price yet: scan the auction house with Auctionator."] = "Sin precio de Auctionator: escanea la casa de subastas con Auctionator.",
         ["Writs in bags: %d · %d reputation · cost %s"] = "Contratos en bolsas: %d · %d de reputación · coste %s",
         ["%d writs"] = "%d contratos",
+        ["All zones"] = "Todas las zonas",
+        ["%d zones"] = "%d zonas",
         ["%d writs · %s per rep"] = "%d contratos · %s por repu",
         ["Sources: conquestcapped.com and foreverchanges.pro · prices from Auctionator"] = "Fuentes: conquestcapped.com y foreverchanges.pro · precios de Auctionator",
     },

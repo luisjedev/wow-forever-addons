@@ -6,7 +6,8 @@ local WIDTH, HEIGHT, ROW_H, LIST_W = 1000, 560, 24, 930
 local COL = { 28, 250, 345, 395, 610, 720, 830 }
 local MAP_X = 575 -- map column, between the recipient and the prices
 local PRICE_W = 100
-local db, window, content, summary
+local db, window, content, summary, zoneMenu
+local zones = {} -- selected zone keys; empty means all zones
 local rows, buttons = {}, {}
 local filter = "all"
 
@@ -126,7 +127,7 @@ end
 local function Refresh()
     if not (window and window:IsShown()) then return end
     local owned = ScanBags()
-    local list = addon.Rows(filter, owned)
+    local list = addon.Rows(filter, owned, zones)
     local entries = addon.Grouped(list, Price)
     for i, writ in ipairs(entries) do
         local row = rows[i] or Row(i)
@@ -169,6 +170,12 @@ local function Refresh()
         .. (unpriced > 0 and ("  |cff999999(" .. unpriced .. " ?)|r") or ""))
     for key, button in pairs(buttons) do button:SetEnabled(key ~= filter) end
     window.count:SetText(L["%d writs"]:format(#list))
+    local picked = 0
+    for _ in pairs(zones) do picked = picked + 1 end
+    if zoneMenu.OverrideText then
+        zoneMenu:OverrideText(picked == 0 and L["All zones"] or picked == 1 and ((next(zones) == "" and L["Unknown"]) or next(zones))
+            or L["%d zones"]:format(picked))
+    end
 end
 
 local function CreateWindow()
@@ -209,6 +216,23 @@ local function CreateWindow()
         end)
         buttons[key] = button
     end
+    -- Zone selector: tick any number of zones; "All zones" clears the selection.
+    zoneMenu = CreateFrame("DropdownButton", nil, window, "WowStyle1DropdownTemplate")
+    zoneMenu:SetWidth(220)
+    zoneMenu:SetPoint("TOPLEFT", 24 + 2 * 116 + 10, -32)
+    zoneMenu:SetupMenu(function(_, root)
+        root:CreateButton(L["All zones"], function()
+            wipe(zones)
+            Refresh()
+        end)
+        root:CreateDivider()
+        for _, key in ipairs(addon.ZoneKeys()) do
+            root:CreateCheckbox(key == "" and L["Unknown"] or key, function() return zones[key] == true end, function()
+                zones[key] = not zones[key] or nil
+                Refresh()
+            end)
+        end
+    end)
     window.count = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     window.count:SetPoint("TOPRIGHT", -40, -40)
 
@@ -255,6 +279,13 @@ events:SetScript("OnEvent", function(_, event)
         if type(WritBoardDB) ~= "table" then WritBoardDB = {} end
         db = WritBoardDB
         if db.filter == "all" or db.filter == "bags" then filter = db.filter end
+        -- Keep only saved zones that still exist in the data.
+        local valid = {}
+        for _, key in ipairs(addon.ZoneKeys()) do valid[key] = true end
+        if type(db.zones) == "table" then
+            for key, on in pairs(db.zones) do if valid[key] and on == true then zones[key] = true end end
+        end
+        db.zones = zones
         return
     end
     Refresh()

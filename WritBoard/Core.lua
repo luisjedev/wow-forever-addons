@@ -36,14 +36,30 @@ function addon.CountWrits(stacks)
     return owned
 end
 
+-- Zone key for the zone selector: the zone name, or "" when the recipient is unknown.
+function addon.ZoneKey(writ) return writ.zone or "" end
+
+-- Every zone key in the data, alphabetical, with the unknown zone ("") last.
+function addon.ZoneKeys()
+    local seen, keys = {}, {}
+    for _, writ in ipairs(addon.writs) do
+        local key = addon.ZoneKey(writ)
+        if not seen[key] then seen[key] = true; keys[#keys + 1] = key end
+    end
+    table.sort(keys, function(a, b) if (a == "") ~= (b == "") then return b == "" end return a < b end)
+    return keys
+end
+
 -- The writs to list. filter "bags" keeps the ones held, plus held writs missing from Data.lua.
-function addon.Rows(filter, owned)
+-- zones: { [zone key] = true } keeps only those zones; nil or empty keeps every zone.
+function addon.Rows(filter, owned, zones)
+    local all = not zones or next(zones) == nil
     local rows, known = {}, {}
     for _, writ in ipairs(addon.writs) do
         known[writ.item] = true
-        if filter ~= "bags" or owned[writ.item] then rows[#rows + 1] = writ end
+        if (filter ~= "bags" or owned[writ.item]) and (all or zones[addon.ZoneKey(writ)]) then rows[#rows + 1] = writ end
     end
-    if filter == "bags" then
+    if filter == "bags" and (all or zones[""]) then
         for item in pairs(owned) do
             if not known[item] then rows[#rows + 1] = { item = item, ids = {} } end
         end

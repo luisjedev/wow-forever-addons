@@ -103,3 +103,18 @@ for _, w in ipairs(addon.writs) do
     assert(not w.pin or w.pin[1] == addon.ZONE_MAPS[w.zone], "pin map matches zone for " .. w.item)
 end
 print("WritBoard maps ok")
+
+-- Zone selector: keys are alphabetical with the unknown zone last; a selection keeps only those zones.
+local keys = addon.ZoneKeys()
+assert(keys[1] == "Alterac Mountains" and keys[#keys] == "", "zone keys")
+assert(#addon.Rows("all", {}, {}) == 150, "empty selection keeps all")
+local picked = addon.Rows("all", {}, { ["Stonetalon Mountains"] = true, [""] = true })
+local unknown = 0
+for _, w in ipairs(picked) do
+    assert(w.zone == "Stonetalon Mountains" or w.zone == nil, w.item)
+    if w.zone == nil then unknown = unknown + 1 end
+end
+assert(#picked - unknown == 5 and unknown > 0, "picked zones")
+assert(#addon.Rows("bags", owned, { Wetlands = true }) == 0, "held writs outside the selection are hidden")
+assert(#addon.Rows("bags", owned, { [""] = true }) == 1, "held writs missing from the data count as unknown zone")
+print("WritBoard zone selector ok")

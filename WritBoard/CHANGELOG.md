@@ -1,3 +1,7 @@
+# WritBoard 0.1.0-snapshot-8
+
+- Zone selector next to the All / In bags buttons: tick one or more zones to list only those, or pick **All zones** to show everything again. It combines with In bags, and the selection is saved per character.
+
 # WritBoard 0.1.0-snapshot-7
 
 - New **Map** column. Every writ with a known zone gets a map button: in color it opens the map with a waypoint on the recipient; greyed out it opens the zone map, as the exact spot is not published yet. Riverglades (new in Forever) has no map button yet.
