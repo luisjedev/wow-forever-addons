@@ -1,7 +1,7 @@
--- Run from the repository root: luajit WritBoard/WritBoard.test.lua
+-- Run from the repository root: luajit ProfGuide/Writs.test.lua
 GetLocale = function() return "enUS" end
 local addon = {}
-for _, file in ipairs({ "Locales", "Data", "Recipes", "Core" }) do assert(loadfile("WritBoard/" .. file .. ".lua"))("WritBoard", addon) end
+for _, file in ipairs({ "Locales", "Pages", "Data/Writs", "Data/Recipes", "Writs" }) do assert(loadfile("ProfGuide/" .. file .. ".lua"))("ProfGuide", addon) end
 
 -- Data: 150 orders, 45/60/45 by tier, each with item IDs and a known profession; pins only with a zone.
 local tiers, names = { 0, 0, 0 }, {}
@@ -55,7 +55,7 @@ assert(addon.WritPrice(leggings, lookup) == 100 and addon.Total(leggings, lookup
 -- Summary of held writs: 4 Journeyman = 300 rep, 2700 copper for the leggings; two writs have no item price.
 local count, rep, cost, unpriced = addon.Summary(owned, lookup)
 assert(count == 5 and rep == 300 and cost == 2700 and unpriced == 2, table.concat({ count, rep, cost, unpriced }, ","))
-print("WritBoard ok")
+print("Writs ok")
 
 -- Grouping without prices: zone headers, highest-reputation zones first, unknown zone last, writs by reputation inside.
 local grouped = addon.Grouped(addon.Rows("all", {}), function() return nil end)
@@ -73,7 +73,7 @@ for _, e in ipairs(grouped) do
     end
 end
 assert(seenUnknown and grouped[1].zone and grouped[2].tier == 3, "artisan zones first")
-print("WritBoard grouping ok")
+print("Writs grouping ok")
 
 -- Inside a zone, the cheapest total goes first and writs without a total go last.
 local stonetalon = {}
@@ -81,7 +81,7 @@ for _, w in ipairs(addon.writs) do if w.zone == "Stonetalon Mountains" then ston
 local totals = { [writ("Heavy Quiver").writ] = 50, [writ("Heavy Quiver").ids[1]] = 50, [writ("Red Woolen Boots").writ] = 10, [writ("Red Woolen Boots").ids[1]] = 20 }
 local sorted = addon.Grouped(stonetalon, function(id) return totals[id] end)
 assert(sorted[1].zone == "Stonetalon Mountains" and sorted[2].item == "Red Woolen Boots" and sorted[3].item == "Heavy Quiver", "price order")
-print("WritBoard price order ok")
+print("Writs price order ok")
 
 -- Zones: 3 Journeyman writs for 1g 50s in total beat 1 writ for 70s (shared trip); unpriced zones after priced ones.
 local zoneA, zoneB, zoneC = {}, {}, {}
@@ -95,14 +95,14 @@ local zones = addon.Grouped(mixed, function(id) return cost[id] end)
 assert(zones[1].zone == "A" and zones[1].count == 3 and zones[1].cost == 15000 and zones[1].rep == 225, "zone A first")
 assert(zones[5].zone == "B" and zones[7].zone == "C" and zones[7].score == nil, "zone order")
 assert(addon.ZoneScore(15000, 225) < addon.ZoneScore(7000, 75) and addon.ZoneScore(0, 0) == nil)
-print("WritBoard zone order ok")
+print("Writs zone order ok")
 
 -- Every delivery zone except Riverglades (new in Forever) has a map for the map column.
 for _, w in ipairs(addon.writs) do
     assert(not w.zone or w.zone == "Riverglades" or addon.ZONE_MAPS[w.zone], "no map for " .. tostring(w.zone))
     assert(not w.pin or w.pin[1] == addon.ZONE_MAPS[w.zone], "pin map matches zone for " .. w.item)
 end
-print("WritBoard maps ok")
+print("Writs maps ok")
 
 -- Zone selector: keys are alphabetical with the unknown zone last; a selection keeps only those zones.
 local keys = addon.ZoneKeys()
@@ -117,22 +117,20 @@ end
 assert(#picked - unknown == 5 and unknown > 0, "picked zones")
 assert(#addon.Rows("bags", owned, { Wetlands = true }) == 0, "held writs outside the selection are hidden")
 assert(#addon.Rows("bags", owned, { [""] = true }) == 1, "held writs missing from the data count as unknown zone")
-print("WritBoard zone selector ok")
+print("Writs zone selector ok")
 
--- Recipes tab: 308 vendor recipes in 7 professions, unique spells, valid standings; CountKnown counts by spell.
-local recipeCount, spells = 0, {}
-for _, key in ipairs(addon.RECIPE_ORDER) do
-    assert(addon.RECIPE_ICONS[key], tostring(key))
-    if key ~= "other" then
-        assert(addon.PROFS[key] and addon.RECIPE_VENDORS[key], key)
-        for _, r in ipairs(addon.recipes[key]) do
-            assert(not spells[r[1]] and type(r[2]) == "string" and r[3] > 0 and r[4] >= 0 and r[4] <= 4 and r[5] > 0, r[2])
-            assert(r[6] or r[2]:find("^Enchant "), "crafted item " .. r[2]) -- only enchants create no item
-            spells[r[1]] = true
-            recipeCount = recipeCount + 1
-        end
+-- Recipes tabs: 308 vendor recipes in 7 professions, unique spells, valid standings; CountKnown counts by spell.
+local recipeCount, spells, profs = 0, {}, 0
+for key, list in pairs(addon.recipes) do
+    assert(addon.PROFS[key] and addon.RECIPE_VENDORS[key], key)
+    profs = profs + 1
+    for _, r in ipairs(list) do
+        assert(not spells[r[1]] and type(r[2]) == "string" and r[3] > 0 and r[4] >= 0 and r[4] <= 4 and r[5] > 0, r[2])
+        assert(r[6] or r[2]:find("^Enchant "), "crafted item " .. r[2]) -- only enchants create no item
+        spells[r[1]] = true
+        recipeCount = recipeCount + 1
     end
 end
-assert(recipeCount == 308 and #addon.recipes[165] == 81 and #addon.recipes[197] == 67, "recipe counts")
+assert(profs == 7 and recipeCount == 308 and #addon.recipes[165] == 81 and #addon.recipes[197] == 67, "recipe counts")
 for _, item in ipairs(addon.vendorItems) do assert(item[4] >= 0 and item[4] <= 4 and item[5] > 0, item[2]) end
 assert(addon.CountKnown(addon.recipes[185], function(spell) return spell == 1249963 or spell == 1 end) == 1)

@@ -1,5 +1,5 @@
 local _, addon = ...
--- Pure logic, no frames: the window (WritBoard.lua) and the tests use it.
+-- Writ and vendor-recipe logic, no frames: WritsPanel.lua and the tests use it.
 
 addon.REP = { 75, 125, 200 } -- Azeroth Commerce Authority reputation per delivery, by tier
 addon.TIERS = { "Journeyman", "Expert", "Artisan" }

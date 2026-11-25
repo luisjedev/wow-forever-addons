@@ -1,3 +1,15 @@
+# ProfGuide 0.1.0-snapshot-5
+
+- **WritBoard is now part of ProfGuide.** Uninstall the separate WritBoard addon.
+- The window is wider (1000 px), the size WritBoard had, so the writ table fits.
+- New **Writs** button at the top right opens the Craftsman's Writs view: every writ with its reputation, recipient, map button and Auctionator prices, grouped by zone, with the zone selector. **Back** returns to where you were. `/writs` and `/writboard` open it directly.
+- The writs view has three filters: **All**, **In bags** and **Vendor items** (tabards, Pack Kodo, certifications and other items sold for Merchant's Favor).
+- New **Recipes** tab in Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking and Tailoring: that profession's camp vendor recipes with skill, reputation, Merchant's Favor cost and a learned check. Hold Shift over a recipe to compare the crafted item with your equipped gear.
+- ProfGuide also appears in the minimap's addon list.
+- The writ filter and zone selection are saved in ProfGuide's data. Choices made in WritBoard do not carry over.
+
+Lua syntax and the checks pass. Not yet verified in the game.
+
 # ProfGuide 0.1.0-snapshot-4
 
 - Extras now opens on **Learning each rank**: where Apprentice, Journeyman, Expert and Artisan are learned and whether it is a trainer, a quest or a book. Ranks learned at a specific place (Artisan trainers, Expert books, Artisan quests) get a **Show on map** button for your faction. Lockpicking has no ranks and is unchanged.

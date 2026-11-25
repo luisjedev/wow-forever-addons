@@ -36,7 +36,8 @@ for _, key in ipairs(addon.guideOrder) do
     assert(expected == g.max, key .. " ends at max")
     -- Every tab the guide offers builds 1-6 pages whose blocks have the fields the window reads.
     for _, tab in ipairs(addon.TabsFor(g)) do
-        local pages = addon.BuildPages(g, tab.key)
+        local pages = tab.key == "recipes" and { { title = "", blocks = { { kind = "note", body = "" } } } }
+            or addon.BuildPages(g, tab.key)
         assert(#pages >= 1 and #pages <= 6, key .. " " .. tab.key .. " page count")
         for _, page in ipairs(pages) do
             assert(type(page.title) == "string" and #page.blocks > 0, key .. " " .. tab.key .. " empty page")
@@ -47,7 +48,16 @@ for _, key in ipairs(addon.guideOrder) do
         end
     end
 end
-assert(#addon.TabsFor(addon.guides.mining) == 3 and #addon.TabsFor(guide) == 4, "gathering guides have no shopping tab")
+assert(#addon.TabsFor(addon.guides.mining) == 3 and #addon.TabsFor(guide) == 5, "gathering guides have no shopping or recipes tab")
+-- Every profession with vendor recipes is a guide that offers the Recipes tab; the others do not.
+local withRecipes = 0
+for _, key in ipairs(addon.guideOrder) do
+    local g, offers = addon.guides[key], false
+    for _, tab in ipairs(addon.TabsFor(g)) do offers = offers or tab.key == "recipes" end
+    assert(offers == (addon.recipes[g.skillLine] ~= nil), key .. " recipes tab")
+    if offers then withRecipes = withRecipes + 1 end
+end
+assert(withRecipes == 7, "recipes tab in 7 guides")
 local gather = addon.BuildPages(addon.guides.mining, "leveling")[1].blocks[3]
 assert(gather.title:find("^Copper Vein") and not gather.body:find("Materials", 1, true), "gathering step has no count or materials")
 
@@ -96,7 +106,7 @@ assert(addon.TierForSkill(guide, 1) == 1 and addon.TierForSkill(guide, 75) == 2)
 assert(addon.TierForSkill(guide, 214) == 3 and addon.TierForSkill(guide, 300) == 4 and addon.TierForSkill(guide, nil) == nil)
 
 local counts = { leveling = 4, shopping = 3, trainers = 3, extras = 4 }
-for _, tab in ipairs(addon.tabs) do assert(#addon.BuildPages(guide, tab.key) == counts[tab.key], tab.key .. " page count") end
+for key, count in pairs(counts) do assert(#addon.BuildPages(guide, key) == count, key .. " page count") end
 local first = addon.BuildPages(guide, "leveling")[2].blocks[2]
 assert(first.title == "5x Silver Rod" and first.badge == "75-80" and first.body:find("5x Silver Bar, 10x Rough Grinding Stone", 1, true))
 
@@ -116,9 +126,12 @@ assert(addon.ReadSkill(164) == nil)
 GetLocale = function() return "esES" end
 local es = {}
 assert(loadfile("ProfGuide/Locales.lua"))("ProfGuide", es)
-for _, key in ipairs({ "Leveling", "Shopping List", "Trainers", "Extras", "Previous", "Next", "Page %d / %d", "Materials:",
-    "Alternative:", "Now", "Done", "Not learned", "Left-click: Open / close", "Drag: Move", "Professions", "Back" }) do
-    assert(rawget(es.L, key), "missing esES " .. key)
+for _, file in ipairs({ "ProfGuide", "Pages", "WritsPanel" }) do
+    local source = assert(io.open("ProfGuide/" .. file .. ".lua")):read("*a")
+    for key in source:gmatch('L%["(.-)"%]') do assert(rawget(es.L, key), "missing esES " .. key) end
+end
+for _, list in ipairs({ addon.PROFS, addon.TIERS, addon.STANDINGS }) do
+    for _, key in pairs(list) do assert(rawget(es.L, key), "missing esES " .. key) end
 end
 -- Window smoke test with permissive frame stubs: open, switch tabs, page through everything.
 local frames = {}
@@ -138,15 +151,20 @@ function frameMethods:SetEnabled(enabled) self.enabled = enabled end
 function frameMethods:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
 function frameMethods:Hide() self:SetShown(false) end
 function frameMethods:Show() self:SetShown(true) end
+function frameMethods:GetNormalTexture() return newFrame() end
 frameMethods.CreateTexture, frameMethods.CreateFontString = newFrame, newFrame
 GetLocale = function() return "enUS" end
 Minimap, UIParent, GameTooltip = newFrame(), newFrame(), newFrame()
 UISpecialFrames, SlashCmdList = {}, {}
 CreateFrame = function() local f = newFrame(); f.ScrollBar = newFrame(); return f end
 GetProfessions = function() return 1 end
+C_Item = { GetItemCount = function() return 0 end, GetItemIconByID = function() return 1 end, GetItemNameByID = function() return "Item" end }
+GetMoneyString = function(copper) return copper .. "c" end
+UnitFactionGroup = function() return "Horde" end
 GetProfessionInfo = function() return "Blacksmithing", "i", 100, 150, 0, 0, 164 end
 -- Old flat Blacksmithing pages migrate; invalid entries are dropped.
-ProfGuideDB = { tab = "shopping", pages = { shopping = 2, leveling = "bad", bogus = 9, alchemy = { extras = 2, trainers = 0 } } }
+ProfGuideDB = { tab = "shopping", pages = { shopping = 2, leveling = "bad", bogus = 9, alchemy = { extras = 2, trainers = 0 } },
+    writs = { filter = "bogus", zones = { Wetlands = true, Nowhere = true } } }
 local ui = {}
 Load(ui)
 assert(loadfile("ProfGuide/ProfGuide.lua"))("ProfGuide", ui)
@@ -185,6 +203,24 @@ assert(not tabs.shopping.shown and tabs.trainers.shown, "mining hides the shoppi
 -- Skill 100 Blacksmithing opens on the Journeyman tier.
 click(back); click(tiles.blacksmithing)
 assert(ProfGuideDB.tab == "leveling" and saved.blacksmithing.leveling == 2, "jumps to current tier")
+-- Writs view: header button, its three filters, Back returns to the guide it was opened from.
+local writs, filters = nil, {}
+for _, f in ipairs(frames) do
+    if f.text == "Writs" then writs = f end
+    if f.text == "All" or f.text == "In bags" or f.text == "Vendor items" then filters[f.text] = f end
+end
+local writDB = ProfGuideDB.writs
+assert(writDB.filter == "bogus" and writDB.zones.Wetlands and not writDB.zones.Nowhere, "valid writ zones load, unknown dropped")
+click(writs)
+assert(writs.enabled == false and back.shown and not tabs.leveling.shown, "writs view replaces the guide")
+for _, key in ipairs({ "In bags", "Vendor items", "All" }) do click(filters[key]) end
+assert(writDB.filter == "all", "writ filter saved")
+click(back)
+assert(tabs.leveling.shown and writs.enabled, "back returns to the guide")
+SlashCmdList.PROFGUIDEWRITS()
+assert(window.shown and writs.enabled == false, "/writs opens the writs view")
+click(back); click(back)
+assert(tiles.alchemy.shown and not back.shown, "back to the overview")
 SlashCmdList.PROFGUIDE()
 assert(not window.shown, "slash toggles window closed")
 print("ProfGuide data and page logic: OK")

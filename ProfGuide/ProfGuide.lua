@@ -1,18 +1,20 @@
 local _, addon = ...
 local L = addon.L
 local BOOK_ICON = "Interface\\Icons\\INV_Misc_Book_09"
+local WRIT_ICON = "Interface\\Icons\\INV_Scroll_03"
 local guide -- nil while the overview is shown
 
-local WIDTH, HEIGHT, CONTENT_W = 740, 580, 662
+local WIDTH, HEIGHT, CONTENT_W = 1000, 580, 922
 local GOLD = { 1, 0.82, 0 }
 local cardBackdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
 local anchors = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
     BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 
-local db, window, scroll, content, pager
+local db, window, scroll, content, pager, writsPanel, recipeList
 local tabButtons, pageButtons, cards, pages, tiles, guideParts = {}, {}, {}, {}, {}, {}
 -- pages[guideKey][tabKey] = page number; saved as db.pages.
-local state = { key = nil, tab = "leveling", pages = {} }
+-- writs: the Craftsman's Writs view is open (header button), over the overview or a guide.
+local state = { key = nil, tab = "leveling", pages = {}, writs = false }
 local Render
 
 local function Button(parent, text, width)
@@ -173,7 +175,7 @@ local function SelectTab(key)
     for _, tab in ipairs(addon.TabsFor(guide)) do valid = valid or tab.key == key end
     state.tab = valid and key or "leveling"
     if db then db.tab = state.tab end
-    pages = addon.BuildPages(guide, state.tab)
+    pages = state.tab == "recipes" and {} or addon.BuildPages(guide, state.tab)
     local saved = GuidePages()
     saved[state.tab] = math.max(1, math.min(saved[state.tab] or 1, #pages))
 end
@@ -209,22 +211,38 @@ end
 
 Render = function()
     if not window then return end
-    for _, tile in ipairs(tiles) do tile:SetShown(guide == nil) end
-    for _, part in ipairs(guideParts) do part:SetShown(guide ~= nil) end
+    local writs = state.writs
+    for _, tile in ipairs(tiles) do tile:SetShown(guide == nil and not writs) end
+    for _, part in ipairs(guideParts) do part:SetShown(guide ~= nil and not writs) end
+    writsPanel:SetShown(writs)
+    window.writs:SetEnabled(not writs)
+    window.back:SetShown(guide ~= nil or writs)
+    recipeList:SetShown(guide ~= nil and not writs and state.tab == "recipes")
+    if writs then
+        window.icon:SetTexture(WRIT_ICON)
+        window.name:SetText(L["Craftsman's Writs"])
+        return addon.RefreshWrits()
+    end
     if not guide then return RenderOverview() end
     window.icon:SetTexture(guide.icon)
     window.name:SetText(guide.name)
     local skill = addon.ReadSkill(guide.skillLine)
     UpdateProgress(skill)
+    local offered = {}
+    for _, tab in ipairs(addon.TabsFor(guide)) do offered[tab.key] = true end
     local x = 30
     for _, tab in ipairs(tabButtons) do
-        tab:SetShown(guide[tab.key] ~= nil or tab.key == "leveling")
+        tab:SetShown(offered[tab.key] == true)
         if tab:IsShown() then tab:SetPoint("TOPLEFT", x, -98); x = x + 154 end
         local selected = tab.key == state.tab
         tab:SetBackdropColor(selected and 0.28 or 0.1, selected and 0.2 or 0.09, selected and 0.05 or 0.07, 0.95)
         tab:SetBackdropBorderColor(selected and 1 or 0.45, selected and 0.82 or 0.34, selected and 0 or 0.16, selected and 1 or 0.7)
         tab.label:SetTextColor(selected and 1 or 0.75, selected and 0.82 or 0.7, selected and 0 or 0.55)
     end
+    -- Recipes is a table of its own: it replaces the paged cards and the pager.
+    local recipes = state.tab == "recipes"
+    for _, part in ipairs({ window.panel, scroll, pager }) do part:SetShown(not recipes) end
+    if recipes then return addon.RefreshRecipeList(recipeList, guide.skillLine) end
     local index = GuidePages()[state.tab]
     local page = pages[index]
     local y = 4
@@ -296,9 +314,16 @@ local function CreateWindow()
     subtitle:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
     subtitle:SetText(L["Based on wow-professions.com · Forever beta"])
 
+    -- Header button to the Craftsman's Writs view, always at the top right.
+    local writs = Button(window, L["Writs"], 110)
+    writs:SetPoint("TOPRIGHT", -44, -48)
+    writs:SetHeight(24)
+    writs:SetScript("OnClick", function() state.writs = true; Render() end)
+    window.writs = writs
+
     local bar = CreateFrame("Frame", nil, window, "BackdropTemplate")
     bar:SetSize(250, 20)
-    bar:SetPoint("TOPRIGHT", -44, -50)
+    bar:SetPoint("RIGHT", writs, "LEFT", -10, 0)
     bar:SetBackdrop(cardBackdrop)
     bar:SetBackdropColor(0.04, 0.04, 0.03, 0.9)
     bar:SetBackdropBorderColor(0.45, 0.34, 0.16, 1)
@@ -317,7 +342,7 @@ local function CreateWindow()
         local tileGuide = addon.guides[key]
         local tile = CreateFrame("Button", nil, window, "BackdropTemplate")
         tile:SetSize(162, 92)
-        tile:SetPoint("TOPLEFT", 31 + ((i - 1) % 4) * 172, -104 - math.floor((i - 1) / 4) * 102)
+        tile:SetPoint("TOPLEFT", 161 + ((i - 1) % 4) * 172, -104 - math.floor((i - 1) / 4) * 102)
         tile:SetBackdrop(cardBackdrop)
         tile:SetBackdropColor(0.08, 0.075, 0.055, 0.9)
         tile:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
@@ -339,8 +364,12 @@ local function CreateWindow()
     local back = Button(window, L["Back"], 70)
     back:SetPoint("RIGHT", bar, "LEFT", -10, 0)
     back:SetHeight(22)
-    back:SetScript("OnClick", function() SelectGuide(nil); Render() end)
-    guideParts[#guideParts + 1] = back
+    -- From the writs view, Back returns to where it was opened; from a guide, to the overview.
+    back:SetScript("OnClick", function()
+        if state.writs then state.writs = false else SelectGuide(nil) end
+        Render()
+    end)
+    window.back = back
 
     for i, tab in ipairs(addon.tabs) do
         local button = CreateFrame("Button", nil, window, "BackdropTemplate")
@@ -363,6 +392,13 @@ local function CreateWindow()
     panel:SetBackdropColor(0.03, 0.025, 0.02, 0.7)
     panel:SetBackdropBorderColor(0.45, 0.34, 0.16, 0.9)
     guideParts[#guideParts + 1] = panel
+    window.panel = panel
+    recipeList = addon.CreateRecipeList(window, "ProfGuideRecipeScrollFrame")
+    recipeList:SetPoint("TOPLEFT", 24, -134)
+    recipeList:SetPoint("BOTTOMRIGHT", -24, 16)
+    writsPanel = addon.CreateWritsPanel(window)
+    writsPanel:SetPoint("TOPLEFT", 24, -96)
+    writsPanel:SetPoint("BOTTOMRIGHT", -24, 16)
     scroll = CreateFrame("ScrollFrame", "ProfGuideScrollFrame", window, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 28, -132)
     scroll:SetPoint("BOTTOMRIGHT", -50, 82)
@@ -406,6 +442,7 @@ function ProfGuide_Toggle()
     if not window then CreateWindow() end
     window:SetShown(not window:IsShown())
 end
+ProfGuide_OnCompartmentClick = ProfGuide_Toggle
 
 local minimapButton = CreateFrame("Button", "ProfGuideMinimapButton", Minimap)
 minimapButton:SetSize(32, 32)
@@ -472,13 +509,18 @@ minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("SKILL_LINES_CHANGED")
+events:RegisterEvent("BAG_UPDATE_DELAYED")
+pcall(events.RegisterEvent, events, "NEW_RECIPE_LEARNED") -- the event may not exist in this client
 events:SetScript("OnEvent", function(self, event)
-    if event == "SKILL_LINES_CHANGED" then
-        if window and window:IsShown() then Render() end
+    if event ~= "PLAYER_LOGIN" then
+        -- Bag and recipe events only matter to the writs view and the Recipes tab; Render resets a guide's scroll.
+        local relevant = event == "SKILL_LINES_CHANGED" or state.writs or (guide and state.tab == "recipes")
+        if relevant and window and window:IsShown() then Render() end
         return
     end
     if type(ProfGuideDB) ~= "table" then ProfGuideDB = {} end
     db = ProfGuideDB
+    addon.LoadWritsDB(db)
     -- Keep valid saved choices; anything unexpected falls back to the defaults.
     local valid = {}
     for _, tab in ipairs(addon.tabs) do valid[tab.key] = true end
@@ -508,3 +550,12 @@ end)
 SLASH_PROFGUIDE1 = "/profguide"
 SLASH_PROFGUIDE2 = "/pg"
 SlashCmdList["PROFGUIDE"] = ProfGuide_Toggle
+-- WritBoard's commands, kept after the merge: they open straight on the writs view.
+SLASH_PROFGUIDEWRITS1 = "/writs"
+SLASH_PROFGUIDEWRITS2 = "/writboard"
+SlashCmdList["PROFGUIDEWRITS"] = function()
+    if not db then return end
+    if not window then CreateWindow() end
+    state.writs = true
+    if window:IsShown() then Render() else window:Show() end
+end

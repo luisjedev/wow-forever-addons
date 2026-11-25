@@ -20,6 +20,8 @@ addon.tabs = {
     { key = "shopping", label = L["Shopping List"] },
     { key = "trainers", label = L["Trainers"] },
     { key = "extras", label = L["Extras"] },
+    -- Vendor recipes bought with Merchant's Favor (Data/Recipes.lua), drawn by WritsPanel.lua, not as pages.
+    { key = "recipes", label = L["Recipes"] },
 }
 
 -- Current skill in the guide's profession, or nil when unknown or not learned.
@@ -146,17 +148,19 @@ function addon.ShowOnMap(pin)
     end))
 end
 
--- Tabs that have content in this guide (gathering guides have no shopping list, for example).
 -- Vendor pin for the player's faction; nil for drops, quests or factions without one.
 function addon.SourcePin(source)
     local faction = UnitFactionGroup and UnitFactionGroup("player")
     return source and source.pins and faction and source.pins[faction]
 end
 
+-- Tabs that have content in this guide (gathering guides have no shopping list, for example).
 function addon.TabsFor(guide)
     local list = {}
     for _, tab in ipairs(addon.tabs) do
-        if tab.key == "leveling" or guide[tab.key] then list[#list + 1] = tab end
+        local offered = tab.key == "leveling" or guide[tab.key]
+            or tab.key == "recipes" and addon.recipes and addon.recipes[guide.skillLine]
+        if offered then list[#list + 1] = tab end
     end
     return list
 end

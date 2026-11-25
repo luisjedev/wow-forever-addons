@@ -333,13 +333,6 @@ addon.RECIPE_VENDORS = {
     [185] = { "Kalsey Sanden", "Aza'bek" }, [333] = { "Alynsia", "Beneris" }, [202] = { "Fritz Fizzle", "Fizzlefuse" },
     [165] = { "Daniel Stitchsong", "Pawani" }, [197] = { "Mivin Shadowweave", "Jim'bek" },
 }
-addon.RECIPE_ICONS = {
-    [171] = "Interface\\Icons\\Trade_Alchemy", [164] = "Interface\\Icons\\Trade_BlackSmithing",
-    [185] = "Interface\\Icons\\INV_Misc_Food_15", [333] = "Interface\\Icons\\Trade_Engraving",
-    [202] = "Interface\\Icons\\Trade_Engineering", [165] = "Interface\\Icons\\Trade_LeatherWorking",
-    [197] = "Interface\\Icons\\Trade_Tailoring", other = "Interface\\Icons\\INV_Misc_Bag_10",
-}
-addon.RECIPE_ORDER = { 171, 164, 185, 333, 202, 165, 197, "other" }
 
 -- Other items bought with Merchant's Favor: { item ID, English name, skill (300 = profession maxed), reputation, cost }.
 -- Each certification is sold by its profession's recipe vendor.

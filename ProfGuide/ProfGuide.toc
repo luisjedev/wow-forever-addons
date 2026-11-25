@@ -1,8 +1,10 @@
 ## Interface: 16001
 ## Title: ProfGuide
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
-## Notes: In-game profession leveling guides. All 13 WoW Forever profession guides, 1-300.
-## Version: 0.1.0-snapshot-4
+## Notes: Profession leveling guides for all 13 WoW Forever professions (1-300), the camp vendors' recipes, and every Craftsman's Writ with its reputation and auction price.
+## Version: 0.1.0-snapshot-5
+## OptionalDeps: Auctionator
+## AddonCompartmentFunc: ProfGuide_OnCompartmentClick
 ## SavedVariablesPerCharacter: ProfGuideDB
 
 Locales.lua
@@ -20,4 +22,8 @@ Data\FirstAid.lua
 Data\Cooking.lua
 Data\Fishing.lua
 Data\Lockpicking.lua
+Data\Writs.lua
+Data\Recipes.lua
+Writs.lua
+WritsPanel.lua
 ProfGuide.lua
