@@ -36,7 +36,7 @@ end
 
 local function Have(writ)
     local total = 0
-    for _, id in ipairs(writ.ids) do total = total + (GetItemCount(id, true) or 0) end
+    for _, id in ipairs(writ.ids) do total = total + (C_Item.GetItemCount(id, true) or 0) end
     return total
 end
 
@@ -110,24 +110,35 @@ local function Refresh()
     if not (window and window:IsShown()) then return end
     local owned = ScanBags()
     local list = addon.Rows(filter, owned)
-    for i, writ in ipairs(list) do
+    local entries = addon.Grouped(list)
+    for i, writ in ipairs(entries) do
         local row = rows[i] or Row(i)
-        row.writ = writ
-        row.icon:SetTexture(writ.ids[1] and GetItemIcon(writ.ids[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
-        local held = owned[writ.item]
-        local name = (writ.qty and writ.qty > 1 and (writ.qty .. " x ") or "") .. writ.item
-        row.item:SetText(held and ("|cff33ff33" .. held .. "x|r " .. name) or name)
-        if writ.ids[1] and Have(writ) >= (writ.qty or 1) then row.item:SetTextColor(0.4, 1, 0.4) else row.item:SetTextColor(1, 1, 1) end
-        row.prof:SetText(writ.prof and L[addon.PROFS[writ.prof]] or "")
-        row.rep:SetText(writ.tier and addon.REP[writ.tier] or "?")
-        row.to:SetText(writ.npc and (writ.npc .. " · " .. writ.zone) or writ.zone and (L["Unknown"] .. " · " .. writ.zone) or L["Unknown"])
-        if writ.npc then row.to:SetTextColor(1, 1, 1) else row.to:SetTextColor(0.6, 0.6, 0.6) end
-        row.price:SetText(writ.ids[1] and Money(addon.Price(writ, Price)) or "")
-        row.map:SetShown(writ.pin ~= nil)
+        local header = writ.ids == nil
+        row.writ = not header and writ or nil
+        for _, part in ipairs({ row.icon, row.prof, row.rep, row.to, row.price }) do part:SetShown(not header) end
+        row.stripe:SetColorTexture(0.45, 0.34, 0.16, header and 0.35 or (i % 2 == 0 and 0.04 or 0))
+        row.item:SetPoint("LEFT", header and 6 or COL[1], 0)
+        if header then
+            row.item:SetText(writ.zone or L["Unknown"])
+            row.item:SetTextColor(1, 0.82, 0)
+            row.map:Hide()
+        else
+            row.icon:SetTexture(writ.ids[1] and C_Item.GetItemIconByID(writ.ids[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
+            local held = owned[writ.item]
+            local name = (writ.qty and writ.qty > 1 and (writ.qty .. " x ") or "") .. writ.item
+            row.item:SetText(held and ("|cff33ff33" .. held .. "x|r " .. name) or name)
+            if writ.ids[1] and Have(writ) >= (writ.qty or 1) then row.item:SetTextColor(0.4, 1, 0.4) else row.item:SetTextColor(1, 1, 1) end
+            row.prof:SetText(writ.prof and L[addon.PROFS[writ.prof]] or "")
+            row.rep:SetText(writ.tier and addon.REP[writ.tier] or "?")
+            row.to:SetText(writ.npc or L["Unknown"])
+            if writ.npc then row.to:SetTextColor(1, 1, 1) else row.to:SetTextColor(0.6, 0.6, 0.6) end
+            row.price:SetText(writ.ids[1] and Money(addon.Price(writ, Price)) or "")
+            row.map:SetShown(writ.pin ~= nil)
+        end
         row:Show()
     end
-    for i = #list + 1, #rows do rows[i]:Hide() end
-    content:SetHeight(math.max(1, #list * ROW_H))
+    for i = #entries + 1, #rows do rows[i]:Hide() end
+    content:SetHeight(math.max(1, #entries * ROW_H))
     local count, rep, cost, unpriced = addon.Summary(owned, Price)
     summary:SetText(L["Writs in bags: %d · %d reputation · cost %s"]:format(count, rep, Money(cost))
         .. (unpriced > 0 and ("  |cff999999(" .. unpriced .. " ?)|r") or ""))

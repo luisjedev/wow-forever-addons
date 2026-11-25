@@ -45,3 +45,21 @@ assert(addon.Price(writ("Crafted Solid Shot"), lookup) == 600)
 local count, rep, cost, unpriced = addon.Summary(owned, lookup)
 assert(count == 4 and rep == 225 and cost == 2700 and unpriced == 1, table.concat({ count, rep, cost, unpriced }, ","))
 print("WritBoard ok")
+
+-- Grouping: zone headers, highest-reputation zones first, unknown zone last, writs by reputation inside.
+local grouped = addon.Grouped(addon.Rows("all", {}))
+assert(#grouped > 150 and grouped[1].ids == nil and grouped[#grouped].ids ~= nil)
+local zone, last, seenUnknown, headers = nil, nil, false, 0
+for _, e in ipairs(grouped) do
+    if e.ids == nil then
+        headers = headers + 1
+        assert(not seenUnknown, "unknown zone is last")
+        seenUnknown = e.zone == false
+        zone, last = e.zone, 9
+    else
+        assert((e.zone or false) == zone and e.tier <= last, e.item)
+        last = e.tier
+    end
+end
+assert(seenUnknown and grouped[1].zone and grouped[2].tier == 3, "artisan zones first")
+print("WritBoard grouping ok")

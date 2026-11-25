@@ -60,3 +60,31 @@ function addon.Summary(owned, lookup)
     end
     return count, rep, cost, unpriced
 end
+
+-- Groups writs by recipient zone: zones with the highest reputation first (then by name, unknown zone last),
+-- writs inside a zone from most to least reputation. Returns entries: { zone = name } headers and writs.
+function addon.Grouped(list)
+    local zones, order = {}, {}
+    for _, writ in ipairs(list) do
+        local zone = writ.zone or false
+        if not zones[zone] then zones[zone] = {}; order[#order + 1] = zone end
+        table.insert(zones[zone], writ)
+    end
+    local function Best(zone) return zones[zone][1].tier or 0 end
+    local function ByRep(a, b)
+        if (a.tier or 0) ~= (b.tier or 0) then return (a.tier or 0) > (b.tier or 0) end
+        return a.item < b.item
+    end
+    for _, zone in ipairs(order) do table.sort(zones[zone], ByRep) end
+    table.sort(order, function(a, b)
+        if not a or not b then return b == false and a ~= false end
+        if Best(a) ~= Best(b) then return Best(a) > Best(b) end
+        return a < b
+    end)
+    local entries = {}
+    for _, zone in ipairs(order) do
+        entries[#entries + 1] = { zone = zone }
+        for _, writ in ipairs(zones[zone]) do entries[#entries + 1] = writ end
+    end
+    return entries
+end
