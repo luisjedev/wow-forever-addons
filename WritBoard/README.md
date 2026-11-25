@@ -8,7 +8,8 @@ Open it with `/writs` (or `/writboard`), or click **WritBoard** in the minimap's
 - Writs are grouped by the zone where you deliver them. Zones go from best to worst value: the total price of their priced writs plus 50 silver for the trip, divided by the reputation they give. Doing several writs in one zone shares the trip, so busy zones usually come first. Zones without prices follow, and writs whose recipient is unknown are grouped at the end.
 - Each zone header shows the reputation, cost per reputation point and total cost of its priced writs.
 - **Rep** is the reputation per delivery: 75 Journeyman, 125 Expert, 200 Artisan.
-- **Deliver to** names the recipient. The map button places a waypoint where coordinates are published (Journeyman orders). Many Expert and Artisan recipients are still unknown.
+- **Deliver to** names the recipient. Many Expert and Artisan recipients are still unknown.
+- **Map** opens the delivery zone's map. A colored button also places a waypoint on the recipient (Journeyman orders, where coordinates are published); a grey one only opens the zone, since the exact spot is unknown.
 - **Item price** is Auctionator's latest price for the requested item, times the quantity asked. **Writ price** is the price of the writ itself, and **Total** adds both, so you can see what buying the writ and its items would cost. Scan the auction house with Auctionator to fill them in. Without Auctionator they show a dash.
 - Inside each zone, writs go from the cheapest total to the most expensive; writs missing a price go last.
 - An item name in green means you already have enough of it in your bags or bank. Hover a row for the item tooltip, tier, skill and how many you have.

@@ -1,3 +1,7 @@
+# WritBoard 0.1.0-snapshot-7
+
+- New **Map** column. Every writ with a known zone gets a map button: in color it opens the map with a waypoint on the recipient; greyed out it opens the zone map, as the exact spot is not published yet. Riverglades (new in Forever) has no map button yet.
+
 # WritBoard 0.1.0-snapshot-6
 
 - Zones are ordered by value: the cost per reputation point of doing all their priced writs, plus a fixed 50 silver for the trip. A zone with several writs shares one trip, so 3 writs for 1g 50s (about 89 copper per reputation point) come before a single writ for 70 silver (160 copper). Zones without prices follow, and the unknown zone stays last.

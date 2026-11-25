@@ -3,7 +3,8 @@ local L = addon.L
 
 local WIDTH, HEIGHT, ROW_H, LIST_W = 1000, 560, 24, 930
 -- Column x offsets inside a row: item, profession, reputation, recipient, item price, writ price, total.
-local COL = { 28, 260, 360, 410, 610, 720, 830 }
+local COL = { 28, 250, 345, 395, 610, 720, 830 }
+local MAP_X = 575 -- map column, between the recipient and the prices
 local PRICE_W = 100
 local db, window, content, summary
 local rows, buttons = {}, {}
@@ -41,13 +42,16 @@ local function Have(writ)
     return total
 end
 
--- Marks the recipient on the world map and opens it; same helper as ProfGuide.
-local function ShowOnMap(pin)
-    if type(pin) ~= "table" or not (C_Map and C_Map.SetUserWaypoint and UiMapPoint) then return end
+-- Opens the delivery zone's map, with a waypoint on the recipient when coordinates are known (as in ProfGuide).
+local function ShowOnMap(writ)
+    local pin, mapID = writ.pin, writ.pin and writ.pin[1] or addon.ZONE_MAPS[writ.zone]
+    if not mapID then return end
     pcall(function()
-        C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(pin[1], pin[2] / 100, pin[3] / 100))
-        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
-        if OpenWorldMap then OpenWorldMap(pin[1]) else ToggleWorldMap() end
+        if pin and C_Map and C_Map.SetUserWaypoint and UiMapPoint then
+            C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(pin[1], pin[2] / 100, pin[3] / 100))
+            if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+        end
+        if OpenWorldMap then OpenWorldMap(mapID) else ToggleWorldMap() end
     end)
 end
 
@@ -87,20 +91,23 @@ local function Row(i)
     row.item = Text(row, "GameFontHighlight", COL[1], COL[2] - COL[1] - 6)
     row.prof = Text(row, "GameFontHighlightSmall", COL[2], COL[3] - COL[2] - 6)
     row.rep = Text(row, "GameFontNormal", COL[3], COL[4] - COL[3] - 6)
-    row.to = Text(row, "GameFontHighlightSmall", COL[4], COL[5] - COL[4] - 30)
+    row.to = Text(row, "GameFontHighlightSmall", COL[4], MAP_X - COL[4] - 6)
     row.price = Text(row, "GameFontHighlightSmall", COL[5], PRICE_W)
     row.writPrice = Text(row, "GameFontHighlightSmall", COL[6], PRICE_W)
     row.total = Text(row, "GameFontHighlight", COL[7], PRICE_W)
     for _, text in ipairs({ row.price, row.writPrice, row.total }) do text:SetJustifyH("RIGHT") end
     row.map = CreateFrame("Button", nil, row)
     row.map:SetSize(18, 18)
-    row.map:SetPoint("LEFT", COL[5] - 26, 0)
+    row.map:SetPoint("LEFT", MAP_X, 0)
     row.map:SetNormalTexture("Interface\\Icons\\INV_Misc_Map_01")
     row.map:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    row.map:SetScript("OnClick", function(self) ShowOnMap(self:GetParent().writ.pin) end)
+    row.map:SetScript("OnClick", function(self) ShowOnMap(self:GetParent().writ) end)
     row.map:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["Show on map"])
+        local writ = self:GetParent().writ
+        GameTooltip:SetText(writ.zone)
+        GameTooltip:AddLine(writ.pin and L["Show on map"] or L["Open the zone map (exact spot not published yet)"], 1, 1, 1, true)
+        GameTooltip:Show()
     end)
     row.map:SetScript("OnLeave", GameTooltip_Hide)
     row:SetScript("OnEnter", RowTooltip)
@@ -150,7 +157,8 @@ local function Refresh()
             row.price:SetText(writ.ids[1] and Money(addon.Price(writ, Price)) or "")
             row.writPrice:SetText(writ.writ and Money(addon.WritPrice(writ, Price)) or "")
             row.total:SetText(writ.writ and Money(addon.Total(writ, Price)) or "")
-            row.map:SetShown(writ.pin ~= nil)
+            row.map:SetShown(writ.pin ~= nil or addon.ZONE_MAPS[writ.zone] ~= nil)
+            row.map:GetNormalTexture():SetDesaturated(writ.pin == nil)
         end
         row:Show()
     end
@@ -211,6 +219,9 @@ local function CreateWindow()
         if i >= 5 then text:SetWidth(PRICE_W); text:SetJustifyH("RIGHT") end
         text:SetText(label)
     end
+    local mapLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    mapLabel:SetPoint("TOPLEFT", 24 + MAP_X - 4, -66)
+    mapLabel:SetText(L["Map"])
 
     local scroll = CreateFrame("ScrollFrame", "WritBoardScrollFrame", window, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 24, -84)

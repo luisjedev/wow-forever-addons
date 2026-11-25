@@ -96,3 +96,10 @@ assert(zones[1].zone == "A" and zones[1].count == 3 and zones[1].cost == 15000 a
 assert(zones[5].zone == "B" and zones[7].zone == "C" and zones[7].score == nil, "zone order")
 assert(addon.ZoneScore(15000, 225) < addon.ZoneScore(7000, 75) and addon.ZoneScore(0, 0) == nil)
 print("WritBoard zone order ok")
+
+-- Every delivery zone except Riverglades (new in Forever) has a map for the map column.
+for _, w in ipairs(addon.writs) do
+    assert(not w.zone or w.zone == "Riverglades" or addon.ZONE_MAPS[w.zone], "no map for " .. tostring(w.zone))
+    assert(not w.pin or w.pin[1] == addon.ZONE_MAPS[w.zone], "pin map matches zone for " .. w.item)
+end
+print("WritBoard maps ok")

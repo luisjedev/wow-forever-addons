@@ -5,6 +5,17 @@ addon.REP = { 75, 125, 200 } -- Azeroth Commerce Authority reputation per delive
 addon.TIERS = { "Journeyman", "Expert", "Artisan" }
 addon.PROFS = { [171] = "Alchemy", [164] = "Blacksmithing", [202] = "Engineering", [165] = "Leatherworking", [197] = "Tailoring" }
 
+-- Classic uiMapIDs of the delivery zones, for the map column. Riverglades (new in Forever) has no known ID yet.
+addon.ZONE_MAPS = {
+    ["Alterac Mountains"] = 1416, ["Arathi Highlands"] = 1417, ["Badlands"] = 1418, ["Blasted Lands"] = 1419,
+    ["Western Plaguelands"] = 1422, ["Eastern Plaguelands"] = 1423, ["Hillsbrad Foothills"] = 1424, ["The Hinterlands"] = 1425,
+    ["Searing Gorge"] = 1427, ["Burning Steppes"] = 1428, ["Deadwind Pass"] = 1430, ["Duskwood"] = 1431,
+    ["Stranglethorn Vale"] = 1434, ["Swamp of Sorrows"] = 1435, ["Wetlands"] = 1437, ["Ashenvale"] = 1440,
+    ["Thousand Needles"] = 1441, ["Stonetalon Mountains"] = 1442, ["Desolace"] = 1443, ["Feralas"] = 1444,
+    ["Dustwallow Marsh"] = 1445, ["Tanaris"] = 1446, ["Azshara"] = 1447, ["Felwood"] = 1448, ["Un'Goro Crater"] = 1449,
+    ["Moonglade"] = 1450, ["Silithus"] = 1451, ["Winterspring"] = 1452,
+}
+
 local PREFIX = "Craftsman's Writ: "
 
 -- shortcut: matches the English writ name only; other client languages need their own prefix here.
