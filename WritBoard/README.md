@@ -10,6 +10,7 @@ Open it with `/writs` (or `/writboard`), or click **WritBoard** in the minimap's
 - **Deliver to** names the recipient. The map button places a waypoint where coordinates are published (Journeyman orders). Many Expert and Artisan recipients are still unknown.
 - **Auction** is Auctionator's latest price for the requested item, times the quantity asked. Scan the auction house with Auctionator to fill it in. Without Auctionator it shows a dash.
 - An item name in green means you already have enough of it in your bags or bank. Hover a row for the item tooltip, tier, skill and how many you have.
+- **Shift-click** a row to link the requested item in chat or drop it into a search box, such as the auction house's. **Ctrl-click** previews it.
 - The bottom line adds up the writs in your bags: how many, total reputation and total cost.
 
 ## Limits

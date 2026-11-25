@@ -101,6 +101,13 @@ local function Row(i)
     end)
     row.map:SetScript("OnLeave", GameTooltip_Hide)
     row:SetScript("OnEnter", RowTooltip)
+    -- Shift-click links the item into chat or any search box (auction house); Ctrl-click previews it.
+    row:SetScript("OnClick", function(self)
+        local writ = self.writ
+        if not writ or not IsModifiedClick() then return end
+        local link = writ.ids[1] and select(2, C_Item.GetItemInfo(writ.ids[1]))
+        if link then HandleModifiedItemClick(link) elseif IsModifiedClick("CHATLINK") then ChatEdit_InsertLink(writ.item) end
+    end)
     row:SetScript("OnLeave", GameTooltip_Hide)
     rows[i] = row
     return row

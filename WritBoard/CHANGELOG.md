@@ -1,3 +1,7 @@
+# WritBoard 0.1.0-snapshot-4
+
+- Shift-click a writ to link its requested item in chat or put it in a search box such as the auction house's; Ctrl-click previews it. If the item is not cached yet, Shift-click inserts its name.
+
 # WritBoard 0.1.0-snapshot-3
 
 - The list is grouped by recipient zone instead of by profession. Zones with Artisan orders come first and unknown recipients last; inside each zone, writs go from most to least reputation.
