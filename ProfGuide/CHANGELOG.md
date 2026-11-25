@@ -1,3 +1,9 @@
+# ProfGuide 0.1.0-snapshot-6
+
+- The Recipes tab groups recipes by what they craft. Armor types come first (Cloth, Leather, Mail, Plate, Shields…), then weapon types (One-Handed Maces, Polearms…), then other item types (potions, elixirs…), and enchants last. Each group header shows how many recipes it has, and inside a group recipes stay ordered by skill. Group names come from the client, so they follow its language.
+
+Lua syntax and the checks pass. Not yet verified in the game.
+
 # ProfGuide 0.1.0-snapshot-5
 
 - **WritBoard is now part of ProfGuide.** Uninstall the separate WritBoard addon.

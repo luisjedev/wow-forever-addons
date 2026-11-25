@@ -134,3 +134,17 @@ end
 assert(profs == 7 and recipeCount == 308 and #addon.recipes[165] == 81 and #addon.recipes[197] == 67, "recipe counts")
 for _, item in ipairs(addon.vendorItems) do assert(item[4] >= 0 and item[4] <= 4 and item[5] > 0, item[2]) end
 assert(addon.CountKnown(addon.recipes[185], function(spell) return spell == 1249963 or spell == 1 end) == 1)
+
+-- Recipe groups: armor types, then weapon types, then other classes, unknown crafts, enchants last; data order inside.
+local kinds = { [10] = { 2, 4, "One-Handed Maces" }, [11] = { 4, 4, "Plate" }, [12] = { 4, 3, "Mail" },
+    [13] = { 0, 0, "Consumable" }, [14] = { 2, 6, "Polearms" } }
+local recipes = { { 1, "Mace A", 50, 0, 1, 10 }, { 2, "Enchant X", 60, 0, 1 }, { 3, "Plate A", 70, 0, 1, 11 },
+    { 4, "Unknown", 80, 0, 1, 99 }, { 5, "Mail A", 90, 0, 1, 12 }, { 6, "Polearm", 95, 0, 1, 14 },
+    { 7, "Potion", 99, 0, 1, 13 }, { 8, "Plate B", 100, 0, 1, 11 } }
+local groups = addon.RecipeGroups(recipes, function(id) local k = kinds[id]; if k then return k[1], k[2], k[3] end end,
+    { enchants = "Enchants", other = "Other" })
+local seen = {}
+for _, e in ipairs(groups) do seen[#seen + 1] = e.header and (e.header .. ":" .. e.count) or e[2] end
+assert(table.concat(seen, ",") == "Mail:1,Mail A,Plate:2,Plate A,Plate B,One-Handed Maces:1,Mace A,Polearms:1,Polearm,"
+    .. "Consumable:1,Potion,Other:1,Unknown,Enchants:1,Enchant X", table.concat(seen, ","))
+print("Writs recipe groups ok")

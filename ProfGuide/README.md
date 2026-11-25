@@ -7,7 +7,7 @@ In-game profession leveling guides for **WoW Forever**, plus the camp vendors' r
 - **Leveling:** one page per tier; if you know the profession, it opens on your current tier and marks steps *Now* / *Done*. Lockpicking is not a profession entry, so its skill is not read.
 - **Shopping List, Trainers, Extras:** paged with the buttons at the bottom. Gathering guides have no shopping list.
 - **Extras** opens on how each rank (Apprentice to Artisan) is learned: trainer, quest or book, with a map button when it is in one place.
-- **Recipes** (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking, Tailoring): the recipes sold by the Azeroth Commerce Authority / Durotar Supply camp vendors for Merchant's Favor, with profession skill, reputation needed, cost and a green check for the ones you know. Hover for the recipe tooltip; hold Shift to compare the crafted item with your equipped gear; shift-click links the recipe in chat.
+- **Recipes** (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking, Tailoring): the recipes sold by the Azeroth Commerce Authority / Durotar Supply camp vendors for Merchant's Favor, grouped by what they craft (armor type, weapon type, other item types, enchants), with profession skill, reputation needed, cost and a green check for the ones you know. Hover for the recipe tooltip; hold Shift to compare the crafted item with your equipped gear; shift-click links the recipe in chat.
 - Interface chrome is translated (Spanish for now); guide content is English only.
 
 ## Craftsman's Writs

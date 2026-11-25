@@ -158,7 +158,8 @@ Minimap, UIParent, GameTooltip = newFrame(), newFrame(), newFrame()
 UISpecialFrames, SlashCmdList = {}, {}
 CreateFrame = function() local f = newFrame(); f.ScrollBar = newFrame(); return f end
 GetProfessions = function() return 1 end
-C_Item = { GetItemCount = function() return 0 end, GetItemIconByID = function() return 1 end, GetItemNameByID = function() return "Item" end }
+C_Item = { GetItemCount = function() return 0 end, GetItemIconByID = function() return 1 end, GetItemNameByID = function() return "Item" end,
+    GetItemInfoInstant = function(id) return id, "Armor", "Plate", "INVTYPE_CHEST", 1, 4, 4 end }
 GetMoneyString = function(copper) return copper .. "c" end
 UnitFactionGroup = function() return "Horde" end
 GetProfessionInfo = function() return "Blacksmithing", "i", 100, 150, 0, 0, 164 end

@@ -137,8 +137,17 @@ local function Standing(rep)
     return _G["FACTION_STANDING_LABEL" .. (rep + 4)] or L[addon.STANDINGS[rep + 1]]
 end
 
+-- Class, subclass and localized subtype name of a crafted item, for RecipeGroups; nil when the client does not know it.
+local function ItemKind(id)
+    local getInfo = C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant
+    if not getInfo then return end
+    local ok, _, _, subType, _, _, class, sub = pcall(getInfo, id)
+    if ok and type(class) == "number" and type(sub) == "number" and type(subType) == "string" then return class, sub, subType end
+end
+
 -- Recipe tooltip; with Shift held, the crafted item instead, compared with what you have equipped.
 local function RecipeTooltip(row)
+    if not row.id then return end -- group header
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     if row.item then
         GameTooltip:SetItemByID(row.id)
@@ -160,9 +169,8 @@ local function RecipeRow(list, i)
     row:SetSize(LIST_W, ROW_H)
     row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    local stripe = row:CreateTexture(nil, "BACKGROUND")
-    stripe:SetAllPoints()
-    stripe:SetColorTexture(1, 1, 1, i % 2 == 0 and 0.04 or 0)
+    row.stripe = row:CreateTexture(nil, "BACKGROUND")
+    row.stripe:SetAllPoints()
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(20, 20)
     row.icon:SetPoint("LEFT", 4, 0)
@@ -184,7 +192,7 @@ local function RecipeRow(list, i)
         GameTooltip_Hide()
     end)
     row:SetScript("OnClick", function(self)
-        if not IsModifiedClick() then return end
+        if not self.id or not IsModifiedClick() then return end
         if self.item then
             local link = select(2, C_Item.GetItemInfo(self.id))
             if link then HandleModifiedItemClick(link) end
@@ -233,25 +241,39 @@ function addon.RefreshRecipeList(list, key)
         list.sub:SetText(vendor .. " · " .. L["%d / %d learned"]:format(addon.CountKnown(entries, Known), #entries))
     end
     list.learnedLabel:SetShown(not isItem)
-    for i, entry in ipairs(entries) do
+    local rowsData = isItem and entries
+        or addon.RecipeGroups(entries, ItemKind, { enchants = L["Enchants"], other = L["Other"] })
+    for i, entry in ipairs(rowsData) do
         local row = list.rows[i] or RecipeRow(list, i)
-        local id, english, skill, rep, cost, craft = unpack(entry)
-        row.id, row.item, row.craft = id, isItem, not isItem and craft or nil
-        local name = isItem and C_Item.GetItemNameByID(id) or (not isItem and C_Spell and C_Spell.GetSpellName(id)) or english
-        local icon = isItem and C_Item.GetItemIconByID(id) or (not isItem and C_Spell and C_Spell.GetSpellTexture(id))
-        row.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        row.name:SetText(name)
-        row.skill:SetText(skill > 0 and skill or "")
-        row.rep:SetText(Standing(rep))
-        row.cost:SetText(cost)
-        local learned = not isItem and Known(id)
-        if learned then row.name:SetTextColor(0.4, 1, 0.4) else row.name:SetTextColor(1, 1, 1) end
-        row.learned:SetShown(not isItem)
-        row.learned:SetTexture(learned and "Interface\\RaidFrame\\ReadyCheck-Ready" or "Interface\\RaidFrame\\ReadyCheck-NotReady")
-        row:Show()
+        local header = entry.header ~= nil
+        for _, part in ipairs({ row.icon, row.skill, row.rep, row.cost }) do part:SetShown(not header) end
+        row.stripe:SetColorTexture(0.45, 0.34, 0.16, header and 0.35 or (i % 2 == 0 and 0.04 or 0))
+        row.name:SetPoint("LEFT", header and 6 or RCOL[1], 0)
+        if header then
+            row.id, row.item, row.craft = nil, nil, nil
+            row.name:SetText(entry.header .. " (" .. entry.count .. ")")
+            row.name:SetTextColor(1, 0.82, 0)
+            row.learned:Hide()
+            row:Show()
+        else
+            local id, english, skill, rep, cost, craft = unpack(entry)
+            row.id, row.item, row.craft = id, isItem, not isItem and craft or nil
+            local name = isItem and C_Item.GetItemNameByID(id) or (not isItem and C_Spell and C_Spell.GetSpellName(id)) or english
+            local icon = isItem and C_Item.GetItemIconByID(id) or (not isItem and C_Spell and C_Spell.GetSpellTexture(id))
+            row.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.name:SetText(name)
+            row.skill:SetText(skill > 0 and skill or "")
+            row.rep:SetText(Standing(rep))
+            row.cost:SetText(cost)
+            local learned = not isItem and Known(id)
+            if learned then row.name:SetTextColor(0.4, 1, 0.4) else row.name:SetTextColor(1, 1, 1) end
+            row.learned:SetShown(not isItem)
+            row.learned:SetTexture(learned and "Interface\\RaidFrame\\ReadyCheck-Ready" or "Interface\\RaidFrame\\ReadyCheck-NotReady")
+            row:Show()
+        end
     end
-    for i = #entries + 1, #list.rows do list.rows[i]:Hide() end
-    list.content:SetHeight(math.max(1, #entries * ROW_H))
+    for i = #rowsData + 1, #list.rows do list.rows[i]:Hide() end
+    list.content:SetHeight(math.max(1, #rowsData * ROW_H))
 end
 
 function addon.RefreshWrits()

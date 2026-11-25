@@ -72,6 +72,8 @@ local translations = {
         ["Writs"] = "Contratos",
         ["Craftsman's Writs"] = "Contratos de artesano",
         ["Vendor items"] = "Objetos del vendedor",
+        ["Enchants"] = "Encantamientos",
+        ["Other"] = "Otros",
     },
 }
 translations.esMX = translations.esES

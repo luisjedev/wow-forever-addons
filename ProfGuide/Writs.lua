@@ -167,3 +167,38 @@ function addon.Grouped(list, lookup)
     end
     return entries
 end
+
+-- Groups vendor recipes by what they craft: armor types, then weapon types, then other item types,
+-- then crafts the client does not know, and enchants (no crafted item) last. Inside a group, data order (by skill).
+-- kind(itemID) -> classID, subclassID, subtype name (from the client, so localized); nil when unknown.
+-- Returns { header = name, count = n } entries, each followed by its recipes.
+local CLASS_RANK = { [4] = 1, [2] = 2 } -- armor (4) first, weapons (2) second, other classes after
+function addon.RecipeGroups(list, kind, labels)
+    local groups, order = {}, {}
+    for _, recipe in ipairs(list) do
+        local key, rank, name
+        local class, sub, subName
+        if recipe[6] then class, sub, subName = kind(recipe[6]) end
+        if not recipe[6] then
+            key, rank, name = "enchant", 90000, labels.enchants
+        elseif not class then
+            key, rank, name = "other", 80000, labels.other
+        else
+            key, rank, name = class .. ":" .. sub, (CLASS_RANK[class] or 3) * 10000 + class * 100 + sub, subName
+        end
+        local group = groups[key]
+        if not group then
+            group = { header = name, rank = rank, recipes = {} }
+            groups[key] = group
+            order[#order + 1] = group
+        end
+        group.recipes[#group.recipes + 1] = recipe
+    end
+    table.sort(order, function(a, b) return a.rank < b.rank end)
+    local entries = {}
+    for _, group in ipairs(order) do
+        entries[#entries + 1] = { header = group.header, count = #group.recipes }
+        for _, recipe in ipairs(group.recipes) do entries[#entries + 1] = recipe end
+    end
+    return entries
+end
