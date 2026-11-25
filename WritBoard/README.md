@@ -16,9 +16,11 @@ Open it with `/writs` (or `/writboard`), or click **WritBoard** in the minimap's
 - An item name in green means you already have enough of it in your bags or bank. Hover a row for the item tooltip, tier, skill and how many you have.
 - **Shift-click** a row to link the requested item in chat or drop it into a search box, such as the auction house's. **Ctrl-click** previews it.
 - The bottom line adds up the writs in your bags: how many, total reputation and total cost.
+- **Recipes** shows one tile per profession sold at the camps (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking, Tailoring) plus **Other items** (tabards, Pack Kodo, Packmule Treat, Forger's Quill, certifications…). Each tile counts how many of its recipes you know. Open one to see all 308 recipes with the profession skill, the reputation needed, the cost in Merchant's Favor and a green check for the ones you have learned. Hover for the recipe tooltip; shift-click links it in chat.
 
 ## Limits
 
+- Recipe and vendor data comes from [wow-professions.com](https://www.wow-professions.com/forever/merchants-favor-durotar-supply-azeroth-commerce) (November 25, 2026). The learned check reads the recipe's crafting spell and still needs confirming in the game.
 - Writ data comes from community guides ([conquestcapped.com](https://conquestcapped.com/guides/wow-forever/wow-forever-craftsmans-writs/) and [foreverchanges.pro](https://foreverchanges.pro/merchants-favor), November 15, 2026) and is English only.
 - The 150 known writs are recognized by item ID. A writ missing from the data is only recognized by its English name (`Craftsman's Writ: …`).
 - Nine items have two versions (the original recipe and a Forever one). The addon counts and prices both, but a writ may accept only one of them.

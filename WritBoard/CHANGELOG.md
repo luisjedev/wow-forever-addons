@@ -1,3 +1,7 @@
+# WritBoard 0.1.0-snapshot-9
+
+- New **Recipes** tab, right of In bags: one tile per profession sold by the Azeroth Commerce Authority / Durotar Supply recipe vendors, plus **Other items**. Inside, every recipe (308 in all) with its profession skill, required reputation, Merchant's Favor cost and a learned check; each tile shows how many you know. Names and icons come from the client, so they follow its language.
+
 # WritBoard 0.1.0-snapshot-8
 
 - Zone selector next to the All / In bags buttons: tick one or more zones to list only those, or pick **All zones** to show everything again. It combines with In bags, and the selection is saved per character.

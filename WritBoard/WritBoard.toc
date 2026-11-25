@@ -2,12 +2,13 @@
 ## Title: WritBoard
 ## IconTexture: Interface\Icons\INV_Scroll_03
 ## Notes: Lists every Craftsman's Writ: what it asks for, who takes it, its Azeroth Commerce Authority reputation and the item's auction price.
-## Version: 0.1.0-snapshot-8
+## Version: 0.1.0-snapshot-9
 ## OptionalDeps: Auctionator
 ## AddonCompartmentFunc: WritBoard_OnCompartmentClick
 ## SavedVariablesPerCharacter: WritBoardDB
 
 Locales.lua
 Data.lua
+Recipes.lua
 Core.lua
 WritBoard.lua

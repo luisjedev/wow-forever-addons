@@ -3,7 +3,16 @@ local _, addon = ...
 
 addon.REP = { 75, 125, 200 } -- Azeroth Commerce Authority reputation per delivery, by tier
 addon.TIERS = { "Journeyman", "Expert", "Artisan" }
-addon.PROFS = { [171] = "Alchemy", [164] = "Blacksmithing", [202] = "Engineering", [165] = "Leatherworking", [197] = "Tailoring" }
+addon.PROFS = { [171] = "Alchemy", [164] = "Blacksmithing", [185] = "Cooking", [333] = "Enchanting", [202] = "Engineering",
+    [165] = "Leatherworking", [197] = "Tailoring" }
+addon.STANDINGS = { "Neutral", "Friendly", "Honored", "Revered", "Exalted" } -- fallback when FACTION_STANDING_LABEL is missing
+
+-- How many vendor recipes ({ spell, ... }) isKnown(spell) reports as learned.
+function addon.CountKnown(list, isKnown)
+    local known = 0
+    for _, recipe in ipairs(list) do if isKnown(recipe[1]) then known = known + 1 end end
+    return known
+end
 
 -- Classic uiMapIDs of the delivery zones, for the map column. Riverglades (new in Forever) has no known ID yet.
 addon.ZONE_MAPS = {

@@ -6,7 +6,12 @@ local WIDTH, HEIGHT, ROW_H, LIST_W = 1000, 560, 24, 930
 local COL = { 28, 250, 345, 395, 610, 720, 830 }
 local MAP_X = 575 -- map column, between the recipient and the prices
 local PRICE_W = 100
-local db, window, content, summary, zoneMenu
+-- Recipes tab columns: name, skill, reputation, cost, learned.
+local RCOL = { 28, 470, 560, 690, 820 }
+local db, window, content, summary, zoneMenu, recipePanel
+local writParts = {} -- writ list widgets, hidden on the Recipes tab
+local recipeProf -- profession key open on the Recipes tab; nil shows the profession tiles
+local recipeRows = {}
 local zones = {} -- selected zone keys; empty means all zones
 local rows, buttons = {}, {}
 local filter = "all"
@@ -124,8 +129,186 @@ local function Row(i)
     return row
 end
 
+-- Learned check for a vendor recipe's crafting spell.
+-- shortcut: IsPlayerSpell on profession recipes is not yet verified in the Forever client; see docs/BLIZZARD_API.md.
+local function Known(spell)
+    if IsPlayerSpell and IsPlayerSpell(spell) then return true end
+    if not (C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo) then return false end
+    local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, spell)
+    return ok and type(info) == "table" and info.learned == true
+end
+
+local function Standing(rep)
+    return _G["FACTION_STANDING_LABEL" .. (rep + 4)] or L[addon.STANDINGS[rep + 1]]
+end
+
+local function ProfName(key)
+    return key == "other" and L["Other items"] or L[addon.PROFS[key]]
+end
+
+-- Vendor list of a tile: recipes (by spell) or the other items (by item ID).
+local function VendorList(key)
+    return key == "other" and addon.vendorItems or addon.recipes[key]
+end
+
+local function RecipeRow(i)
+    local row = CreateFrame("Button", nil, recipePanel.content)
+    row:SetSize(LIST_W, ROW_H)
+    row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
+    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    local stripe = row:CreateTexture(nil, "BACKGROUND")
+    stripe:SetAllPoints()
+    stripe:SetColorTexture(1, 1, 1, i % 2 == 0 and 0.04 or 0)
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(20, 20)
+    row.icon:SetPoint("LEFT", 4, 0)
+    row.name = Text(row, "GameFontHighlight", RCOL[1], RCOL[2] - RCOL[1] - 6)
+    row.skill = Text(row, "GameFontHighlightSmall", RCOL[2], RCOL[3] - RCOL[2] - 6)
+    row.rep = Text(row, "GameFontNormal", RCOL[3], RCOL[4] - RCOL[3] - 6)
+    row.cost = Text(row, "GameFontHighlight", RCOL[4], RCOL[5] - RCOL[4] - 6)
+    row.learned = row:CreateTexture(nil, "ARTWORK")
+    row.learned:SetSize(18, 18)
+    row.learned:SetPoint("LEFT", RCOL[5] + 14, 0)
+    row:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if self.item then GameTooltip:SetItemByID(self.id) else GameTooltip:SetSpellByID(self.id) end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", GameTooltip_Hide)
+    row:SetScript("OnClick", function(self)
+        if not IsModifiedClick() then return end
+        if self.item then
+            local link = select(2, C_Item.GetItemInfo(self.id))
+            if link then HandleModifiedItemClick(link) end
+        elseif IsModifiedClick("CHATLINK") and C_Spell and C_Spell.GetSpellLink then
+            local link = C_Spell.GetSpellLink(self.id)
+            if link then ChatEdit_InsertLink(link) end
+        end
+    end)
+    recipeRows[i] = row
+    return row
+end
+
+local function RefreshRecipes()
+    local panel = recipePanel
+    panel.tiles:SetShown(recipeProf == nil)
+    panel.list:SetShown(recipeProf ~= nil)
+    if not recipeProf then
+        for _, tile in ipairs(panel.tileButtons) do
+            local list = VendorList(tile.key)
+            if tile.key == "other" then
+                tile.sub:SetText(L["%d items"]:format(#list))
+            else
+                local known = addon.CountKnown(list, Known)
+                tile.sub:SetText(L["%d / %d learned"]:format(known, #list))
+            end
+        end
+        return
+    end
+    local list, isItem = VendorList(recipeProf), recipeProf == "other"
+    panel.icon:SetTexture(addon.RECIPE_ICONS[recipeProf])
+    panel.title:SetText(ProfName(recipeProf))
+    local vendor = addon.RECIPE_VENDORS[recipeProf]
+    local known = not isItem and addon.CountKnown(list, Known) or 0
+    panel.sub:SetText(isItem and L["Camp quartermasters and recipe vendors"]
+        or (vendor[UnitFactionGroup("player") == "Horde" and 2 or 1] .. " · " .. L["%d / %d learned"]:format(known, #list)))
+    panel.learnedLabel:SetShown(not isItem)
+    for i, entry in ipairs(list) do
+        local row = recipeRows[i] or RecipeRow(i)
+        local id, english, skill, rep, cost = unpack(entry)
+        row.id, row.item = id, isItem
+        local name = isItem and C_Item.GetItemNameByID(id) or (not isItem and C_Spell and C_Spell.GetSpellName(id)) or english
+        local icon = isItem and C_Item.GetItemIconByID(id) or (not isItem and C_Spell and C_Spell.GetSpellTexture(id))
+        row.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.name:SetText(name)
+        row.skill:SetText(skill > 0 and skill or "")
+        row.rep:SetText(Standing(rep))
+        row.cost:SetText(cost)
+        local learned = not isItem and Known(id)
+        if learned then row.name:SetTextColor(0.4, 1, 0.4) else row.name:SetTextColor(1, 1, 1) end
+        row.learned:SetShown(not isItem)
+        row.learned:SetTexture(learned and "Interface\\RaidFrame\\ReadyCheck-Ready" or "Interface\\RaidFrame\\ReadyCheck-NotReady")
+        row:Show()
+    end
+    for i = #list + 1, #recipeRows do recipeRows[i]:Hide() end
+    panel.content:SetHeight(math.max(1, #list * ROW_H))
+end
+
+local function CreateRecipePanel()
+    local panel = CreateFrame("Frame", nil, window)
+    panel:SetPoint("TOPLEFT", 24, -66)
+    panel:SetPoint("BOTTOMRIGHT", -40, 52)
+    recipePanel = panel
+
+    -- Profession tiles, 4 per row, as in ProfGuide.
+    panel.tiles = CreateFrame("Frame", nil, panel)
+    panel.tiles:SetAllPoints()
+    panel.tileButtons = {}
+    local backdrop = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
+    for i, key in ipairs(addon.RECIPE_ORDER) do
+        local tile = CreateFrame("Button", nil, panel.tiles, "BackdropTemplate")
+        tile:SetSize(162, 92)
+        tile:SetPoint("TOPLEFT", 120 + ((i - 1) % 4) * 172, -40 - math.floor((i - 1) / 4) * 102)
+        tile:SetBackdrop(backdrop)
+        tile:SetBackdropColor(0.08, 0.075, 0.055, 0.9)
+        tile:SetBackdropBorderColor(1, 0.82, 0, 0.9)
+        tile:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+        tile.key = key
+        local icon = tile:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(40, 40)
+        icon:SetPoint("TOP", 0, -10)
+        icon:SetTexture(addon.RECIPE_ICONS[key])
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        local label = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("TOP", icon, "BOTTOM", 0, -5)
+        label:SetText(ProfName(key))
+        tile.sub = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        tile.sub:SetPoint("TOP", label, "BOTTOM", 0, -3)
+        tile:SetScript("OnClick", function() recipeProf = key; RefreshRecipes() end)
+        panel.tileButtons[i] = tile
+    end
+
+    -- One profession's vendor list.
+    local list = CreateFrame("Frame", nil, panel)
+    list:SetAllPoints()
+    panel.list = list
+    local back = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
+    back:SetSize(110, 22)
+    back:SetPoint("TOPLEFT", 0, 0)
+    back:SetText(L["Professions"])
+    back:SetScript("OnClick", function() recipeProf = nil; RefreshRecipes() end)
+    panel.icon = list:CreateTexture(nil, "ARTWORK")
+    panel.icon:SetSize(24, 24)
+    panel.icon:SetPoint("LEFT", back, "RIGHT", 12, 0)
+    panel.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    panel.title = list:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    panel.title:SetPoint("LEFT", panel.icon, "RIGHT", 8, 0)
+    panel.sub = list:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    panel.sub:SetPoint("LEFT", panel.title, "RIGHT", 12, 0)
+    local labels = { L["Recipe"], L["Skill"], L["Reputation"], L["Merchant's Favor"], L["Learned"] }
+    for i, label in ipairs(labels) do
+        local text = list:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetPoint("TOPLEFT", RCOL[i], -32)
+        text:SetText(label)
+        if i == 5 then panel.learnedLabel = text end
+    end
+    local scroll = CreateFrame("ScrollFrame", "WritBoardRecipeScrollFrame", list, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -50)
+    scroll:SetPoint("BOTTOMRIGHT", 0, 0)
+    panel.content = CreateFrame("Frame", nil, scroll)
+    panel.content:SetSize(LIST_W, 1)
+    scroll:SetScrollChild(panel.content)
+end
+
 local function Refresh()
     if not (window and window:IsShown()) then return end
+    local recipes = filter == "recipes"
+    for _, part in ipairs(writParts) do part:SetShown(not recipes) end
+    recipePanel:SetShown(recipes)
+    window.source:SetText(recipes and L["Source: wow-professions.com · a green check means you know the recipe"]
+        or L["Sources: conquestcapped.com and foreverchanges.pro · prices from Auctionator"])
+    for key, button in pairs(buttons) do button:SetEnabled(key ~= filter) end
+    if recipes then RefreshRecipes() return end
     local owned = ScanBags()
     local list = addon.Rows(filter, owned, zones)
     local entries = addon.Grouped(list, Price)
@@ -168,7 +351,6 @@ local function Refresh()
     local count, rep, cost, unpriced = addon.Summary(owned, Price)
     summary:SetText(L["Writs in bags: %d · %d reputation · cost %s"]:format(count, rep, Money(cost))
         .. (unpriced > 0 and ("  |cff999999(" .. unpriced .. " ?)|r") or ""))
-    for key, button in pairs(buttons) do button:SetEnabled(key ~= filter) end
     window.count:SetText(L["%d writs"]:format(#list))
     local picked = 0
     for _ in pairs(zones) do picked = picked + 1 end
@@ -204,11 +386,12 @@ local function CreateWindow()
     local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -8, -8)
 
-    for i, key in ipairs({ "all", "bags" }) do
+    local tabLabels = { all = L["All"], bags = L["In bags"], recipes = L["Recipes"] }
+    for i, key in ipairs({ "all", "bags", "recipes" }) do
         local button = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
         button:SetSize(110, 24)
         button:SetPoint("TOPLEFT", 24 + (i - 1) * 116, -32)
-        button:SetText(key == "all" and L["All"] or L["In bags"])
+        button:SetText(tabLabels[key])
         button:SetScript("OnClick", function()
             filter = key
             db.filter = key
@@ -219,7 +402,8 @@ local function CreateWindow()
     -- Zone selector: tick any number of zones; "All zones" clears the selection.
     zoneMenu = CreateFrame("DropdownButton", nil, window, "WowStyle1DropdownTemplate")
     zoneMenu:SetWidth(220)
-    zoneMenu:SetPoint("TOPLEFT", 24 + 2 * 116 + 10, -32)
+    zoneMenu:SetPoint("TOPLEFT", 24 + 3 * 116 + 10, -32)
+    writParts[#writParts + 1] = zoneMenu
     zoneMenu:SetupMenu(function(_, root)
         root:CreateButton(L["All zones"], function()
             wipe(zones)
@@ -235,6 +419,7 @@ local function CreateWindow()
     end)
     window.count = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     window.count:SetPoint("TOPRIGHT", -40, -40)
+    writParts[#writParts + 1] = window.count
 
     local labels = { L["Item"], L["Profession"], L["Rep"], L["Deliver to"], L["Item price"], L["Writ price"], L["Total"] }
     for i, label in ipairs(labels) do
@@ -242,10 +427,12 @@ local function CreateWindow()
         text:SetPoint("TOPLEFT", 24 + COL[i], -66)
         if i >= 5 then text:SetWidth(PRICE_W); text:SetJustifyH("RIGHT") end
         text:SetText(label)
+        writParts[#writParts + 1] = text
     end
     local mapLabel = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     mapLabel:SetPoint("TOPLEFT", 24 + MAP_X - 4, -66)
     mapLabel:SetText(L["Map"])
+    writParts[#writParts + 1] = mapLabel
 
     local scroll = CreateFrame("ScrollFrame", "WritBoardScrollFrame", window, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 24, -84)
@@ -256,9 +443,10 @@ local function CreateWindow()
 
     summary = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     summary:SetPoint("BOTTOMLEFT", 28, 30)
-    local source = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    source:SetPoint("BOTTOMLEFT", 28, 16)
-    source:SetText(L["Sources: conquestcapped.com and foreverchanges.pro · prices from Auctionator"])
+    window.source = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    window.source:SetPoint("BOTTOMLEFT", 28, 16)
+    for _, part in ipairs({ scroll, summary }) do writParts[#writParts + 1] = part end
+    CreateRecipePanel()
 
     window:SetScript("OnShow", Refresh)
     window:SetScript("OnHide", GameTooltip_Hide)
@@ -274,11 +462,12 @@ WritBoard_OnCompartmentClick = WritBoard_Toggle
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("BAG_UPDATE_DELAYED")
+pcall(events.RegisterEvent, events, "NEW_RECIPE_LEARNED") -- the event may not exist in this client
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
         if type(WritBoardDB) ~= "table" then WritBoardDB = {} end
         db = WritBoardDB
-        if db.filter == "all" or db.filter == "bags" then filter = db.filter end
+        if db.filter == "all" or db.filter == "bags" or db.filter == "recipes" then filter = db.filter end
         -- Keep only saved zones that still exist in the data.
         local valid = {}
         for _, key in ipairs(addon.ZoneKeys()) do valid[key] = true end

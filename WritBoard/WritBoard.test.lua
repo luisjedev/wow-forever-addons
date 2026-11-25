@@ -1,7 +1,7 @@
 -- Run from the repository root: luajit WritBoard/WritBoard.test.lua
 GetLocale = function() return "enUS" end
 local addon = {}
-for _, file in ipairs({ "Locales", "Data", "Core" }) do assert(loadfile("WritBoard/" .. file .. ".lua"))("WritBoard", addon) end
+for _, file in ipairs({ "Locales", "Data", "Recipes", "Core" }) do assert(loadfile("WritBoard/" .. file .. ".lua"))("WritBoard", addon) end
 
 -- Data: 150 orders, 45/60/45 by tier, each with item IDs and a known profession; pins only with a zone.
 local tiers, names = { 0, 0, 0 }, {}
@@ -118,3 +118,20 @@ assert(#picked - unknown == 5 and unknown > 0, "picked zones")
 assert(#addon.Rows("bags", owned, { Wetlands = true }) == 0, "held writs outside the selection are hidden")
 assert(#addon.Rows("bags", owned, { [""] = true }) == 1, "held writs missing from the data count as unknown zone")
 print("WritBoard zone selector ok")
+
+-- Recipes tab: 308 vendor recipes in 7 professions, unique spells, valid standings; CountKnown counts by spell.
+local recipeCount, spells = 0, {}
+for _, key in ipairs(addon.RECIPE_ORDER) do
+    assert(addon.RECIPE_ICONS[key], tostring(key))
+    if key ~= "other" then
+        assert(addon.PROFS[key] and addon.RECIPE_VENDORS[key], key)
+        for _, r in ipairs(addon.recipes[key]) do
+            assert(not spells[r[1]] and type(r[2]) == "string" and r[3] > 0 and r[4] >= 0 and r[4] <= 4 and r[5] > 0, r[2])
+            spells[r[1]] = true
+            recipeCount = recipeCount + 1
+        end
+    end
+end
+assert(recipeCount == 308 and #addon.recipes[165] == 81 and #addon.recipes[197] == 67, "recipe counts")
+for _, item in ipairs(addon.vendorItems) do assert(item[4] >= 0 and item[4] <= 4 and item[5] > 0, item[2]) end
+assert(addon.CountKnown(addon.recipes[185], function(spell) return spell == 1249963 or spell == 1 end) == 1)
