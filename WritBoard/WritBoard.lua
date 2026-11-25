@@ -151,6 +151,24 @@ local function VendorList(key)
     return key == "other" and addon.vendorItems or addon.recipes[key]
 end
 
+-- Recipe tooltip; with Shift held, the crafted item instead, compared with what you have equipped.
+local function RecipeTooltip(row)
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    if row.item then
+        GameTooltip:SetItemByID(row.id)
+    elseif row.craft and IsShiftKeyDown() then
+        GameTooltip:SetItemByID(row.craft)
+        if GameTooltip_ShowCompareItem then GameTooltip_ShowCompareItem(GameTooltip) end
+    else
+        if GameTooltip_HideShoppingTooltips then GameTooltip_HideShoppingTooltips(GameTooltip) end
+        GameTooltip:SetSpellByID(row.id)
+        if row.craft and C_Item.IsEquippableItem(row.craft) then
+            GameTooltip:AddLine(L["Hold Shift to compare with your equipped item"], 0.6, 0.8, 1, true)
+        end
+    end
+    GameTooltip:Show()
+end
+
 local function RecipeRow(i)
     local row = CreateFrame("Button", nil, recipePanel.content)
     row:SetSize(LIST_W, ROW_H)
@@ -169,12 +187,16 @@ local function RecipeRow(i)
     row.learned = row:CreateTexture(nil, "ARTWORK")
     row.learned:SetSize(18, 18)
     row.learned:SetPoint("LEFT", RCOL[5] + 14, 0)
+    -- Shift pressed or released while hovering swaps between the recipe and the crafted item.
     row:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if self.item then GameTooltip:SetItemByID(self.id) else GameTooltip:SetSpellByID(self.id) end
-        GameTooltip:Show()
+        self:RegisterEvent("MODIFIER_STATE_CHANGED")
+        RecipeTooltip(self)
     end)
-    row:SetScript("OnLeave", GameTooltip_Hide)
+    row:SetScript("OnEvent", RecipeTooltip)
+    row:SetScript("OnLeave", function(self)
+        self:UnregisterEvent("MODIFIER_STATE_CHANGED")
+        GameTooltip_Hide()
+    end)
     row:SetScript("OnClick", function(self)
         if not IsModifiedClick() then return end
         if self.item then
@@ -215,8 +237,8 @@ local function RefreshRecipes()
     panel.learnedLabel:SetShown(not isItem)
     for i, entry in ipairs(list) do
         local row = recipeRows[i] or RecipeRow(i)
-        local id, english, skill, rep, cost = unpack(entry)
-        row.id, row.item = id, isItem
+        local id, english, skill, rep, cost, craft = unpack(entry)
+        row.id, row.item, row.craft = id, isItem, not isItem and craft or nil
         local name = isItem and C_Item.GetItemNameByID(id) or (not isItem and C_Spell and C_Spell.GetSpellName(id)) or english
         local icon = isItem and C_Item.GetItemIconByID(id) or (not isItem and C_Spell and C_Spell.GetSpellTexture(id))
         row.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")

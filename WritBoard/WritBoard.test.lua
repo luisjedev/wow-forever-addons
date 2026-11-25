@@ -127,6 +127,7 @@ for _, key in ipairs(addon.RECIPE_ORDER) do
         assert(addon.PROFS[key] and addon.RECIPE_VENDORS[key], key)
         for _, r in ipairs(addon.recipes[key]) do
             assert(not spells[r[1]] and type(r[2]) == "string" and r[3] > 0 and r[4] >= 0 and r[4] <= 4 and r[5] > 0, r[2])
+            assert(r[6] or r[2]:find("^Enchant "), "crafted item " .. r[2]) -- only enchants create no item
             spells[r[1]] = true
             recipeCount = recipeCount + 1
         end

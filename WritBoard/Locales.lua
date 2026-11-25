@@ -36,6 +36,7 @@ local translations = {
         ["Reputation"] = "Reputación",
         ["Merchant's Favor"] = "Favor del mercader",
         ["Learned"] = "Aprendida",
+        ["Hold Shift to compare with your equipped item"] = "Mantén Shift para compararlo con lo que llevas equipado",
         ["Neutral"] = "Neutral",
         ["Friendly"] = "Amistoso",
         ["Honored"] = "Honorable",

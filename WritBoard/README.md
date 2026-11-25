@@ -16,7 +16,7 @@ Open it with `/writs` (or `/writboard`), or click **WritBoard** in the minimap's
 - An item name in green means you already have enough of it in your bags or bank. Hover a row for the item tooltip, tier, skill and how many you have.
 - **Shift-click** a row to link the requested item in chat or drop it into a search box, such as the auction house's. **Ctrl-click** previews it.
 - The bottom line adds up the writs in your bags: how many, total reputation and total cost.
-- **Recipes** shows one tile per profession sold at the camps (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking, Tailoring) plus **Other items** (tabards, Pack Kodo, Packmule Treat, Forger's Quill, certifications…). Each tile counts how many of its recipes you know. Open one to see all 308 recipes with the profession skill, the reputation needed, the cost in Merchant's Favor and a green check for the ones you have learned. Hover for the recipe tooltip; shift-click links it in chat.
+- **Recipes** shows one tile per profession sold at the camps (Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, Leatherworking, Tailoring) plus **Other items** (tabards, Pack Kodo, Packmule Treat, Forger's Quill, certifications…). Each tile counts how many of its recipes you know. Open one to see all 308 recipes with the profession skill, the reputation needed, the cost in Merchant's Favor and a green check for the ones you have learned. Hover for the recipe tooltip; hold Shift to see the crafted item compared with your equipped gear; shift-click links the recipe in chat.
 
 ## Limits
 
